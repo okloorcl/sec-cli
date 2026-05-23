@@ -5,6 +5,7 @@ use serde::Serialize;
 pub enum ParserKind {
     Form4,
     EightK,
+    Schedule13,
     ThirteenF,
 }
 
@@ -28,6 +29,12 @@ const PARSERS: &[ParserSpec] = &[
         canonical_form: "8-K",
         forms: &["8-K", "8-K/A"],
         record_kind: "eightk_event",
+    },
+    ParserSpec {
+        kind: ParserKind::Schedule13,
+        canonical_form: "SC 13D",
+        forms: &["SC 13D", "SC 13D/A", "SC 13G", "SC 13G/A"],
+        record_kind: "schedule13",
     },
     ParserSpec {
         kind: ParserKind::ThirteenF,

@@ -5,8 +5,8 @@ use clap::Parser;
 use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query, OutputMode,
-    ParseQuery, ReportKind, ReportQuery, SearchQuery, SecClient, SectionQuery, StatementQuery,
-    ThirteenFQuery, accession_text_url, find_matches,
+    ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery, SecClient, SectionQuery,
+    StatementQuery, ThirteenFQuery, accession_text_url, find_matches,
     llm::{LlmConfig, LlmProvider},
     print_records,
     resolve::{ResolveInput, resolve_verified_13f_cik, resolve_verified_13f_manager},
@@ -245,6 +245,20 @@ pub(crate) async fn run() -> Result<()> {
                 events.truncate(limit);
             }
             print_records(&events, output)?;
+        }
+        Command::Schedule13(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let reports = client
+                .schedule13_reports(Schedule13Query {
+                    cik,
+                    form: args.form,
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                    limit_bytes: args.limit_bytes,
+                })
+                .await?;
+            print_records(&reports, output)?;
         }
         Command::ThirteenF(args) => {
             let output = output_mode(args.jsonl, args.pretty);

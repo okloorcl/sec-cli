@@ -280,6 +280,42 @@ pub struct FinancialStatementRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct Schedule13Record {
+    pub accession: String,
+    pub cik: u64,
+    pub company: String,
+    pub form: String,
+    pub filing_date: String,
+    pub report_date: Option<String>,
+    pub filing_type: String,
+    pub is_amendment: bool,
+    pub activist_intent: bool,
+    pub issuer_name: Option<String>,
+    pub issuer_address: Option<String>,
+    pub security_title: Option<String>,
+    pub cusip: Option<String>,
+    pub event_date: Option<String>,
+    pub reporting_persons: Vec<String>,
+    pub filing_rule: Option<String>,
+    pub citizenship_or_organization: Option<String>,
+    pub beneficially_owned_shares: Option<f64>,
+    pub percent_of_class: Option<f64>,
+    pub sole_voting_power: Option<f64>,
+    pub shared_voting_power: Option<f64>,
+    pub sole_dispositive_power: Option<f64>,
+    pub shared_dispositive_power: Option<f64>,
+    pub purpose_of_transaction: Option<String>,
+    pub ownership_summary: Option<String>,
+    pub item_count: usize,
+    pub signatures: Vec<String>,
+    pub document: Option<String>,
+    pub document_sequence: Option<String>,
+    pub document_description: Option<String>,
+    pub document_url: Option<String>,
+    pub source_url: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ThirteenFHoldingRecord {
     pub accession: String,
     pub cik: u64,
@@ -396,5 +432,6 @@ pub struct ThirteenFOtherManagerRecord {
 pub enum ParsedRecord {
     Form4Transaction(Form4TransactionRecord),
     EightKEvent(EightKEventRecord),
+    Schedule13(Schedule13Record),
     ThirteenfHolding(ThirteenFHoldingRecord),
 }

@@ -2,7 +2,7 @@ use anyhow::{Result, anyhow};
 
 use super::{
     client::SecClient,
-    models::{EightKQuery, Form4Query, ParseQuery, ParsedRecord, ThirteenFQuery},
+    models::{EightKQuery, Form4Query, ParseQuery, ParsedRecord, Schedule13Query, ThirteenFQuery},
     registry::{ParserKind, parser_for_form},
 };
 
@@ -33,6 +33,18 @@ impl SecClient {
                 .await?
                 .into_iter()
                 .map(ParsedRecord::EightKEvent)
+                .collect(),
+            ParserKind::Schedule13 => self
+                .schedule13_reports(Schedule13Query {
+                    cik: query.cik,
+                    form: Some(query.form.clone()),
+                    latest: query.latest,
+                    include_amends: query.include_amends,
+                    limit_bytes: None,
+                })
+                .await?
+                .into_iter()
+                .map(ParsedRecord::Schedule13)
                 .collect(),
             ParserKind::ThirteenF => self
                 .thirteenf_holdings(ThirteenFQuery {
