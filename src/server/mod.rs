@@ -1,8 +1,9 @@
 use std::{net::SocketAddr, sync::Arc};
 
+mod helpers;
 mod params;
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use axum::{
     Json, Router,
     extract::{Query, State},
@@ -12,13 +13,17 @@ use axum::{
 };
 use serde_json::json;
 
+use helpers::*;
 use params::*;
 
 use crate::sec::{
-    CompanyReportQuery, DailyIndexQuery, DocumentQuery, EightKExhibitQuery, EightKQuery, FactQuery,
-    FilingQuery, ForeignIssuerQuery, Form4Query, FundDisclosureQuery, InlineXbrlQuery,
+    CompanyReportQuery, DailyIndexQuery, DocumentQuery, EftsSearchQuery, EightKExhibitQuery,
+    EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, FundDisclosureQuery, InlineXbrlQuery,
     MetricsQuery, ParseQuery, ProspectusQuery, ProxyQuery, Schedule13Query, SecClient,
-    SectionQuery, StatementQuery, ThirteenFQuery, daily::latest_sec_index_date, supported_parsers,
+    SectionQuery, StatementQuery,
+    daily::latest_sec_index_date,
+    efts::{parse_forms, require_query},
+    supported_parsers,
 };
 
 #[derive(Clone)]
@@ -45,6 +50,7 @@ fn router() -> Router<AppState> {
         .route("/v1/forms", get(forms))
         .route("/v1/filings", get(filings))
         .route("/v1/daily", get(daily))
+        .route("/v1/efts", get(efts))
         .route("/v1/facts", get(facts))
         .route("/v1/statements", get(statements))
         .route("/v1/metrics", get(metrics))
@@ -109,6 +115,26 @@ async fn daily(
             company: params.company,
             limit: params.limit.or(Some(100)),
             include_amends: params.include_amends.unwrap_or(false),
+        })
+        .await?;
+    Ok(Json(json!(records)))
+}
+
+async fn efts(
+    State(state): State<AppState>,
+    Query(params): Query<EftsParams>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let cik = resolve_optional_cik(&state.client, params.ticker.as_deref(), params.cik).await?;
+    let forms = params.form.map(|form| vec![form]).unwrap_or_default();
+    let records = state
+        .client
+        .efts_search(EftsSearchQuery {
+            query: require_query(&params.query)?,
+            ciks: cik.into_iter().collect(),
+            forms: parse_forms(&forms),
+            from: params.from,
+            to: params.to,
+            limit: params.limit.or(Some(20)),
         })
         .await?;
     Ok(Json(json!(records)))
@@ -430,40 +456,6 @@ async fn parse(
         })
         .await?;
     Ok(Json(json!(records)))
-}
-
-async fn resolve_cik(client: &SecClient, ticker: Option<&str>, cik: Option<u64>) -> Result<u64> {
-    match (ticker, cik) {
-        (Some(ticker), None) => client.cik_for_ticker(ticker).await,
-        (None, Some(cik)) => Ok(cik),
-        (Some(_), Some(_)) => Err(anyhow!("provide either ticker or cik, not both")),
-        (None, None) => Err(anyhow!("provide ticker or cik")),
-    }
-}
-
-async fn form4_query(client: &SecClient, params: &CompanyParams) -> Result<Form4Query> {
-    Ok(Form4Query {
-        cik: resolve_cik(client, params.ticker.as_deref(), params.cik).await?,
-        latest: params.latest.unwrap_or(3),
-        include_amends: params.include_amends.unwrap_or(false),
-    })
-}
-
-async fn thirteenf_query(client: &SecClient, params: &CompanyParams) -> Result<ThirteenFQuery> {
-    Ok(ThirteenFQuery {
-        cik: resolve_cik(client, params.ticker.as_deref(), params.cik).await?,
-        latest: params.latest.unwrap_or(1),
-        include_amends: params.include_amends.unwrap_or(false),
-    })
-}
-
-fn period_form(period: Option<&str>) -> Option<String> {
-    match period.unwrap_or("annual").to_ascii_lowercase().as_str() {
-        "annual" => Some("10-K".to_string()),
-        "quarterly" => Some("10-Q".to_string()),
-        "all" => None,
-        other => Some(other.to_string()),
-    }
 }
 
 type ApiResult<T> = std::result::Result<T, ApiError>;

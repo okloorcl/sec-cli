@@ -39,6 +39,7 @@ pub(crate) async fn run() -> Result<()> {
             print_records(&filings, output)?;
         }
         Command::Daily(args) => handlers::daily(&client, args).await?,
+        Command::Efts(args) => handlers::efts(&client, args).await?,
         Command::Facts(args) => {
             let output = output_mode(args.jsonl, args.pretty);
             let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
@@ -438,6 +439,23 @@ pub(super) async fn resolve_cik(
             .with_context(|| format!("unknown ticker '{}'", ticker));
     }
     bail!("provide --ticker or --cik");
+}
+
+pub(super) async fn resolve_optional_cik(
+    client: &SecClient,
+    ticker: Option<&str>,
+    cik: Option<u64>,
+) -> Result<Option<u64>> {
+    match (ticker, cik) {
+        (Some(ticker), None) => client
+            .cik_for_ticker(ticker)
+            .await
+            .map(Some)
+            .with_context(|| format!("unknown ticker '{}'", ticker)),
+        (None, Some(cik)) => Ok(Some(cik)),
+        (None, None) => Ok(None),
+        (Some(_), Some(_)) => bail!("provide either --ticker or --cik, not both"),
+    }
 }
 
 async fn resolve_subject(

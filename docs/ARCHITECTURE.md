@@ -52,6 +52,7 @@ src/sec/http/                       low-level SEC HTTP transport
 src/sec/storage/                    local cache/store abstraction with TTL-aware reads
 src/sec/edgar/                      SEC data sources and URL builders
 src/sec/daily/                      SEC daily master index scanner
+src/sec/efts/                       SEC EDGAR Full-Text Search client
 src/sec/edgar/filings.rs            submissions index -> FilingRecord
 src/sec/edgar/facts.rs              CompanyFacts -> FactRecord
 src/sec/company/                    10-K/10-Q company-report topic table parser
@@ -90,6 +91,7 @@ Examples:
 - `company`: deeper 10-K/10-Q topic tables for segments, geography, debt, obligations, leases, taxes, and repurchases.
 - `eightk`: 8-K item extraction plus exhibit discovery and earnings-release classification.
 - `daily`: all-market daily master index parsing and monitoring filters.
+- `efts`: all-market SEC Full-Text Search query building and result normalization.
 - `prospectus`: S-1 / F-1 / 424B offering and IPO signals.
 - `foreign`: 20-F / 6-K / 40-F foreign issuer annual/current reports.
 - `funds`: N-PORT portfolio holdings, N-PX proxy votes, 497K summary prospectus excerpts, 24F-2NT securities-sold notices, N-CSR shareholder reports, and N-CEN fund census data.

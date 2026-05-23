@@ -1,16 +1,18 @@
 use anyhow::Result;
 use chrono::Utc;
 use sec_cli::sec::{
-    CompanyReportQuery, DailyIndexQuery, EightKExhibitQuery, ForeignIssuerQuery,
+    CompanyReportQuery, DailyIndexQuery, EftsSearchQuery, EightKExhibitQuery, ForeignIssuerQuery,
     FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, ProspectusQuery, ProxyQuery, SecClient,
-    daily::latest_sec_index_date, print_records,
+    daily::latest_sec_index_date,
+    efts::{parse_forms, require_query},
+    print_records,
 };
 
 use super::{
     args::{EightKExhibitsArgs, InlineXbrlArgs, ProxyArgs, TablesArgs},
     disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs},
-    monitoring_args::DailyArgs,
-    runner::{output_mode, resolve_cik},
+    monitoring_args::{DailyArgs, EftsArgs},
+    runner::{output_mode, resolve_cik, resolve_optional_cik},
 };
 
 pub(super) async fn daily(client: &SecClient, args: DailyArgs) -> Result<()> {
@@ -25,6 +27,22 @@ pub(super) async fn daily(client: &SecClient, args: DailyArgs) -> Result<()> {
             company: args.company,
             limit: Some(args.limit),
             include_amends: args.include_amends,
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn efts(client: &SecClient, args: EftsArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_optional_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .efts_search(EftsSearchQuery {
+            query: require_query(&args.query)?,
+            ciks: cik.into_iter().collect(),
+            forms: parse_forms(&args.form),
+            from: args.from,
+            to: args.to,
+            limit: Some(args.limit),
         })
         .await?;
     print_records(&records, output)

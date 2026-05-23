@@ -20,6 +20,16 @@ pub struct DailyIndexQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct EftsSearchQuery {
+    pub query: String,
+    pub ciks: Vec<u64>,
+    pub forms: Vec<String>,
+    pub from: Option<NaiveDate>,
+    pub to: Option<NaiveDate>,
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
 pub struct FactQuery {
     pub cik: u64,
     pub concept: String,

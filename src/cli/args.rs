@@ -3,7 +3,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use super::analysis_args::{MetricsArgs, StatementsArgs};
 use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs};
-use super::monitoring_args::{DailyArgs, McpArgs, ServeArgs};
+use super::monitoring_args::{DailyArgs, EftsArgs, McpArgs, ServeArgs};
 
 #[derive(Parser, Debug)]
 #[command(name = "sec")]
@@ -28,6 +28,9 @@ pub(crate) enum Command {
     /// Scan the SEC all-market daily master index.
     #[command(name = "daily", alias = "monitor")]
     Daily(DailyArgs),
+    /// Search the SEC EDGAR Full-Text Search API across the market.
+    #[command(name = "efts", aliases = ["full-text", "global-search"])]
+    Efts(EftsArgs),
     /// Query SEC company facts by concept alias or XBRL concept name.
     Facts(FactsArgs),
     /// Build standardized financial statement rows from SEC CompanyFacts.

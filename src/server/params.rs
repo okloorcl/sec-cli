@@ -30,6 +30,17 @@ pub(super) struct DailyParams {
 }
 
 #[derive(Deserialize)]
+pub(super) struct EftsParams {
+    pub(super) ticker: Option<String>,
+    pub(super) cik: Option<u64>,
+    pub(super) query: String,
+    pub(super) form: Option<String>,
+    pub(super) from: Option<chrono::NaiveDate>,
+    pub(super) to: Option<chrono::NaiveDate>,
+    pub(super) limit: Option<usize>,
+}
+
+#[derive(Deserialize)]
 pub(super) struct FactsParams {
     pub(super) ticker: Option<String>,
     pub(super) cik: Option<u64>,

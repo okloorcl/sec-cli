@@ -3,6 +3,7 @@ pub mod company;
 pub mod daily;
 pub mod documents;
 pub mod edgar;
+pub mod efts;
 pub mod foreign;
 pub mod funds;
 pub mod http;
@@ -27,14 +28,14 @@ pub(crate) mod utils;
 
 pub use client::SecClient;
 pub use edgar::accession_text_url;
-pub use models::DailyFilingRecord;
 pub use models::{
-    CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery, EightKExhibitQuery,
-    EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query, FundDisclosureQuery,
-    HtmlTableQuery, InlineXbrlQuery, MetricsQuery, OutputMode, ParseQuery, ProspectusQuery,
-    ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery, StatementQuery,
-    ThirteenFQuery,
+    CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery, EftsSearchQuery,
+    EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
+    FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery, OutputMode, ParseQuery,
+    ProspectusQuery, ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery,
+    StatementQuery, ThirteenFQuery,
 };
+pub use models::{DailyFilingRecord, EftsSearchRecord};
 pub use models::{FinancialMetricRecord, MetricComponentRecord};
 pub use output::print_records;
 pub use registry::supported_parsers;

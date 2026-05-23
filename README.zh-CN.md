@@ -20,11 +20,13 @@
 | 资本市场 | S-1/F-1/424B 招股书条款、IPO 信号、募资用途、风险、承销商 |
 | 财务分析 | SEC 数据推导的利润率、增长率、自由现金流、ROA/ROE、流动性、杠杆 |
 | 市场监控 | 按日期、表格、公司扫描 SEC daily master index 全市场新增 filing |
+| 全市场搜索 | SEC EDGAR Full-Text Search / EFTS，按关键词、公司、form、日期搜全文 |
 | Agent 接口 | 稳定 JSON/JSONL、source URL、accession、document 元数据 |
 
 ```bash
 sec filings --ticker AAPL --form 10-K
 sec daily --date 2026-05-15 --form 8-K --limit 50 --pretty
+sec efts --query "supply chain risk" --form 10-K --from 2024-01-01 --to 2024-12-31 --limit 10 --pretty
 sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
@@ -68,6 +70,7 @@ sec mcp
 
 - 查询 company filings
 - 扫描 SEC daily master index：按日期、form、公司名和修正版过滤全市场新增 filing
+- 调用 SEC EDGAR Full-Text Search / EFTS：按关键词、ticker/CIK、form、日期做全市场全文搜索
 - 查询 SEC CompanyFacts
 - 从 CompanyFacts 组装标准化 10-K/10-Q 三大表：利润表、资产负债表、现金流量表
 - 基于 SEC CompanyFacts 计算二次分析指标：增长率、利润率、自由现金流、ROA/ROE、流动比率、杠杆
@@ -108,6 +111,7 @@ sec mcp
 | 公司有没有 earnings 相关 8-K？ | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
 | 8-K 附件里有哪些 earnings release 或重要合同？ | `sec 8k-exhibits --ticker AAPL --category earnings_release --latest 5 --pretty` |
 | 某一天全市场提交了哪些 filing？ | `sec daily --date 2026-05-15 --form 8-K --limit 50 --pretty` |
+| 哪些公司在 SEC 文件里提到了某个关键词？ | `sec efts --query "supply chain risk" --form 10-K --from 2024-01-01 --to 2024-12-31 --pretty` |
 | 最新标准化财报三大表是什么？ | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
 | 最新 SEC 原始数据推导的财务指标是什么？ | `sec metrics --ticker AAPL --period annual --latest 4 --pretty` |
 | 能不能直接生成一份财务趋势 Markdown？ | `sec report --ticker AAPL --kind financial --latest 4` |
@@ -202,6 +206,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | --- | --- | --- | --- |
 | SEC submissions JSON | `filings` | 公司提交过哪些 filing、日期、accession、主文档名 | filing records |
 | SEC daily master index | `daily`、`monitor` | 全市场某日新增 filing feed：CIK、公司、form、提交日期、archive 文件名、accession、来源 URL | daily filing records |
+| SEC EDGAR Full-Text Search / EFTS | `efts`、`full-text`、`global-search` | 全市场全文搜索命中：分数、公司、CIK、form、日期、accession、document URL | EFTS search records |
 | SEC CompanyFacts JSON | `facts`、`statements`、`metrics`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行，以及二次推导的利润率/增长率/回报率/流动性/杠杆 | fact records、financial statement rows、financial metric records、Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | filing HTML 内嵌的 `ix:nonFraction` / `ix:nonNumeric`、context、unit、scale、decimals、原始值 | Inline XBRL fact records |
 | Filing HTML tables | `tables` | 主 HTML 文档里的表格行，例如薪酬表、分部表、注册证券表、债务表、合同表 | HTML table records |
@@ -235,6 +240,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | --- | --- | --- | --- |
 | Filing | `filings` | `company`、`form`、`filing_date`、`report_date`、`primary_document` | `accession`、`source_url`、`text_url` |
 | Daily filing | `daily`、`monitor` | `company`、`form`、`filing_date`、`filename` | `accession`、`source_url`、`text_url` |
+| EFTS search hit | `efts`、`full-text`、`global-search` | `company`、`form`、`file_date`、`score`、`document` | `accession`、`source_url`、`document_url` |
 | Fact | `facts` | `concept`、`label`、`value`、`unit`、`fy`、`fp`、`filed` | `accession`、`source_url`、`fact_id` |
 | Financial statement row | `statements` | `statement`、`line_order`、`line_item`、`value`、`unit`、`fiscal_year`、`fiscal_period` | `accession`、`source_url`、`fact_id` |
 | Financial metric | `metrics` | `metric`、`category`、`value`、`display_value`、`period_end`、`calculation`、`components` | `source_urls`、component `accession`、component `fact_id` |
@@ -520,6 +526,19 @@ sec monitor --form 4 --limit 100 --jsonl
 ```
 
 如果不传 `--date`，sec-cli 会使用 UTC 下最近的 SEC 工作日；周末默认回退到周五。输出字段：`cik`、`company`、`form`、`filing_date`、`accession`、`filename`、`text_url`、`source_url`。
+
+### efts
+
+调用官方 SEC EDGAR Full-Text Search 全市场全文索引。适合“不知道是哪家公司提到这个词”的场景，也适合按主题扫描大量公司。
+
+```bash
+sec efts --query "supply chain risk" --form 10-K --from 2024-01-01 --to 2024-12-31 --limit 10 --pretty
+sec efts --ticker AAPL --query "artificial intelligence" --form 10-K --limit 5 --pretty
+sec efts --cik 320193 --query "services revenue" --form 10-K,10-Q --from 2023-01-01 --pretty
+sec full-text --query "GLP-1" --form 10-K --limit 20 --jsonl
+```
+
+`--ticker` 和 `--cik` 可选；不传就是全市场搜索。`--form` 支持单个 form，也支持逗号分隔多个 form。输出字段：`score`、`cik`、`company`、`form`、`file_date`、`period_ending`、`accession`、`document`、`source_url`、`document_url`。
 
 ### facts
 
@@ -874,6 +893,7 @@ curl "http://127.0.0.1:8716/health"
 curl "http://127.0.0.1:8716/v1/forms"
 curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"
 curl "http://127.0.0.1:8716/v1/daily?date=2026-05-15&form=8-K&limit=50"
+curl "http://127.0.0.1:8716/v1/efts?query=supply%20chain%20risk&form=10-K&from=2024-01-01&to=2024-12-31&limit=10"
 curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
 curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
@@ -896,6 +916,7 @@ curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
 | `/v1/forms` | `sec forms` |
 | `/v1/filings` | `sec filings` |
 | `/v1/daily` | `sec daily` |
+| `/v1/efts` | `sec efts` |
 | `/v1/facts` | `sec facts` |
 | `/v1/statements` | `sec statements` |
 | `/v1/metrics` | `sec metrics` |
@@ -967,6 +988,7 @@ MCP tool 参数示例：
 | --- | --- | --- |
 | `filings` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--from`、`--to`、`--include-amends`、`--jsonl`、`--pretty` |
 | `daily` / `monitor` | 无 | `--date`、`--form`、`--company`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
+| `efts` / `full-text` / `global-search` | `--query` | `--ticker`、`--cik`、`--form`、`--from`、`--to`、`--limit`、`--jsonl`、`--pretty` |
 | `facts` | `--ticker` 或 `--cik`，`--concept` | `--form`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `statements` | `--ticker` 或 `--cik` | `--statement`、`--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `metrics` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |

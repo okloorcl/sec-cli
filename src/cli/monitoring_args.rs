@@ -23,6 +23,28 @@ pub(crate) struct DailyArgs {
 }
 
 #[derive(Args, Debug)]
+pub(crate) struct EftsArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long)]
+    pub(crate) query: String,
+    #[arg(long, value_delimiter = ',')]
+    pub(crate) form: Vec<String>,
+    #[arg(long)]
+    pub(crate) from: Option<NaiveDate>,
+    #[arg(long)]
+    pub(crate) to: Option<NaiveDate>,
+    #[arg(long, default_value_t = 20)]
+    pub(crate) limit: usize,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
 pub(crate) struct ServeArgs {
     #[arg(long, default_value = "127.0.0.1")]
     pub(crate) host: String,
