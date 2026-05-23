@@ -6,27 +6,32 @@ where
 {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
+    let mut text_buffer = String::new();
 
     loop {
         match reader.read_event()? {
-            Event::Start(event) => handle(XmlEvent::Start(local_name(event.local_name())))?,
-            Event::End(event) => handle(XmlEvent::End(local_name(event.local_name())))?,
+            Event::Start(event) => {
+                flush_text(&mut text_buffer, &mut handle)?;
+                handle(XmlEvent::Start(local_name(event.local_name())))?;
+            }
+            Event::End(event) => {
+                flush_text(&mut text_buffer, &mut handle)?;
+                handle(XmlEvent::End(local_name(event.local_name())))?;
+            }
             Event::Text(event) => {
-                let text = event.decode()?.trim().to_string();
-                if !text.is_empty() {
-                    handle(XmlEvent::Text(text))?;
-                }
+                text_buffer.push_str(event.decode()?.as_ref());
             }
             Event::CData(event) => {
-                let text = event.decode()?.trim().to_string();
-                if !text.is_empty() {
-                    handle(XmlEvent::Text(text))?;
-                }
+                text_buffer.push_str(event.decode()?.as_ref());
+            }
+            Event::GeneralRef(event) => {
+                text_buffer.push_str(&resolve_ref(&event)?);
             }
             Event::Eof => break,
             _ => {}
         }
     }
+    flush_text(&mut text_buffer, &mut handle)?;
 
     Ok(())
 }
@@ -43,10 +48,12 @@ where
 {
     let mut reader = Reader::from_str(xml);
     reader.config_mut().trim_text(true);
+    let mut text_buffer = String::new();
 
     loop {
         match reader.read_event()? {
             Event::Start(event) => {
+                flush_text_with_attrs(&mut text_buffer, &mut handle)?;
                 let mut attributes = Vec::new();
                 for attr in event.attributes().with_checks(false) {
                     let attr = attr?;
@@ -62,23 +69,24 @@ where
                     attributes,
                 })?;
             }
-            Event::End(event) => handle(XmlEventWithAttrs::End(local_name(event.local_name())))?,
+            Event::End(event) => {
+                flush_text_with_attrs(&mut text_buffer, &mut handle)?;
+                handle(XmlEventWithAttrs::End(local_name(event.local_name())))?;
+            }
             Event::Text(event) => {
-                let text = event.decode()?.trim().to_string();
-                if !text.is_empty() {
-                    handle(XmlEventWithAttrs::Text(text))?;
-                }
+                text_buffer.push_str(event.decode()?.as_ref());
             }
             Event::CData(event) => {
-                let text = event.decode()?.trim().to_string();
-                if !text.is_empty() {
-                    handle(XmlEventWithAttrs::Text(text))?;
-                }
+                text_buffer.push_str(event.decode()?.as_ref());
+            }
+            Event::GeneralRef(event) => {
+                text_buffer.push_str(&resolve_ref(&event)?);
             }
             Event::Eof => break,
             _ => {}
         }
     }
+    flush_text_with_attrs(&mut text_buffer, &mut handle)?;
 
     Ok(())
 }
@@ -117,4 +125,61 @@ pub(crate) fn parse_u64(value: &str) -> Option<u64> {
 
 fn local_name(name: impl AsRef<[u8]>) -> String {
     String::from_utf8_lossy(name.as_ref()).into_owned()
+}
+
+fn flush_text<F>(buffer: &mut String, handle: &mut F) -> anyhow::Result<()>
+where
+    F: FnMut(XmlEvent) -> anyhow::Result<()>,
+{
+    let text = buffer.trim();
+    if !text.is_empty() {
+        handle(XmlEvent::Text(text.to_string()))?;
+    }
+    buffer.clear();
+    Ok(())
+}
+
+fn flush_text_with_attrs<F>(buffer: &mut String, handle: &mut F) -> anyhow::Result<()>
+where
+    F: FnMut(XmlEventWithAttrs) -> anyhow::Result<()>,
+{
+    let text = buffer.trim();
+    if !text.is_empty() {
+        handle(XmlEventWithAttrs::Text(text.to_string()))?;
+    }
+    buffer.clear();
+    Ok(())
+}
+
+fn resolve_ref(event: &quick_xml::events::BytesRef<'_>) -> anyhow::Result<String> {
+    if let Some(ch) = event.resolve_char_ref()? {
+        return Ok(ch.to_string());
+    }
+    Ok(match event.decode()?.as_ref() {
+        "amp" => "&".to_string(),
+        "lt" => "<".to_string(),
+        "gt" => ">".to_string(),
+        "apos" => "'".to_string(),
+        "quot" => "\"".to_string(),
+        other => format!("&{other};"),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn joins_text_split_by_entity_references() {
+        let mut texts = Vec::new();
+        read_xml("<root><name>H&amp;H</name></root>", |event| {
+            if let XmlEvent::Text(text) = event {
+                texts.push(text);
+            }
+            Ok(())
+        })
+        .unwrap();
+
+        assert_eq!(texts, vec!["H&H"]);
+    }
 }
