@@ -54,6 +54,7 @@ real commands or modules in the repository.
 - [x] Terminal table and CSV output modes.
 - [x] Arrow IPC / Parquet export layer for filings, facts, statements, stitched statements, metrics, and scores.
 - [x] Bulk filing document archive / offline mode with manifest files and primary-document filtering.
+- [x] Agent-ready research packet workflow combining filings, sections, metrics, scores, sources, and next commands.
 - [x] Typed SEC submissions/companyfacts response DTOs.
 - [x] Mockable LLM resolver and cache-store abstractions.
 - [x] Centralized disclosure name patterns for auditors and underwriters.
@@ -61,11 +62,11 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] Deeper agent-native workflows on top of the CLI, HTTP API, MCP adapter, exports, and offline archives.
+- [ ] Keep expanding higher-level workflows as real use cases appear.
 
 ## Suggested Implementation Order
 
-1. Add higher-level agent workflows that combine archive, search, tables, sections, metrics, and reports.
+1. Use live research tasks to decide the next workflow instead of adding abstract surface area.
 
 ## Completion Rule
 

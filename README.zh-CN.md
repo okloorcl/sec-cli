@@ -34,6 +34,7 @@ sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec scores --ticker AAPL --period annual --latest 1 --pretty
 sec export --kind metrics --ticker AAPL --period annual --latest 4 --format parquet --out aapl_metrics.parquet
 sec archive --ticker AAPL --form 10-K --latest 2 --primary-only --out-dir ./archives/aapl
+sec agent-pack --ticker AAPL --sections risk-factors,mda --metrics-latest 4 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
@@ -711,6 +712,17 @@ sec archive --ticker MSFT --form 10-Q --latest 4 --limit-bytes 2000000 --out-dir
 
 输出 manifest 包含 `filing_count`、`document_count`、`manifest_path`、每个 filing 的 SEC 来源 URL，以及每个 document 的本地路径。
 
+### agent-pack
+
+生成一个给 LLM Agent 或本地自动化直接消费的 source-backed research packet。它会组合最近 filing、指定 10-K/10-Q section、SEC 派生 metrics、财务健康评分、去重后的来源 URL，以及下一步建议命令。
+
+```bash
+sec agent-pack --ticker AAPL --sections risk-factors,mda --metrics-latest 4 --pretty
+sec pack --cik 320193 --form 10-K --latest 1 --sections business,risk-factors,mda --section-limit-bytes 15000 --output json
+```
+
+默认 section 是 `risk-factors,mda`。当 Agent 需要一个足够完整、但又严格基于 SEC 来源的首轮分析输入时，用这个命令最省事。
+
 ### ixbrl
 
 直接从 filing 主 HTML 流式解析 Inline XBRL facts。这个命令适合你想看“某一份 10-K/10-Q HTML 里原样嵌入的事实”，而不是 SEC CompanyFacts 已经整理后的公司级事实库。
@@ -1185,6 +1197,7 @@ MCP tool 参数示例：
 | `scores` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `export` | `--ticker` 或 `--cik`，`--kind`，`--format`，`--out` | `--concept`、`--form`、`--statement`、`--period`、`--unit`、`--latest`、`--include-amends` |
 | `archive` | `--ticker` 或 `--cik`，`--out-dir` | `--form`、`--latest`、`--include-amends`、`--primary-only`、`--limit-bytes`、`--jsonl`、`--pretty` |
+| `agent-pack` / `pack` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--sections`、`--section-limit-bytes`、`--metrics-latest`、`--jsonl`、`--pretty` |
 | `company-report` | `--ticker` 或 `--cik` | `--form`、`--topic`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `ixbrl` | `--ticker` 或 `--cik` | `--form`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `xbrl-links` / `linkbase` | `--ticker` 或 `--cik` | `--form`、`--linkbase`、`--role`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |

@@ -78,6 +78,16 @@ pub struct ArchiveQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct AgentPackQuery {
+    pub cik: u64,
+    pub form: String,
+    pub latest: usize,
+    pub sections: Vec<String>,
+    pub section_limit_bytes: Option<usize>,
+    pub metrics_latest: usize,
+}
+
+#[derive(Debug, Clone)]
 pub struct SectionQuery {
     pub cik: u64,
     pub form: Option<String>,

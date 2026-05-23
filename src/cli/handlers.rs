@@ -1,17 +1,18 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use sec_cli::sec::{
-    ArchiveQuery, CompanyReportQuery, DailyIndexQuery, EftsSearchQuery, EightKExhibitQuery,
-    ExportFormat, FactQuery, FilingQuery, ForeignIssuerQuery, FundDisclosureQuery,
-    HealthScoreQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery, ProspectusQuery, ProxyQuery,
-    SecClient, StatementQuery, StatementStitchQuery, XbrlCalculationQuery, XbrlLinkbaseQuery,
-    XbrlStatementQuery, XbrlTreeQuery,
+    AgentPackQuery, ArchiveQuery, CompanyReportQuery, DailyIndexQuery, EftsSearchQuery,
+    EightKExhibitQuery, ExportFormat, FactQuery, FilingQuery, ForeignIssuerQuery,
+    FundDisclosureQuery, HealthScoreQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery,
+    ProspectusQuery, ProxyQuery, SecClient, StatementQuery, StatementStitchQuery,
+    XbrlCalculationQuery, XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
     daily::latest_sec_index_date,
     efts::{parse_forms, require_query},
     export_records, print_records,
 };
 
 use super::{
+    agent_args::AgentPackArgs,
     analysis_args::{
         MetricsArgs, ScoresArgs, StatementsArgs, StitchArgs, XbrlCalcArgs, XbrlLinkbaseArgs,
         XbrlStatementArgs, XbrlTreeArgs,
@@ -214,6 +215,27 @@ pub(super) async fn archive(client: &SecClient, args: ArchiveArgs) -> Result<()>
         })
         .await?;
     print_records(&[manifest], output)
+}
+
+pub(super) async fn agent_pack(client: &SecClient, args: AgentPackArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let sections = if args.sections.is_empty() {
+        vec!["risk-factors".to_string(), "mda".to_string()]
+    } else {
+        args.sections
+    };
+    let record = client
+        .agent_pack(AgentPackQuery {
+            cik,
+            form: args.form,
+            latest: args.latest,
+            sections,
+            section_limit_bytes: Some(args.section_limit_bytes),
+            metrics_latest: args.metrics_latest,
+        })
+        .await?;
+    print_records(&[record], output)
 }
 
 pub(super) async fn xbrl_links(client: &SecClient, args: XbrlLinkbaseArgs) -> Result<()> {

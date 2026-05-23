@@ -163,6 +163,24 @@ pub struct ArchiveDocumentRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct AgentPackRecord {
+    pub cik: u64,
+    pub form: String,
+    pub latest: usize,
+    pub sections_requested: Vec<String>,
+    pub filing_count: usize,
+    pub section_count: usize,
+    pub metric_count: usize,
+    pub score_count: usize,
+    pub filings: Vec<FilingRecord>,
+    pub sections: Vec<SectionRecord>,
+    pub metrics: Vec<super::metrics::FinancialMetricRecord>,
+    pub scores: Vec<super::metrics::HealthScoreRecord>,
+    pub source_urls: Vec<String>,
+    pub next_commands: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct SectionRecord {
     pub accession: String,
     pub cik: u64,

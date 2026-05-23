@@ -34,6 +34,7 @@ sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec scores --ticker AAPL --period annual --latest 1 --pretty
 sec export --kind metrics --ticker AAPL --period annual --latest 4 --format parquet --out aapl_metrics.parquet
 sec archive --ticker AAPL --form 10-K --latest 2 --primary-only --out-dir ./archives/aapl
+sec agent-pack --ticker AAPL --sections risk-factors,mda --metrics-latest 4 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
@@ -823,6 +824,22 @@ Important options:
 
 The returned manifest includes `filing_count`, `document_count`, `manifest_path`,
 per-filing source URLs, and per-document local paths.
+
+### agent-pack
+
+Build a compact, source-backed research packet for an LLM agent or local
+automation. The packet combines recent filings, selected 10-K/10-Q sections,
+SEC-derived metrics, financial-health scores, deduplicated source URLs, and
+suggested next commands.
+
+```bash
+sec agent-pack --ticker AAPL --sections risk-factors,mda --metrics-latest 4 --pretty
+sec pack --cik 320193 --form 10-K --latest 1 --sections business,risk-factors,mda --section-limit-bytes 15000 --output json
+```
+
+Default sections are `risk-factors,mda`. Use this command when the agent needs a
+single JSON object that is broad enough for first-pass analysis but still
+grounded in exact SEC filing URLs and facts.
 
 ### ixbrl
 
@@ -1743,6 +1760,7 @@ Command options:
 | `scores` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `export` | `--ticker` or `--cik`, `--kind`, `--format`, `--out` | `--concept`, `--form`, `--statement`, `--period`, `--unit`, `--latest`, `--include-amends` |
 | `archive` | `--ticker` or `--cik`, `--out-dir` | `--form`, `--latest`, `--include-amends`, `--primary-only`, `--limit-bytes`, `--jsonl`, `--pretty` |
+| `agent-pack` / `pack` | `--ticker` or `--cik` | `--form`, `--latest`, `--sections`, `--section-limit-bytes`, `--metrics-latest`, `--jsonl`, `--pretty` |
 | `company-report` | `--ticker` or `--cik` | `--form`, `--topic`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `ixbrl` | `--ticker` or `--cik` | `--form`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `xbrl-links` / `linkbase` | `--ticker` or `--cik` | `--form`, `--linkbase`, `--role`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |

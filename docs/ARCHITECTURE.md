@@ -33,7 +33,7 @@ submission/document layer
 form parsers / table parsers / XBRL parsers
         |
         v
-domain records -> JSON / JSONL / CSV / terminal tables / Markdown / Arrow IPC / Parquet / offline archives
+domain records -> JSON / JSONL / CSV / terminal tables / Markdown / Arrow IPC / Parquet / offline archives / agent packets
 ```
 
 ## Current Modules
@@ -180,4 +180,4 @@ not talk directly to `reqwest`, file caches, or parser internals.
 
 ## Near-Term Build Order
 
-1. Add higher-level agent workflows that combine archive, search, tables, sections, metrics, and reports.
+1. Use live research tasks to decide the next workflow instead of adding abstract surface area.

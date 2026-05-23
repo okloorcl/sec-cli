@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+use super::agent_args::AgentPackArgs;
 use super::analysis_args::{
     MetricsArgs, ScoresArgs, StatementsArgs, StitchArgs, XbrlCalcArgs, XbrlLinkbaseArgs,
     XbrlStatementArgs, XbrlTreeArgs,
@@ -56,6 +57,9 @@ pub(crate) enum Command {
     Export(ExportArgs),
     /// Download filing documents into an offline archive directory.
     Archive(ArchiveArgs),
+    /// Build an agent-ready source-backed research packet.
+    #[command(name = "agent-pack", alias = "pack")]
+    AgentPack(AgentPackArgs),
     /// Stream Inline XBRL facts from primary filing HTML.
     Ixbrl(InlineXbrlArgs),
     /// Parse XBRL linkbase relationships from EX-101 PRE/CAL/DEF/LAB/SCH documents.
