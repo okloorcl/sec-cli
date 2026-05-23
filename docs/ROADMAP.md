@@ -13,6 +13,7 @@ real commands or modules in the repository.
 - [x] Expanded standard concept alias catalog for broader statement rows and fact lookup aliases.
 - [x] 10-K / 10-Q company-report topic table parser.
 - [x] Source-backed financial metrics and secondary analysis from CompanyFacts.
+- [x] Expanded SEC-derived metrics to roughly 30 profitability, growth, cash-flow, liquidity, leverage, solvency, efficiency, and capital-return records.
 - [x] Financial trend Markdown report over SEC-derived metrics.
 - [x] Inline XBRL streaming parser.
 - [x] XBRL linkbase parser for presentation, calculation, definition, label, and schema attachments.

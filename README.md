@@ -705,15 +705,18 @@ sec metrics --cik 320193 --period annual --latest 1 --pretty
 - `quarterly`: derive metrics from 10-Q facts
 - `all`: use any available filing form
 
-Metrics currently include:
+Metrics currently include roughly 30 SEC-derived records when the required
+facts are available:
 
 - profitability: `gross_margin`, `operating_margin`, `net_margin`
+- profitability/tax: `effective_tax_rate`
 - growth: `revenue_growth`, `net_income_growth`
-- cash flow: `free_cash_flow`, `free_cash_flow_margin`
-- returns: `return_on_assets`, `return_on_equity`
-- liquidity: `current_ratio`, `cash_to_assets`
-- leverage: `liabilities_to_assets`
-- capital return: `share_repurchases_to_revenue`
+- cash flow: `free_cash_flow`, `free_cash_flow_margin`, `operating_cash_flow_margin`, `free_cash_flow_to_net_income`
+- returns: `return_on_assets`, `return_on_equity`, `roic`
+- liquidity: `working_capital`, `current_ratio`, `quick_ratio`, `cash_ratio`, `cash_to_assets`
+- leverage/solvency: `total_debt`, `net_debt`, `liabilities_to_assets`, `debt_to_equity`, `debt_to_assets`, `net_debt_to_equity`, `interest_coverage`
+- efficiency: `asset_turnover`
+- capital intensity/return: `capex_to_revenue`, `dividend_payout_ratio`, `share_repurchases_to_revenue`, `share_repurchases_to_free_cash_flow`
 
 Each metric includes: `metric`, `category`, `value`, `display_value`, `unit`,
 `period_end`, `fiscal_year`, `fiscal_period`, `form`, `calculation`,

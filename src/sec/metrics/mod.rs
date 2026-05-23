@@ -93,6 +93,36 @@ fn build_metrics(
             "income:net_income",
         );
         push_fcf(&mut records, cik, period);
+        push_derived_metric(
+            &mut records,
+            cik,
+            period,
+            "working_capital",
+            "liquidity",
+            "current_assets - current_liabilities",
+            "USD",
+            "derived:working_capital",
+        );
+        push_derived_metric(
+            &mut records,
+            cik,
+            period,
+            "total_debt",
+            "leverage",
+            "current_debt + long_term_debt",
+            "USD",
+            "derived:total_debt",
+        );
+        push_derived_metric(
+            &mut records,
+            cik,
+            period,
+            "net_debt",
+            "leverage",
+            "total_debt - cash_and_equivalents",
+            "USD",
+            "derived:net_debt",
+        );
         push_ratio(
             &mut records,
             cik,
@@ -130,6 +160,29 @@ fn build_metrics(
             "multiple",
             &["balance:current_assets", "balance:current_liabilities"],
         );
+        push_quotient(
+            &mut records,
+            cik,
+            period,
+            "quick_ratio",
+            "liquidity",
+            "(cash + marketable_securities_current + accounts_receivable) / current_liabilities",
+            "multiple",
+            &["derived:quick_assets", "balance:current_liabilities"],
+        );
+        push_quotient(
+            &mut records,
+            cik,
+            period,
+            "cash_ratio",
+            "liquidity",
+            "cash_and_equivalents / current_liabilities",
+            "multiple",
+            &[
+                "balance:cash_and_equivalents",
+                "balance:current_liabilities",
+            ],
+        );
         push_ratio(
             &mut records,
             cik,
@@ -152,10 +205,123 @@ fn build_metrics(
             &mut records,
             cik,
             period,
+            "debt_to_equity",
+            "leverage",
+            "total_debt / stockholders_equity",
+            &["derived:total_debt", "balance:stockholders_equity"],
+        );
+        push_ratio(
+            &mut records,
+            cik,
+            period,
+            "debt_to_assets",
+            "leverage",
+            "total_debt / total_assets",
+            &["derived:total_debt", "balance:total_assets"],
+        );
+        push_ratio(
+            &mut records,
+            cik,
+            period,
+            "net_debt_to_equity",
+            "leverage",
+            "net_debt / stockholders_equity",
+            &["derived:net_debt", "balance:stockholders_equity"],
+        );
+        push_quotient(
+            &mut records,
+            cik,
+            period,
+            "interest_coverage",
+            "solvency",
+            "operating_income / interest_expense",
+            "multiple",
+            &["income:operating_income", "income:interest_expense"],
+        );
+        push_ratio(
+            &mut records,
+            cik,
+            period,
+            "effective_tax_rate",
+            "profitability",
+            "income_tax_expense / income_before_tax",
+            &["income:income_tax_expense", "income:income_before_tax"],
+        );
+        push_ratio(
+            &mut records,
+            cik,
+            period,
+            "roic",
+            "returns",
+            "nopat / invested_capital",
+            &["derived:nopat", "derived:invested_capital"],
+        );
+        push_quotient(
+            &mut records,
+            cik,
+            period,
+            "asset_turnover",
+            "efficiency",
+            "revenue / total_assets",
+            "multiple",
+            &["income:revenue", "balance:total_assets"],
+        );
+        push_ratio(
+            &mut records,
+            cik,
+            period,
+            "operating_cash_flow_margin",
+            "cashflow",
+            "operating_cash_flow / revenue",
+            &["cashflow:operating_cash_flow", "income:revenue"],
+        );
+        push_ratio(
+            &mut records,
+            cik,
+            period,
+            "free_cash_flow_to_net_income",
+            "cashflow",
+            "free_cash_flow / net_income",
+            &["derived:free_cash_flow", "income:net_income"],
+        );
+        push_ratio(
+            &mut records,
+            cik,
+            period,
+            "capex_to_revenue",
+            "capital_intensity",
+            "absolute capital_expenditures / revenue",
+            &["derived:absolute_capex", "income:revenue"],
+        );
+        push_ratio(
+            &mut records,
+            cik,
+            period,
+            "dividend_payout_ratio",
+            "capital_return",
+            "absolute dividends_paid / net_income",
+            &["derived:absolute_dividends_paid", "income:net_income"],
+        );
+        push_ratio(
+            &mut records,
+            cik,
+            period,
             "share_repurchases_to_revenue",
             "capital_return",
             "absolute share_repurchases / revenue",
             &["derived:absolute_share_repurchases", "income:revenue"],
+        );
+        push_ratio(
+            &mut records,
+            cik,
+            period,
+            "share_repurchases_to_free_cash_flow",
+            "capital_return",
+            "absolute share_repurchases / free_cash_flow",
+            &[
+                "derived:absolute_share_repurchases",
+                "derived:free_cash_flow",
+            ],
         );
     }
 
@@ -211,6 +377,44 @@ fn period_key(row: &FinancialStatementRecord) -> String {
 }
 
 fn add_derived_values<'a>(period: &mut PeriodMap<'a>) {
+    add_sum(
+        period,
+        "derived:quick_assets",
+        &[
+            "balance:cash_and_equivalents",
+            "balance:marketable_securities_current",
+            "balance:accounts_receivable",
+        ],
+    );
+    add_sum(
+        period,
+        "derived:total_debt",
+        &["balance:current_debt", "balance:long_term_debt"],
+    );
+    add_difference(
+        period,
+        "derived:working_capital",
+        "balance:current_assets",
+        "balance:current_liabilities",
+    );
+    add_difference(
+        period,
+        "derived:net_debt",
+        "derived:total_debt",
+        "balance:cash_and_equivalents",
+    );
+    add_difference(
+        period,
+        "derived:invested_capital",
+        "derived:total_debt",
+        "balance:cash_and_equivalents",
+    );
+    add_sum(
+        period,
+        "derived:invested_capital",
+        &["derived:invested_capital", "balance:stockholders_equity"],
+    );
+
     if let (Some(ocf), Some(capex)) = (
         period.row("cashflow:operating_cash_flow"),
         period.row("cashflow:capital_expenditures"),
@@ -227,6 +431,38 @@ fn add_derived_values<'a>(period: &mut PeriodMap<'a>) {
         }
     }
 
+    if let (Some(operating_income), Some(tax_expense), Some(pretax_income)) = (
+        period.row("income:operating_income"),
+        period.row("income:income_tax_expense"),
+        period.row("income:income_before_tax"),
+    ) {
+        if let (Some(operating), Some(tax), Some(pretax)) = (
+            operating_income.numeric_value,
+            tax_expense.numeric_value,
+            pretax_income.numeric_value,
+        ) {
+            let tax_rate = safe_div(tax, pretax).unwrap_or(0.0).clamp(0.0, 1.0);
+            period.derived.insert(
+                "derived:nopat".to_string(),
+                DerivedValue {
+                    value: operating * (1.0 - tax_rate),
+                    unit: "USD",
+                    components: vec![operating_income, tax_expense, pretax_income],
+                },
+            );
+        }
+    }
+
+    add_absolute(
+        period,
+        "derived:absolute_capex",
+        "cashflow:capital_expenditures",
+    );
+    add_absolute(
+        period,
+        "derived:absolute_dividends_paid",
+        "cashflow:dividends_paid",
+    );
     if let Some(repurchase) = period.row("cashflow:share_repurchases") {
         if let Some(value) = repurchase.numeric_value {
             period.derived.insert(
@@ -239,6 +475,68 @@ fn add_derived_values<'a>(period: &mut PeriodMap<'a>) {
             );
         }
     }
+}
+
+fn add_sum<'a>(period: &mut PeriodMap<'a>, key: &str, component_keys: &[&str]) {
+    let mut value = 0.0;
+    let mut components = Vec::new();
+    for component_key in component_keys {
+        if let Some(component) = period.row(component_key) {
+            if let Some(component_value) = component.numeric_value {
+                value += component_value;
+                components.push(component);
+            }
+        } else if let Some(component) = period.derived.get(*component_key) {
+            value += component.value;
+            components.extend(component.components.iter().copied());
+        }
+    }
+    if !components.is_empty() {
+        period.derived.insert(
+            key.to_string(),
+            DerivedValue {
+                value,
+                unit: "USD",
+                components,
+            },
+        );
+    }
+}
+
+fn add_difference<'a>(period: &mut PeriodMap<'a>, key: &str, left_key: &str, right_key: &str) {
+    let Some(left) = period.value(left_key) else {
+        return;
+    };
+    let Some(right) = period.value(right_key) else {
+        return;
+    };
+    let mut components = period.component_rows(left_key);
+    components.extend(period.component_rows(right_key));
+    period.derived.insert(
+        key.to_string(),
+        DerivedValue {
+            value: left - right,
+            unit: "USD",
+            components,
+        },
+    );
+}
+
+fn add_absolute<'a>(period: &mut PeriodMap<'a>, key: &str, source_key: &str) {
+    let Some(source) = period.row(source_key) else {
+        return;
+    };
+    let Some(value) = source.numeric_value else {
+        return;
+    };
+    period.derived.insert(
+        key.to_string(),
+        DerivedValue {
+            value: value.abs(),
+            unit: "USD",
+            components: vec![source],
+        },
+    );
 }
 
 fn push_ratio(
@@ -346,6 +644,31 @@ fn push_fcf(records: &mut Vec<FinancialMetricRecord>, cik: u64, period: &PeriodM
             .iter()
             .map(|row| ComponentSource::Row(row))
             .collect(),
+    ));
+}
+
+fn push_derived_metric(
+    records: &mut Vec<FinancialMetricRecord>,
+    cik: u64,
+    period: &PeriodMap<'_>,
+    metric: &str,
+    category: &str,
+    calculation: &str,
+    unit: &str,
+    key: &str,
+) {
+    let Some(derived) = period.derived.get(key) else {
+        return;
+    };
+    records.push(metric_record(
+        cik,
+        period,
+        metric,
+        category,
+        Some(derived.value),
+        unit,
+        calculation,
+        period.components(&[key]),
     ));
 }
 
@@ -462,6 +785,17 @@ impl<'a> PeriodMap<'a> {
                 }
             })
             .collect()
+    }
+
+    fn component_rows(&self, key: &str) -> Vec<&'a FinancialStatementRecord> {
+        if let Some(row) = self.row(key) {
+            vec![row]
+        } else {
+            self.derived
+                .get(key)
+                .map(|derived| derived.components.clone())
+                .unwrap_or_default()
+        }
     }
 
     fn first_row(&self) -> Option<&FinancialStatementRecord> {
