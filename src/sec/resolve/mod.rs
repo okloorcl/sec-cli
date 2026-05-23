@@ -1,12 +1,22 @@
+mod company_search;
+
 use anyhow::{Context, Result, anyhow, bail};
 use serde::Deserialize;
 use serde_json::Value;
+
+use company_search::find_13f_manager_cik;
 
 use crate::sec::{
     client::SecClient,
     llm::{LlmClient, LlmConfig},
     models::{FilingQuery, ResolveCandidateRecord, ResolveValidationRecord},
 };
+
+struct CheckedValidation {
+    record: ResolveValidationRecord,
+    cik: Option<u64>,
+    company: Option<String>,
+}
 
 impl SecClient {
     pub async fn resolve_query(
@@ -34,18 +44,72 @@ impl SecClient {
         candidate: RawResolveCandidate,
         verify: bool,
     ) -> Result<ResolveCandidateRecord> {
-        let cik = candidate.cik.as_ref().and_then(cik_value);
-        let validation = if verify {
+        let mut cik = candidate.cik.as_ref().and_then(cik_value);
+        let mut notes = candidate.notes;
+        let mut checked = if verify {
             self.validate_13f_candidate(cik).await?
         } else {
-            ResolveValidationRecord {
-                status: "not_verified".to_string(),
-                latest_accession: None,
-                latest_report_date: None,
-                latest_filing_date: None,
-                source_url: None,
+            CheckedValidation {
+                record: ResolveValidationRecord {
+                    status: "not_verified".to_string(),
+                    latest_accession: None,
+                    latest_report_date: None,
+                    latest_filing_date: None,
+                    source_url: None,
+                },
+                cik: None,
+                company: None,
             }
         };
+        if verify
+            && (checked.record.status != "verified_13f"
+                || !company_matches_candidate(
+                    checked.company.as_deref(),
+                    candidate.manager.as_deref(),
+                    candidate.investor.as_deref(),
+                ))
+        {
+            if let Some(corrected) = self
+                .correct_cik_from_sec_search(
+                    candidate.manager.as_deref(),
+                    candidate.investor.as_deref(),
+                )
+                .await?
+                && Some(corrected) != cik
+            {
+                let corrected_validation = self.validate_13f_candidate(Some(corrected)).await?;
+                if corrected_validation.record.status == "verified_13f"
+                    && company_matches_candidate(
+                        corrected_validation.company.as_deref(),
+                        candidate.manager.as_deref(),
+                        candidate.investor.as_deref(),
+                    )
+                {
+                    notes = append_note(
+                        notes,
+                        &format!(
+                            "SEC company search corrected CIK from {} to {}.",
+                            cik.map(|value| value.to_string())
+                                .unwrap_or_else(|| "missing".to_string()),
+                            corrected
+                        ),
+                    );
+                    cik = Some(corrected);
+                    checked = corrected_validation;
+                }
+            }
+        }
+        let mut validation = checked.record;
+        if validation.status == "verified_13f"
+            && !company_matches_candidate(
+                checked.company.as_deref(),
+                candidate.manager.as_deref(),
+                candidate.investor.as_deref(),
+            )
+        {
+            validation.status = "company_mismatch".to_string();
+            cik = checked.cik;
+        }
         Ok(ResolveCandidateRecord {
             query: query.to_string(),
             candidate_type: candidate
@@ -57,15 +121,19 @@ impl SecClient {
             confidence: candidate.confidence.map(value_to_string),
             relationship: candidate.relationship,
             evidence_queries: candidate.evidence_queries.unwrap_or_default(),
-            notes: candidate.notes,
+            notes,
             next_commands: next_commands(cik),
             validation,
         })
     }
 
-    async fn validate_13f_candidate(&self, cik: Option<u64>) -> Result<ResolveValidationRecord> {
+    async fn validate_13f_candidate(&self, cik: Option<u64>) -> Result<CheckedValidation> {
         let Some(cik) = cik else {
-            return Ok(validation("missing_cik", None));
+            return Ok(CheckedValidation {
+                record: validation("missing_cik", None),
+                cik: None,
+                company: None,
+            });
         };
         let filings = self
             .filings(FilingQuery {
@@ -78,15 +146,36 @@ impl SecClient {
             })
             .await?;
         let Some(filing) = filings.first() else {
-            return Ok(validation("no_recent_13f", None));
+            return Ok(CheckedValidation {
+                record: validation("no_recent_13f", None),
+                cik: Some(cik),
+                company: None,
+            });
         };
-        Ok(ResolveValidationRecord {
-            status: "verified_13f".to_string(),
-            latest_accession: Some(filing.accession.clone()),
-            latest_report_date: filing.report_date.clone(),
-            latest_filing_date: Some(filing.filing_date.clone()),
-            source_url: Some(filing.source_url.clone()),
+        Ok(CheckedValidation {
+            record: ResolveValidationRecord {
+                status: "verified_13f".to_string(),
+                latest_accession: Some(filing.accession.clone()),
+                latest_report_date: filing.report_date.clone(),
+                latest_filing_date: Some(filing.filing_date.clone()),
+                source_url: Some(filing.source_url.clone()),
+            },
+            cik: Some(cik),
+            company: Some(filing.company.clone()),
         })
+    }
+
+    async fn correct_cik_from_sec_search(
+        &self,
+        manager: Option<&str>,
+        investor: Option<&str>,
+    ) -> Result<Option<u64>> {
+        for name in [manager, investor].into_iter().flatten() {
+            if let Some(cik) = find_13f_manager_cik(self, name).await? {
+                return Ok(Some(cik));
+            }
+        }
+        Ok(None)
     }
 }
 
@@ -201,6 +290,52 @@ fn validation(status: &str, source_url: Option<String>) -> ResolveValidationReco
     }
 }
 
+fn append_note(existing: Option<String>, note: &str) -> Option<String> {
+    Some(match existing {
+        Some(existing) if !existing.trim().is_empty() => format!("{existing} {note}"),
+        _ => note.to_string(),
+    })
+}
+
+fn company_matches_candidate(
+    sec_company: Option<&str>,
+    manager: Option<&str>,
+    investor: Option<&str>,
+) -> bool {
+    let Some(sec_company) = sec_company else {
+        return false;
+    };
+    [manager, investor].into_iter().flatten().any(|candidate| {
+        let left = comparable_name(sec_company);
+        let right = comparable_name(candidate);
+        !left.is_empty() && !right.is_empty() && (left.contains(&right) || right.contains(&left))
+    })
+}
+
+fn comparable_name(name: &str) -> String {
+    let stop_words = [
+        "inc",
+        "incorporated",
+        "corp",
+        "corporation",
+        "co",
+        "company",
+        "llc",
+        "ltd",
+        "limited",
+        "lp",
+        "l.p",
+        "group",
+        "del",
+    ];
+    name.replace('&', " ")
+        .split(|ch: char| !ch.is_ascii_alphanumeric())
+        .map(|part| part.to_ascii_lowercase())
+        .filter(|part| !part.is_empty() && !stop_words.contains(&part.as_str()))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 pub async fn resolve_verified_13f_cik(client: &SecClient, query: &str) -> Result<(u64, String)> {
     let records = client.resolve_query(query, true, None).await?;
     let best = records
@@ -246,5 +381,19 @@ mod tests {
         let records = parse_candidates("B", raw).unwrap();
         assert_eq!(records.len(), 1);
         assert_eq!(cik_value(records[0].cik.as_ref().unwrap()), Some(123));
+    }
+
+    #[test]
+    fn compares_company_names_without_legal_suffixes() {
+        assert!(company_matches_candidate(
+            Some("H&H International Investment, LLC"),
+            Some("H&H INTERNATIONAL INVESTMENT GROUP, LTD."),
+            None
+        ));
+        assert!(!company_matches_candidate(
+            Some("Scion Asset Management, LLC"),
+            Some("H&H INTERNATIONAL INVESTMENT GROUP, LTD."),
+            None
+        ));
     }
 }
