@@ -1,4 +1,5 @@
 pub mod aggregate;
+pub mod diff;
 pub mod holdings;
 pub mod summary;
 
@@ -7,8 +8,8 @@ use anyhow::Result;
 use crate::sec::{
     client::SecClient,
     models::{
-        FilingQuery, FilingRecord, ThirteenFAggregateHoldingRecord, ThirteenFHoldingRecord,
-        ThirteenFQuery, ThirteenFReportRecord,
+        FilingQuery, FilingRecord, ThirteenFAggregateHoldingRecord, ThirteenFDiffRecord,
+        ThirteenFHoldingRecord, ThirteenFQuery, ThirteenFReportRecord,
     },
 };
 
@@ -47,6 +48,29 @@ impl SecClient {
             records.extend(summary::parse_13f_report_documents(&filing, &docs)?);
         }
         Ok(records)
+    }
+
+    pub async fn thirteenf_diff_holdings(
+        &self,
+        mut query: ThirteenFQuery,
+    ) -> Result<Vec<ThirteenFDiffRecord>> {
+        query.latest = query.latest.max(2);
+        let filings = self.thirteenf_filings(&query).await?;
+        let Some(current) = filings.first() else {
+            return Ok(Vec::new());
+        };
+        let Some(previous) = filings.get(1) else {
+            return Ok(Vec::new());
+        };
+
+        let current_docs = self.filing_documents(current).await?;
+        let previous_docs = self.filing_documents(previous).await?;
+        let current_holdings = holdings::parse_13f_documents(current, &current_docs)?;
+        let previous_holdings = holdings::parse_13f_documents(previous, &previous_docs)?;
+        Ok(diff::diff_holdings(
+            aggregate::aggregate_holdings(current_holdings),
+            aggregate::aggregate_holdings(previous_holdings),
+        ))
     }
 
     async fn thirteenf_filings(&self, query: &ThirteenFQuery) -> Result<Vec<FilingRecord>> {

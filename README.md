@@ -13,6 +13,7 @@ sec form4 --ticker AAPL --latest 3
 sec form4-summary --ticker AAPL --latest 3
 sec 13f --cik 1067983 --latest 1
 sec 13f-aggregate --cik 1067983 --latest 1 --limit 20
+sec 13f-diff --cik 1067983 --limit 20
 sec 13f-summary --cik 1067983 --latest 1
 sec parse --ticker AAPL --form 4 --latest 1
 sec forms --pretty
@@ -34,6 +35,7 @@ This is an early MVP. The first implementation focuses on:
 - Parsing Form 4 insider ownership transactions
 - Summarizing Form 4 reports, owners, signatures, footnotes, and net activity
 - Parsing 13F-HR information-table holdings
+- Comparing the latest two 13F-HR portfolios
 - Parsing 13F-HR cover, summary, signature, and manager metadata
 - Returning JSON arrays or JSONL records
 - Caching SEC responses locally
@@ -367,6 +369,37 @@ Each aggregate holding includes:
 - `voting_none`
 - `rows`
 - `source_url`
+
+### 13f-diff
+
+Compare the latest two 13F-HR portfolios after aggregation. This classifies
+positions by share-count movement as `new`, `increased`, `reduced`,
+`unchanged`, or `exited`, and sorts by the absolute USD value change.
+
+```bash
+sec 13f-diff --cik 1067983 --limit 20 --pretty
+sec 13f-diff --ticker BRK-B --jsonl
+```
+
+Each diff row includes:
+
+- `current_accession`
+- `previous_accession`
+- `current_report_date`
+- `previous_report_date`
+- `issuer`
+- `class`
+- `cusip`
+- `put_call`
+- `change_type`
+- `current_value_usd`
+- `previous_value_usd`
+- `change_value_usd`
+- `current_shares`
+- `previous_shares`
+- `change_shares`
+- `current_source_url`
+- `previous_source_url`
 
 ### 13f-summary
 

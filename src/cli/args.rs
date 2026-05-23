@@ -42,6 +42,9 @@ pub(crate) enum Command {
     /// Parse and aggregate 13F holdings by CUSIP/class/put-call.
     #[command(name = "13f-aggregate")]
     ThirteenFAggregate(ThirteenFArgs),
+    /// Compare the latest two 13F portfolios and classify position changes.
+    #[command(name = "13f-diff")]
+    ThirteenFDiff(ThirteenFArgs),
     /// Parse 13F cover, summary, signature, and manager metadata.
     #[command(name = "13f-summary")]
     ThirteenFSummary(ThirteenFArgs),

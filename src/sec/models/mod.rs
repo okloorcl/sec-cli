@@ -8,6 +8,6 @@ pub use queries::{
 pub use records::{
     DocumentContentRecord, DocumentRecord, FactRecord, FilingRecord, Form4FootnoteRecord,
     Form4OwnerRecord, Form4ReportRecord, Form4SignatureRecord, Form4TransactionRecord,
-    ParsedRecord, SearchMatch, SectionRecord, ThirteenFAggregateHoldingRecord,
+    ParsedRecord, SearchMatch, SectionRecord, ThirteenFAggregateHoldingRecord, ThirteenFDiffRecord,
     ThirteenFHoldingRecord, ThirteenFOtherManagerRecord, ThirteenFReportRecord,
 };

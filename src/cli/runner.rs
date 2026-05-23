@@ -200,6 +200,21 @@ pub(crate) async fn run() -> Result<()> {
             }
             print_records(&holdings, output)?;
         }
+        Command::ThirteenFDiff(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let mut changes = client
+                .thirteenf_diff_holdings(ThirteenFQuery {
+                    cik,
+                    latest: args.latest.max(2),
+                    include_amends: args.include_amends,
+                })
+                .await?;
+            if let Some(limit) = args.limit {
+                changes.truncate(limit);
+            }
+            print_records(&changes, output)?;
+        }
         Command::ThirteenFSummary(args) => {
             let output = output_mode(args.jsonl, args.pretty);
             let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
