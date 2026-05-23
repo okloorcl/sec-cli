@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-use super::analysis_args::{MetricsArgs, StatementsArgs, XbrlLinkbaseArgs};
+use super::analysis_args::{MetricsArgs, StatementsArgs, XbrlLinkbaseArgs, XbrlTreeArgs};
 use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs, ProxyArgs};
 use super::monitoring_args::{DailyArgs, EftsArgs, McpArgs, OutputArg, ServeArgs};
 use super::system_args::{CompletionsArgs, ConfigArgs};
@@ -46,6 +46,9 @@ pub(crate) enum Command {
     /// Parse XBRL linkbase relationships from EX-101 PRE/CAL/DEF/LAB/SCH documents.
     #[command(name = "xbrl-links", aliases = ["linkbase", "xbrl-linkbase"])]
     XbrlLinks(XbrlLinkbaseArgs),
+    /// Render filing-specific XBRL presentation trees with labels and depth.
+    #[command(name = "xbrl-tree", aliases = ["presentation-tree"])]
+    XbrlTree(XbrlTreeArgs),
     /// Extract HTML tables from primary filing documents.
     Tables(TablesArgs),
     /// Parse 10-K/10-Q company-report topic tables such as segments, geography, debt, and obligations.

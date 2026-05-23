@@ -15,6 +15,7 @@ real commands or modules in the repository.
 - [x] Financial trend Markdown report over SEC-derived metrics.
 - [x] Inline XBRL streaming parser.
 - [x] XBRL linkbase parser for presentation, calculation, definition, label, and schema attachments.
+- [x] Filing-specific XBRL presentation tree renderer with depth, path, and role filters.
 - [x] HTML table extraction.
 - [x] SEC complete submission document listing and document reading.
 - [x] SEC filing text search with source snippets.
@@ -51,7 +52,8 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] Presentation-tree financial statement rendering from XBRL linkbases and filing facts.
+- [ ] Presentation-tree financial statement rendering with filing fact values.
+- [ ] Standard taxonomy label fallback for US-GAAP/DEI/SRT concepts not defined in filing extension labels.
 - [ ] Calculation-linkbase validation for rendered statements.
 - [ ] Expanded standard concept mapping for 100+ financial statement concepts.
 - [ ] Financial metrics expansion toward 50+ ratios and financial-health scores.

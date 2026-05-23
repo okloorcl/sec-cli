@@ -32,6 +32,7 @@ sec statements --ticker AAPL --statement income --period annual --latest 4
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
+sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
 sec company-report --ticker AAPL --form 10-K --topic segment --pretty
 sec proxy --ticker AAPL --latest 1 --pretty
@@ -252,6 +253,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | Financial metric | `metrics` | `metric`、`category`、`value`、`display_value`、`period_end`、`calculation`、`components` | `source_urls`、component `accession`、component `fact_id` |
 | Inline XBRL fact | `ixbrl` | `name`、`context_ref`、`unit_ref`、`scale`、`raw_value`、`numeric_value` | `accession`、`document_url`、`source_url` |
 | XBRL linkbase relationship | `xbrl-links` | `linkbase`、`relationship`、`role`、`parent_concept`、`child_concept`、`concept`、`label`、`order`、`weight` | `accession`、`document_url`、`source_url` |
+| XBRL presentation tree row | `xbrl-tree` | `role`、`depth`、`line_order`、`concept`、`label`、`parent_concept`、`path` | `accession`、`document_url`、`source_url` |
 | Company report topic table | `company-report` | `topics[].topic`、`confidence`、`headers`、`rows`、`matched_table_count`、`scanned_table_count` | `accession`、`document_url`、`source_url` |
 | HTML table | `tables` | `title_hint`、`row_count`、`column_count`、`headers`、`rows`、`truncated` | `accession`、`document_url`、`source_url` |
 | Proxy statement | `proxy`、`parse --form "DEF 14A"` | `meeting_date`、`proposals`、`director_nominees`、`auditor`、`named_executive_officers`、`summary_compensation_table` | `accession`、`document_url`、`source_url` |
@@ -492,6 +494,7 @@ cargo run --bin sec -- statements --ticker AAPL --statement income --period annu
 cargo run --bin sec -- statements --ticker AAPL --statement cashflow --period quarterly --latest 4 --jsonl
 cargo run --bin sec -- ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --latest 1 --limit 3 --pretty
 cargo run --bin sec -- xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 10 --pretty
+cargo run --bin sec -- xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 15 --pretty
 cargo run --bin sec -- tables --ticker AAPL --form 10-K --latest 1 --limit-tables 3 --limit-rows 5 --pretty
 cargo run --bin sec -- foreign --ticker TSM --form 20-F --latest 1 --limit-bytes 800 --pretty
 cargo run --bin sec -- fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 5 --pretty
@@ -656,6 +659,20 @@ sec linkbase --cik 320193 --form 10-Q --linkbase label --concept Revenue --jsonl
 `--linkbase` 支持：`presentation`、`calculation`、`definition`、`label`、`schema`。`--concept` 会匹配 parent、child 或 label concept，可以写 `us-gaap:Revenues`，也可以只写 `Revenues`。
 
 输出字段：`linkbase`、`relationship`、`role`、`arcrole`、`parent_concept`、`child_concept`、`concept`、`label`、`label_role`、`order`、`weight`、`preferred_label`、`document_url`、`source_url`。
+
+### xbrl-tree
+
+把 filing 专属的 XBRL presentation arcs 渲染成先序树形行。它是 `EX-101.PRE` 的更友好视图：每行都有 `depth`、`line_order`、`path`、parent concept、role URI 和来源 document URL，是未来继续挂载 fact value 做完整报表渲染的上一层。
+
+```bash
+sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
+sec xbrl-tree --ticker AAPL --form 10-K --concept NetIncomeLoss --pretty
+sec presentation-tree --cik 320193 --form 10-Q --limit 50 --jsonl
+```
+
+`--role` 是 role URI 的大小写不敏感子串过滤，所以通常写 `OPERATIONS`、`BALANCE`、`CASH`、`Revenue` 这种短词就够。
+
+输出字段：`role`、`depth`、`line_order`、`concept`、`label`、`parent_concept`、`order`、`preferred_label`、`path`、`document_url`、`source_url`。
 
 ### tables
 
@@ -1051,6 +1068,7 @@ MCP tool 参数示例：
 | `company-report` | `--ticker` 或 `--cik` | `--form`、`--topic`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `ixbrl` | `--ticker` 或 `--cik` | `--form`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `xbrl-links` / `linkbase` | `--ticker` 或 `--cik` | `--form`、`--linkbase`、`--role`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
+| `xbrl-tree` / `presentation-tree` | `--ticker` 或 `--cik` | `--form`、`--role`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `tables` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `proxy` | `--ticker` 或 `--cik` | `--latest`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `prospectus` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-bytes`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |

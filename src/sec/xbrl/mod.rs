@@ -10,6 +10,8 @@ use crate::sec::{
     parsers::xml::{XmlAttribute, XmlEventWithAttrs, parse_f64, read_xml_with_attrs},
 };
 
+pub mod tree;
+
 impl SecClient {
     pub async fn xbrl_linkbases(
         &self,
@@ -386,7 +388,7 @@ fn normalize_concept_href(value: &str) -> String {
         .replace('_', ":")
 }
 
-fn normalize_concept(value: &str) -> String {
+pub(super) fn normalize_concept(value: &str) -> String {
     value
         .trim()
         .trim_start_matches("us-gaap:")
