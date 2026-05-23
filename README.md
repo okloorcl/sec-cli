@@ -618,7 +618,10 @@ sec full-text --query "GLP-1" --form 10-K --limit 20 --jsonl
 
 ### facts
 
-Query SEC CompanyFacts by concept alias or XBRL concept name.
+Query SEC CompanyFacts by concept alias or XBRL concept name. Common aliases
+such as `revenue`, `cogs`, `grossprofit`, `rd`, `sga`, `cash`,
+`receivables`, `currentdebt`, `ocf`, and `capex` map to a 100+ concept
+US-GAAP candidate catalog.
 
 ```bash
 sec facts --ticker AAPL --concept revenue --form 10-K --latest 5 --pretty

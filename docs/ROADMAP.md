@@ -11,6 +11,7 @@ real commands or modules in the repository.
 - [x] SEC CompanyFacts XBRL fact lookup.
 - [x] 10-K / 10-Q financial statements builder.
 - [x] Expanded standard concept alias catalog for broader statement rows and fact lookup aliases.
+- [x] Standard concept mapping expanded beyond 100 common US-GAAP candidates across income statement, balance sheet, and cash-flow lines.
 - [x] 10-K / 10-Q company-report topic table parser.
 - [x] Source-backed financial metrics and secondary analysis from CompanyFacts.
 - [x] Expanded SEC-derived metrics to roughly 30 profitability, growth, cash-flow, liquidity, leverage, solvency, efficiency, and capital-return records.
@@ -56,7 +57,6 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] Expanded standard concept mapping toward 100+ financial statement concepts.
 - [ ] Financial metrics expansion toward 50+ ratios and financial-health scores.
 - [ ] Cross-form 10-K / 10-Q financial statement stitching.
 - [ ] Arrow / Parquet export layer.
@@ -64,11 +64,10 @@ real commands or modules in the repository.
 
 ## Suggested Implementation Order
 
-1. Expanded standard concept mapping.
-2. Metrics and financial-health score expansion.
-3. Cross-form statement stitching.
-4. Arrow / Parquet export layer.
-5. Optional bulk archive / offline mode.
+1. Metrics and financial-health score expansion.
+2. Cross-form statement stitching.
+3. Arrow / Parquet export layer.
+4. Optional bulk archive / offline mode.
 
 ## Completion Rule
 

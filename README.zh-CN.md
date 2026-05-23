@@ -574,7 +574,7 @@ sec full-text --query "GLP-1" --form 10-K --limit 20 --jsonl
 
 ### facts
 
-查询 SEC CompanyFacts。
+查询 SEC CompanyFacts。常用别名例如 `revenue`、`cogs`、`grossprofit`、`rd`、`sga`、`cash`、`receivables`、`currentdebt`、`ocf`、`capex` 会映射到覆盖 100+ 常见 US-GAAP concept 的候选字典。
 
 ```bash
 sec facts --ticker AAPL --concept revenue --form 10-K --latest 5 --pretty

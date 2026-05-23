@@ -148,7 +148,7 @@ mod tests {
             None
         ));
         assert!(concept_matches("netincome", "NetIncomeLoss", None, None));
-        assert!(!concept_matches(
+        assert!(concept_matches(
             "cash",
             "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
             None,
