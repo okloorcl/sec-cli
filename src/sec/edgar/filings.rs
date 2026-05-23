@@ -1,6 +1,5 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use chrono::NaiveDate;
-use serde_json::Value;
 
 use crate::sec::{
     client::SecClient,
@@ -8,37 +7,28 @@ use crate::sec::{
     utils::nonempty,
 };
 
-use super::urls::{accession_index_url, accession_text_url, submissions_url};
+use super::{
+    types::{RecentFilings, SubmissionsResponse},
+    urls::{accession_index_url, accession_text_url, submissions_url},
+};
 
 impl SecClient {
     pub async fn filings(&self, query: FilingQuery) -> Result<Vec<FilingRecord>> {
-        let json: Value = self.get_json(&submissions_url(query.cik)).await?;
-        let company = json
-            .get("name")
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .to_string();
-        let recent = json
-            .get("filings")
-            .and_then(|v| v.get("recent"))
-            .ok_or_else(|| anyhow!("submissions JSON missing filings.recent"))?;
-
-        let accessions = as_str_array(recent, "accessionNumber")?;
-        let forms = as_str_array(recent, "form")?;
-        let filing_dates = as_str_array(recent, "filingDate")?;
-        let report_dates = optional_str_array(recent, "reportDate");
-        let primary_documents = optional_str_array(recent, "primaryDocument");
-        let descriptions = optional_str_array(recent, "primaryDocDescription");
-        let is_xbrl = optional_bool_array(recent, "isXBRL");
-        let is_inline_xbrl = optional_bool_array(recent, "isInlineXBRL");
+        let response: SubmissionsResponse = self.get_json(&submissions_url(query.cik)).await?;
+        let company = response.name;
+        let recent = response.filings.recent;
 
         let mut records = Vec::new();
-        for idx in 0..accessions.len() {
-            let Some(accession) = accessions.get(idx) else {
+        for idx in 0..recent.accession_number.len() {
+            let Some(accession) = recent.accession_number.get(idx) else {
                 continue;
             };
-            let form = forms.get(idx).copied().unwrap_or("");
-            let filing_date = filing_dates.get(idx).copied().unwrap_or("");
+            let form = recent.form.get(idx).map(String::as_str).unwrap_or("");
+            let filing_date = recent
+                .filing_date
+                .get(idx)
+                .map(String::as_str)
+                .unwrap_or("");
 
             if !matches_form(form, query.form.as_deref(), query.include_amends) {
                 continue;
@@ -53,11 +43,11 @@ impl SecClient {
                 company: company.clone(),
                 form: form.to_string(),
                 filing_date: filing_date.to_string(),
-                report_date: report_dates.get(idx).and_then(|v| nonempty(*v)),
-                primary_document: primary_documents.get(idx).and_then(|v| nonempty(*v)),
-                primary_doc_description: descriptions.get(idx).and_then(|v| nonempty(*v)),
-                is_xbrl: is_xbrl.get(idx).copied().flatten(),
-                is_inline_xbrl: is_inline_xbrl.get(idx).copied().flatten(),
+                report_date: optional_text(&recent.report_date, idx),
+                primary_document: optional_text(&recent.primary_document, idx),
+                primary_doc_description: optional_text(&recent.primary_doc_description, idx),
+                is_xbrl: optional_bool(&recent, idx, XbrlFlag::Xbrl),
+                is_inline_xbrl: optional_bool(&recent, idx, XbrlFlag::InlineXbrl),
                 source_url: accession_index_url(query.cik, accession),
                 text_url: accession_text_url(query.cik, accession),
             });
@@ -94,31 +84,22 @@ fn matches_date(filing_date: &str, from: Option<NaiveDate>, to: Option<NaiveDate
     true
 }
 
-fn as_str_array<'a>(root: &'a Value, key: &str) -> Result<Vec<&'a str>> {
-    root.get(key)
-        .and_then(Value::as_array)
-        .ok_or_else(|| anyhow!("submissions JSON missing {}", key))?
-        .iter()
-        .map(|value| {
-            value
-                .as_str()
-                .ok_or_else(|| anyhow!("{} contains non-string value", key))
-        })
-        .collect()
+fn optional_text(values: &[String], idx: usize) -> Option<String> {
+    values.get(idx).and_then(|value| nonempty(value))
 }
 
-fn optional_str_array<'a>(root: &'a Value, key: &str) -> Vec<&'a str> {
-    root.get(key)
-        .and_then(Value::as_array)
-        .map(|arr| arr.iter().map(|v| v.as_str().unwrap_or("")).collect())
-        .unwrap_or_default()
+enum XbrlFlag {
+    Xbrl,
+    InlineXbrl,
 }
 
-fn optional_bool_array(root: &Value, key: &str) -> Vec<Option<bool>> {
-    root.get(key)
-        .and_then(Value::as_array)
-        .map(|arr| arr.iter().map(Value::as_bool).collect())
-        .unwrap_or_default()
+fn optional_bool(recent: &RecentFilings, idx: usize, flag: XbrlFlag) -> Option<bool> {
+    match flag {
+        XbrlFlag::Xbrl => recent.is_xbrl.get(idx),
+        XbrlFlag::InlineXbrl => recent.is_inline_xbrl.get(idx),
+    }
+    .copied()
+    .flatten()
 }
 
 #[cfg(test)]

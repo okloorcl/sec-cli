@@ -1,5 +1,5 @@
-use anyhow::{Result, anyhow};
-use serde_json::Value;
+use anyhow::Result;
+use std::collections::BTreeMap;
 
 use crate::sec::{
     client::SecClient,
@@ -7,15 +7,14 @@ use crate::sec::{
     models::{FactQuery, FactRecord},
 };
 
-use super::urls::{accession_index_url, company_facts_url};
+use super::{
+    types::{CompanyFactValue, CompanyFactsResponse},
+    urls::{accession_index_url, company_facts_url},
+};
 
 impl SecClient {
     pub async fn facts(&self, query: FactQuery) -> Result<Vec<FactRecord>> {
-        let json: Value = self.get_json(&company_facts_url(query.cik)).await?;
-        let facts_root = json
-            .get("facts")
-            .and_then(Value::as_object)
-            .ok_or_else(|| anyhow!("companyfacts JSON missing facts"))?;
+        let response: CompanyFactsResponse = self.get_json(&company_facts_url(query.cik)).await?;
 
         let mut records = Vec::new();
         let concept_query_raw = query.concept.to_ascii_lowercase();
@@ -25,19 +24,10 @@ impl SecClient {
             .unwrap_or(&concept_query_raw)
             .to_string();
 
-        for (taxonomy, concepts) in facts_root {
-            let Some(concepts) = concepts.as_object() else {
-                continue;
-            };
+        for (taxonomy, concepts) in &response.facts {
             for (concept, concept_data) in concepts {
-                let label = concept_data
-                    .get("label")
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
-                let description = concept_data
-                    .get("description")
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
+                let label = concept_data.label.clone();
+                let description = concept_data.description.clone();
 
                 if !concept_matches(
                     &concept_query,
@@ -48,16 +38,13 @@ impl SecClient {
                     continue;
                 }
 
-                let Some(units) = concept_data.get("units").and_then(Value::as_object) else {
-                    continue;
-                };
                 collect_unit_facts(
                     &query,
                     taxonomy,
                     concept,
                     label,
                     description,
-                    units,
+                    &concept_data.units,
                     &mut records,
                 );
             }
@@ -80,7 +67,7 @@ fn collect_unit_facts(
     concept: &str,
     label: Option<String>,
     description: Option<String>,
-    units: &serde_json::Map<String, Value>,
+    units: &BTreeMap<String, Vec<CompanyFactValue>>,
     records: &mut Vec<FactRecord>,
 ) {
     for (unit, values) in units {
@@ -92,41 +79,29 @@ fn collect_unit_facts(
             continue;
         }
 
-        let Some(values) = values.as_array() else {
-            continue;
-        };
         for item in values.iter().rev() {
             if query.form.as_deref().is_some_and(|form_filter| {
-                let item_form = item.get("form").and_then(Value::as_str).unwrap_or("");
+                let item_form = item.form.as_deref().unwrap_or("");
                 !matches_form(item_form, Some(form_filter), true)
             }) {
                 continue;
             }
 
-            let accession = item.get("accn").and_then(Value::as_str).map(str::to_string);
+            let accession = item.accn.clone();
             records.push(FactRecord {
                 concept: format!("{taxonomy}:{concept}"),
                 taxonomy: taxonomy.to_string(),
                 label: label.clone(),
                 description: description.clone(),
-                value: item.get("val").cloned().unwrap_or(Value::Null),
+                value: item.val.clone(),
                 unit: unit.to_string(),
-                fy: item.get("fy").and_then(Value::as_i64),
-                fp: item.get("fp").and_then(Value::as_str).map(str::to_string),
-                form: item.get("form").and_then(Value::as_str).map(str::to_string),
-                filed: item
-                    .get("filed")
-                    .and_then(Value::as_str)
-                    .map(str::to_string),
-                start: item
-                    .get("start")
-                    .and_then(Value::as_str)
-                    .map(str::to_string),
-                end: item.get("end").and_then(Value::as_str).map(str::to_string),
-                frame: item
-                    .get("frame")
-                    .and_then(Value::as_str)
-                    .map(str::to_string),
+                fy: item.fy,
+                fp: item.fp.clone(),
+                form: item.form.clone(),
+                filed: item.filed.clone(),
+                start: item.start.clone(),
+                end: item.end.clone(),
+                frame: item.frame.clone(),
                 source_url: accession
                     .as_deref()
                     .map(|acc| accession_index_url(query.cik, acc)),

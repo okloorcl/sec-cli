@@ -1,5 +1,6 @@
 pub mod facts;
 pub mod filings;
+pub(crate) mod types;
 pub mod urls;
 
 pub(crate) use urls::company_tickers_url;

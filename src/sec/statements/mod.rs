@@ -1,8 +1,9 @@
 use anyhow::{Result, anyhow};
-use serde_json::Value;
+use std::collections::BTreeMap;
 
 use crate::sec::{
     client::SecClient,
+    edgar::types::{CompanyFactConcept, CompanyFactValue, CompanyFactsResponse},
     edgar::{
         filings::matches_form,
         urls::{accession_index_url, company_facts_url},
@@ -15,19 +16,13 @@ impl SecClient {
         &self,
         query: StatementQuery,
     ) -> Result<Vec<FinancialStatementRecord>> {
-        let json: Value = self.get_json(&company_facts_url(query.cik)).await?;
-        let company = json
-            .get("entityName")
-            .and_then(Value::as_str)
-            .map(str::to_string);
-        let facts_root = json
-            .get("facts")
-            .and_then(Value::as_object)
-            .ok_or_else(|| anyhow!("companyfacts JSON missing facts"))?;
+        let response: CompanyFactsResponse = self.get_json(&company_facts_url(query.cik)).await?;
+        let company = response.entity_name;
 
         let mut records = Vec::new();
         for line in statement_lines(&query.statement)? {
-            let mut line_records = collect_line_records(&query, company.clone(), facts_root, line);
+            let mut line_records =
+                collect_line_records(&query, company.clone(), &response.facts, line);
             line_records.sort_by(|a, b| {
                 b.filed
                     .cmp(&a.filed)
@@ -52,26 +47,17 @@ impl SecClient {
 fn collect_line_records(
     query: &StatementQuery,
     company: Option<String>,
-    facts_root: &serde_json::Map<String, Value>,
+    facts_root: &BTreeMap<String, BTreeMap<String, CompanyFactConcept>>,
     line: StatementLine,
 ) -> Vec<FinancialStatementRecord> {
     let mut records = Vec::new();
     for (taxonomy, concepts) in facts_root {
-        let Some(concepts) = concepts.as_object() else {
-            continue;
-        };
         for concept_name in line.concepts {
             let Some(concept_data) = concepts.get(*concept_name) else {
                 continue;
             };
-            let label = concept_data
-                .get("label")
-                .and_then(Value::as_str)
-                .map(str::to_string);
-            let Some(units) = concept_data.get("units").and_then(Value::as_object) else {
-                continue;
-            };
-            for (unit, values) in units {
+            let label = concept_data.label.clone();
+            for (unit, values) in &concept_data.units {
                 if query
                     .unit
                     .as_deref()
@@ -79,11 +65,8 @@ fn collect_line_records(
                 {
                     continue;
                 }
-                let Some(values) = values.as_array() else {
-                    continue;
-                };
                 for item in values.iter().rev() {
-                    let item_form = item.get("form").and_then(Value::as_str);
+                    let item_form = item.form.as_deref();
                     if query.form.as_deref().is_some_and(|filter| {
                         !matches_form(item_form.unwrap_or(""), Some(filter), true)
                     }) {
@@ -116,10 +99,10 @@ fn statement_record(
     concept: &str,
     label: Option<String>,
     unit: &str,
-    item: &Value,
+    item: &CompanyFactValue,
     line: StatementLine,
 ) -> FinancialStatementRecord {
-    let accession = item.get("accn").and_then(Value::as_str).map(str::to_string);
+    let accession = item.accn.clone();
     FinancialStatementRecord {
         cik: query.cik,
         company,
@@ -129,25 +112,16 @@ fn statement_record(
         concept: format!("{taxonomy}:{concept}"),
         taxonomy: taxonomy.to_string(),
         label,
-        value: item.get("val").cloned().unwrap_or(Value::Null),
-        numeric_value: item.get("val").and_then(Value::as_f64),
+        value: item.val.clone(),
+        numeric_value: item.val.as_f64(),
         unit: unit.to_string(),
-        fiscal_year: item.get("fy").and_then(Value::as_i64),
-        fiscal_period: item.get("fp").and_then(Value::as_str).map(str::to_string),
-        form: item.get("form").and_then(Value::as_str).map(str::to_string),
-        filed: item
-            .get("filed")
-            .and_then(Value::as_str)
-            .map(str::to_string),
-        start: item
-            .get("start")
-            .and_then(Value::as_str)
-            .map(str::to_string),
-        end: item.get("end").and_then(Value::as_str).map(str::to_string),
-        frame: item
-            .get("frame")
-            .and_then(Value::as_str)
-            .map(str::to_string),
+        fiscal_year: item.fy,
+        fiscal_period: item.fp.clone(),
+        form: item.form.clone(),
+        filed: item.filed.clone(),
+        start: item.start.clone(),
+        end: item.end.clone(),
+        frame: item.frame.clone(),
         source_url: accession
             .as_deref()
             .map(|acc| accession_index_url(query.cik, acc)),
