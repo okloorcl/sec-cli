@@ -41,6 +41,15 @@ pub(super) struct StatementsParams {
 }
 
 #[derive(Deserialize)]
+pub(super) struct MetricsParams {
+    pub(super) ticker: Option<String>,
+    pub(super) cik: Option<u64>,
+    pub(super) period: Option<String>,
+    pub(super) unit: Option<String>,
+    pub(super) latest: Option<usize>,
+}
+
+#[derive(Deserialize)]
 pub(super) struct IxbrlParams {
     pub(super) ticker: Option<String>,
     pub(super) cik: Option<u64>,

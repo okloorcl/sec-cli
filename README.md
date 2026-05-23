@@ -1300,6 +1300,7 @@ curl "http://127.0.0.1:8716/v1/forms"
 curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"
 curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
 curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
+curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
 curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
 curl "http://127.0.0.1:8716/v1/13f?cik=1067983&latest=1&limit=20"
 curl "http://127.0.0.1:8716/v1/proxy?ticker=AAPL&latest=1"
@@ -1318,6 +1319,7 @@ Available endpoints:
 | `/v1/filings` | `sec filings` |
 | `/v1/facts` | `sec facts` |
 | `/v1/statements` | `sec statements` |
+| `/v1/metrics` | `sec metrics` |
 | `/v1/ixbrl` | `sec ixbrl` |
 | `/v1/sections` | `sec section` |
 | `/v1/docs` | `sec docs` |
@@ -1349,6 +1351,7 @@ Available MCP tools:
 | `sec_filings` | `sec filings` equivalent |
 | `sec_facts` | `sec facts` equivalent |
 | `sec_statements` | `sec statements` equivalent |
+| `sec_metrics` | `sec metrics` equivalent |
 | `sec_docs` | `sec docs` equivalent |
 | `sec_form4_summary` | `sec form4-summary` equivalent |
 | `sec_13f_diff` | `sec 13f-diff` equivalent for CIK/ticker selectors |

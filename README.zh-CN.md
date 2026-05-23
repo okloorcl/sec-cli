@@ -818,6 +818,7 @@ curl "http://127.0.0.1:8716/v1/forms"
 curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"
 curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
 curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
+curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
 curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
 curl "http://127.0.0.1:8716/v1/13f?cik=1067983&latest=1&limit=20"
 curl "http://127.0.0.1:8716/v1/proxy?ticker=AAPL&latest=1"
@@ -836,6 +837,7 @@ curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
 | `/v1/filings` | `sec filings` |
 | `/v1/facts` | `sec facts` |
 | `/v1/statements` | `sec statements` |
+| `/v1/metrics` | `sec metrics` |
 | `/v1/ixbrl` | `sec ixbrl` |
 | `/v1/sections` | `sec section` |
 | `/v1/docs` | `sec docs` |
@@ -865,6 +867,7 @@ SEC_IDENTITY="Your Name your.email@example.com" sec mcp
 | `sec_filings` | 等价于 `sec filings` |
 | `sec_facts` | 等价于 `sec facts` |
 | `sec_statements` | 等价于 `sec statements` |
+| `sec_metrics` | 等价于 `sec metrics` |
 | `sec_docs` | 等价于 `sec docs` |
 | `sec_form4_summary` | 等价于 `sec form4-summary` |
 | `sec_13f_diff` | 等价于 CIK/ticker 选择器下的 `sec 13f-diff` |

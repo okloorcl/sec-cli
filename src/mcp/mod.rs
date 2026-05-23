@@ -5,8 +5,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::sec::{
-    DocumentQuery, FactQuery, FilingQuery, Form4Query, ParseQuery, ReportKind, ReportQuery,
-    SecClient, StatementQuery, ThirteenFQuery, supported_parsers,
+    DocumentQuery, FactQuery, FilingQuery, Form4Query, MetricsQuery, ParseQuery, ReportKind,
+    ReportQuery, SecClient, StatementQuery, ThirteenFQuery, supported_parsers,
 };
 
 const PROTOCOL_VERSION: &str = "2025-06-18";
@@ -79,6 +79,11 @@ async fn call_tool(client: &SecClient, params: Value) -> Result<Value> {
                 .financial_statements(statement_query(client, &args).await?)
                 .await?
         ),
+        "sec_metrics" => json!(
+            client
+                .financial_metrics(metrics_query(client, &args).await?)
+                .await?
+        ),
         "sec_docs" => json!(
             client
                 .document_records(document_query(client, &args).await?)
@@ -142,6 +147,15 @@ async fn statement_query(client: &SecClient, args: &Value) -> Result<StatementQu
     Ok(StatementQuery {
         cik: resolve_cik(client, args).await?,
         statement: optional_string(args, "statement").unwrap_or_else(|| "all".to_string()),
+        form: period_form(optional_string(args, "period").as_deref()),
+        unit: optional_string(args, "unit"),
+        latest: optional_usize(args, "latest").unwrap_or(4),
+    })
+}
+
+async fn metrics_query(client: &SecClient, args: &Value) -> Result<MetricsQuery> {
+    Ok(MetricsQuery {
+        cik: resolve_cik(client, args).await?,
         form: period_form(optional_string(args, "period").as_deref()),
         unit: optional_string(args, "unit"),
         latest: optional_usize(args, "latest").unwrap_or(4),
@@ -246,6 +260,13 @@ fn tools() -> Vec<Value> {
             "Build standardized statement rows from CompanyFacts.",
             company_schema(
                 json!({"statement":{"type":"string"},"period":{"type":"string"},"unit":{"type":"string"},"latest":{"type":"integer"}}),
+            ),
+        ),
+        tool(
+            "sec_metrics",
+            "Calculate source-backed financial ratios, growth, free cash flow, returns, liquidity, and leverage.",
+            company_schema(
+                json!({"period":{"type":"string"},"unit":{"type":"string"},"latest":{"type":"integer"}}),
             ),
         ),
         tool(
@@ -387,6 +408,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert!(names.contains(&"sec_forms".to_string()));
+        assert!(names.contains(&"sec_metrics".to_string()));
         assert!(names.contains(&"sec_report".to_string()));
         assert!(names.contains(&"sec_parse".to_string()));
     }

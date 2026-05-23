@@ -16,8 +16,8 @@ use params::*;
 
 use crate::sec::{
     DocumentQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
-    FundDisclosureQuery, InlineXbrlQuery, ParseQuery, ProspectusQuery, ProxyQuery, Schedule13Query,
-    SecClient, SectionQuery, StatementQuery, ThirteenFQuery, supported_parsers,
+    FundDisclosureQuery, InlineXbrlQuery, MetricsQuery, ParseQuery, ProspectusQuery, ProxyQuery,
+    Schedule13Query, SecClient, SectionQuery, StatementQuery, ThirteenFQuery, supported_parsers,
 };
 
 #[derive(Clone)]
@@ -45,6 +45,7 @@ fn router() -> Router<AppState> {
         .route("/v1/filings", get(filings))
         .route("/v1/facts", get(facts))
         .route("/v1/statements", get(statements))
+        .route("/v1/metrics", get(metrics))
         .route("/v1/ixbrl", get(ixbrl))
         .route("/v1/sections", get(sections))
         .route("/v1/docs", get(docs))
@@ -117,6 +118,23 @@ async fn statements(
         .financial_statements(StatementQuery {
             cik,
             statement: params.statement.unwrap_or_else(|| "all".to_string()),
+            form: period_form(params.period.as_deref()),
+            unit: params.unit,
+            latest: params.latest.unwrap_or(4),
+        })
+        .await?;
+    Ok(Json(json!(records)))
+}
+
+async fn metrics(
+    State(state): State<AppState>,
+    Query(params): Query<MetricsParams>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let cik = resolve_cik(&state.client, params.ticker.as_deref(), params.cik).await?;
+    let records = state
+        .client
+        .financial_metrics(MetricsQuery {
+            cik,
             form: period_form(params.period.as_deref()),
             unit: params.unit,
             latest: params.latest.unwrap_or(4),
