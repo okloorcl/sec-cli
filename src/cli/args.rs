@@ -29,6 +29,8 @@ pub(crate) enum Command {
     Section(SectionArgs),
     /// Generate a source-backed Markdown report.
     Report(ReportArgs),
+    /// Resolve an investor alias to the SEC filing manager and CIK.
+    Investor(InvestorArgs),
     /// List documents and attachments inside SEC complete submissions.
     Docs(DocsArgs),
     /// Read one document from a complete SEC submission.
@@ -146,10 +148,12 @@ pub(crate) struct SectionArgs {
 
 #[derive(Args, Debug)]
 pub(crate) struct ReportArgs {
-    #[arg(long, conflicts_with = "cik")]
+    #[arg(long, conflicts_with_all = ["cik", "investor"])]
     pub(crate) ticker: Option<String>,
-    #[arg(long)]
+    #[arg(long, conflicts_with_all = ["ticker", "investor"])]
     pub(crate) cik: Option<u64>,
+    #[arg(long, conflicts_with_all = ["ticker", "cik"])]
+    pub(crate) investor: Option<String>,
     #[arg(long, value_enum)]
     pub(crate) kind: ReportKindArg,
     #[arg(long, default_value_t = 5)]
@@ -167,6 +171,16 @@ pub(crate) enum ReportKindArg {
     Insider,
     Portfolio,
     Risk,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct InvestorArgs {
+    #[arg(long)]
+    pub(crate) query: String,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
 }
 
 #[derive(Args, Debug)]
@@ -241,10 +255,12 @@ pub(crate) struct Form4Args {
 
 #[derive(Args, Debug)]
 pub(crate) struct ThirteenFArgs {
-    #[arg(long, conflicts_with = "cik")]
+    #[arg(long, conflicts_with_all = ["cik", "investor"])]
     pub(crate) ticker: Option<String>,
-    #[arg(long)]
+    #[arg(long, conflicts_with_all = ["ticker", "investor"])]
     pub(crate) cik: Option<u64>,
+    #[arg(long, conflicts_with_all = ["ticker", "cik"])]
+    pub(crate) investor: Option<String>,
     #[arg(long, default_value_t = 1)]
     pub(crate) latest: usize,
     #[arg(long)]

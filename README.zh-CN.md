@@ -21,6 +21,8 @@ sec facts --ticker AAPL --concept revenue
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
+sec investor --query 段永平 --pretty
+sec 13f-diff --investor 段永平 --pretty
 sec report --cik 1067983 --kind portfolio --limit 10
 sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
 sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000
@@ -64,6 +66,7 @@ sec forms --pretty
 | 哪些 owner 提交了 Form 4，净买卖是多少？ | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
 | Berkshire 最新 13F 持仓是什么？ | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | 最近两期 13F 哪些仓位变化最大？ | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
+| 我只知道投资人名字，不知道 CIK？ | `sec investor --query 段永平 --pretty`，然后 `sec 13f-diff --investor 段永平 --pretty` |
 | 公司最新 10-K 风险因素是什么？ | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
 | 生成能直接给人看的分析摘要？ | `sec report --ticker AAPL --kind risk` |
 | 答案来源在哪里？ | 结构化结果包含 `source_url`，document 结果还包含 `document_url` |
@@ -165,6 +168,7 @@ sec section --ticker MSFT --form 10-K --item mda --latest 1 --pretty
 
 ```bash
 sec report --ticker AAPL --kind insider --latest 5 --limit 10
+sec report --investor 段永平 --kind portfolio --limit 10
 sec report --cik 1067983 --kind portfolio --limit 10
 sec report --ticker AAPL --kind risk --limit-bytes 4000
 ```
@@ -174,6 +178,17 @@ sec report --ticker AAPL --kind risk --limit-bytes 4000
 - `insider`：Form 4 owner、role、净股数、交易金额、SEC 来源
 - `portfolio`：13F 摘要、Top holdings、可视化条、最大仓位变化
 - `risk`：10-K Risk Factors 和 MD&A 摘要
+
+### investor
+
+把投资人别名解析到 SEC 13F filing manager 和 CIK。SEC 文件通常由法律实体提交，不一定直接用公众熟悉的投资人姓名。
+
+```bash
+sec investor --query 段永平 --pretty
+sec investor --query "Warren Buffett" --pretty
+```
+
+输出字段：`investor`、`manager`、`cik`、`relationship`、`aliases`、`confidence`、`note`。
 
 ### docs / doc
 
@@ -211,6 +226,7 @@ sec form4-summary --ticker AAPL --latest 3 --limit 10 --pretty
 sec 13f --cik 1067983 --latest 1 --limit 20 --pretty
 sec 13f-aggregate --cik 1067983 --latest 1 --limit 20 --pretty
 sec 13f-diff --cik 1067983 --limit 20 --pretty
+sec 13f-diff --investor 段永平 --pretty
 sec 13f-summary --cik 1067983 --latest 1 --pretty
 ```
 
@@ -249,11 +265,12 @@ sec forms --pretty
 | `facts` | `--ticker` 或 `--cik`，`--concept` | `--form`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `search` | `--ticker` 或 `--cik`，`--query` | `--form`、`--latest`、`--context`、`--include-amends`、`--jsonl`、`--pretty` |
 | `section` | `--ticker` 或 `--cik`，`--item` | `--form`、`--latest`、`--accession`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
-| `report` | `--ticker` 或 `--cik`，`--kind` | `--latest`、`--limit`、`--limit-bytes`、`--include-amends` |
+| `report` | `--ticker`、`--cik` 或 `--investor`，`--kind` | `--latest`、`--limit`、`--limit-bytes`、`--include-amends` |
+| `investor` | `--query` | `--jsonl`、`--pretty` |
 | `docs` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `doc` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--accession`、`--filename`、`--sequence`、`--primary`、`--limit-bytes`、`--raw`、`--text`、`--jsonl`、`--pretty` |
 | `form4` / `form4-summary` | `--ticker` 或 `--cik` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
-| `13f` / `13f-aggregate` / `13f-diff` / `13f-summary` | `--ticker` 或 `--cik` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
+| `13f` / `13f-aggregate` / `13f-diff` / `13f-summary` | `--ticker`、`--cik` 或 `--investor` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `parse` | `--ticker` 或 `--cik`，`--form` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `forms` | 无 | `--jsonl`、`--pretty` |
 
@@ -273,6 +290,7 @@ sec forms --pretty
 ```bash
 sec form4-summary --ticker AAPL --latest 5 --pretty
 sec 13f-diff --cik 1067983 --limit 20 --jsonl
+sec 13f-diff --investor 段永平 --pretty
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 12000 --pretty
 sec report --ticker AAPL --kind risk > aapl-risk.md
 ```

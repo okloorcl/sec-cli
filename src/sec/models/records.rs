@@ -52,6 +52,18 @@ pub struct SearchMatch {
     pub source_url: String,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct InvestorAliasRecord {
+    pub query: String,
+    pub investor: String,
+    pub manager: String,
+    pub cik: u64,
+    pub relationship: String,
+    pub aliases: Vec<String>,
+    pub confidence: String,
+    pub note: String,
+}
+
 #[derive(Debug, Serialize)]
 pub struct DocumentRecord {
     pub accession: String,

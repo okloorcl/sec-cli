@@ -21,6 +21,8 @@ sec facts --ticker AAPL --concept revenue
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
+sec investor --query 段永平 --pretty
+sec 13f-diff --investor 段永平 --pretty
 sec report --cik 1067983 --kind portfolio --limit 10
 sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
 sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000
@@ -70,6 +72,7 @@ These are useful, source-backed questions that work today:
 | Which executives/directors filed Form 4s and what was net activity? | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
 | What is Berkshire Hathaway's latest 13F portfolio? | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | What changed between the latest two 13F filings? | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
+| What if I know the investor name but not the CIK? | `sec investor --query 段永平 --pretty`, then `sec 13f-diff --investor 段永平 --pretty` |
 | What are a company's latest 10-K risk factors? | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
 | Where did the answer come from? | Every structured result includes `source_url`; document results also include `document_url` |
 
@@ -234,6 +237,7 @@ Reports reuse the same structured parsers used by the JSON commands.
 
 ```bash
 sec report --ticker AAPL --kind insider --latest 5 --limit 10
+sec report --investor 段永平 --kind portfolio --limit 10
 sec report --cik 1067983 --kind portfolio --limit 10
 sec report --ticker AAPL --kind risk --limit-bytes 4000
 ```
@@ -243,6 +247,27 @@ Report kinds:
 - `insider`: Form 4 summary table with owner, role, net shares, value, and SEC source
 - `portfolio`: 13F summary, top holdings, visual bars, and largest position changes
 - `risk`: 10-K risk factor and MD&A excerpts with source links
+
+### investor
+
+Resolve a known investor alias to the SEC filing manager and CIK used by 13F
+commands. SEC filings are filed by legal entities, so a public investor name
+often needs to be mapped to a filing manager.
+
+```bash
+sec investor --query 段永平 --pretty
+sec investor --query "Warren Buffett" --pretty
+```
+
+Each mapping includes:
+
+- `investor`
+- `manager`
+- `cik`
+- `relationship`
+- `aliases`
+- `confidence`
+- `note`
 
 ### docs
 
@@ -431,6 +456,7 @@ positions by share-count movement as `new`, `increased`, `reduced`,
 
 ```bash
 sec 13f-diff --cik 1067983 --limit 20 --pretty
+sec 13f-diff --investor 段永平 --pretty
 sec 13f-diff --ticker BRK-B --jsonl
 ```
 
@@ -517,15 +543,16 @@ Command options:
 | `facts` | `--ticker` or `--cik`, `--concept` | `--form`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `search` | `--ticker` or `--cik`, `--query` | `--form`, `--latest`, `--context`, `--include-amends`, `--jsonl`, `--pretty` |
 | `section` | `--ticker` or `--cik`, `--item` | `--form`, `--latest`, `--accession`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
-| `report` | `--ticker` or `--cik`, `--kind` | `--latest`, `--limit`, `--limit-bytes`, `--include-amends` |
+| `report` | `--ticker`, `--cik`, or `--investor`; `--kind` | `--latest`, `--limit`, `--limit-bytes`, `--include-amends` |
+| `investor` | `--query` | `--jsonl`, `--pretty` |
 | `docs` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `doc` | `--ticker` or `--cik` | `--form`, `--latest`, `--accession`, `--filename`, `--sequence`, `--primary`, `--limit-bytes`, `--raw`, `--text`, `--jsonl`, `--pretty` |
 | `form4` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `form4-summary` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
-| `13f` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
-| `13f-aggregate` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
-| `13f-diff` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
-| `13f-summary` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f` | `--ticker`, `--cik`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f-aggregate` | `--ticker`, `--cik`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f-diff` | `--ticker`, `--cik`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f-summary` | `--ticker`, `--cik`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `parse` | `--ticker` or `--cik`, `--form` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `forms` | none | `--jsonl`, `--pretty` |
 
@@ -560,6 +587,7 @@ Useful patterns:
 ```bash
 sec form4-summary --ticker AAPL --latest 5 --pretty
 sec 13f-diff --cik 1067983 --limit 20 --jsonl
+sec 13f-diff --investor 段永平 --pretty
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 12000 --pretty
 sec report --ticker AAPL --kind risk > aapl-risk.md
 ```

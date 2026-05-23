@@ -6,7 +6,8 @@ use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery,
     ReportKind, ReportQuery, SearchQuery, SecClient, SectionQuery, ThirteenFQuery,
-    accession_text_url, find_matches, print_records, supported_parsers,
+    accession_text_url, find_matches, print_records, resolve_investor, search_investors,
+    supported_parsers,
 };
 
 use super::args::{Cli, Command, ReportKindArg};
@@ -100,12 +101,13 @@ pub(crate) async fn run() -> Result<()> {
             print_records(&records, output)?;
         }
         Command::Report(args) => {
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
-            let subject = args
-                .ticker
-                .clone()
-                .map(|ticker| ticker.to_ascii_uppercase())
-                .unwrap_or_else(|| cik.to_string());
+            let (cik, subject) = resolve_subject(
+                &client,
+                args.ticker.as_deref(),
+                args.cik,
+                args.investor.as_deref(),
+            )
+            .await?;
             let report = client
                 .markdown_report(
                     report_kind(args.kind),
@@ -120,6 +122,11 @@ pub(crate) async fn run() -> Result<()> {
                 )
                 .await?;
             println!("{report}");
+        }
+        Command::Investor(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let records = search_investors(&args.query);
+            print_records(&records, output)?;
         }
         Command::Docs(args) => {
             let output = output_mode(args.jsonl, args.pretty);
@@ -194,7 +201,13 @@ pub(crate) async fn run() -> Result<()> {
         }
         Command::ThirteenF(args) => {
             let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let (cik, _) = resolve_subject(
+                &client,
+                args.ticker.as_deref(),
+                args.cik,
+                args.investor.as_deref(),
+            )
+            .await?;
             let mut holdings = client
                 .thirteenf_holdings(ThirteenFQuery {
                     cik,
@@ -209,7 +222,13 @@ pub(crate) async fn run() -> Result<()> {
         }
         Command::ThirteenFAggregate(args) => {
             let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let (cik, _) = resolve_subject(
+                &client,
+                args.ticker.as_deref(),
+                args.cik,
+                args.investor.as_deref(),
+            )
+            .await?;
             let mut holdings = client
                 .thirteenf_aggregate_holdings(ThirteenFQuery {
                     cik,
@@ -224,7 +243,13 @@ pub(crate) async fn run() -> Result<()> {
         }
         Command::ThirteenFDiff(args) => {
             let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let (cik, _) = resolve_subject(
+                &client,
+                args.ticker.as_deref(),
+                args.cik,
+                args.investor.as_deref(),
+            )
+            .await?;
             let mut changes = client
                 .thirteenf_diff_holdings(ThirteenFQuery {
                     cik,
@@ -239,7 +264,13 @@ pub(crate) async fn run() -> Result<()> {
         }
         Command::ThirteenFSummary(args) => {
             let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let (cik, _) = resolve_subject(
+                &client,
+                args.ticker.as_deref(),
+                args.cik,
+                args.investor.as_deref(),
+            )
+            .await?;
             let mut reports = client
                 .thirteenf_reports(ThirteenFQuery {
                     cik,
@@ -304,4 +335,28 @@ async fn resolve_cik(client: &SecClient, ticker: Option<&str>, cik: Option<u64>)
             .with_context(|| format!("unknown ticker '{}'", ticker));
     }
     bail!("provide --ticker or --cik");
+}
+
+async fn resolve_subject(
+    client: &SecClient,
+    ticker: Option<&str>,
+    cik: Option<u64>,
+    investor: Option<&str>,
+) -> Result<(u64, String)> {
+    if let Some(investor) = investor {
+        let record = resolve_investor(investor)
+            .with_context(|| format!("unknown investor alias '{}'", investor))?;
+        return Ok((record.cik, record.investor));
+    }
+    if let Some(cik) = cik {
+        return Ok((cik, cik.to_string()));
+    }
+    if let Some(ticker) = ticker {
+        let cik = client
+            .cik_for_ticker(ticker)
+            .await
+            .with_context(|| format!("unknown ticker '{}'", ticker))?;
+        return Ok((cik, ticker.to_ascii_uppercase()));
+    }
+    bail!("provide --ticker, --cik, or --investor");
 }
