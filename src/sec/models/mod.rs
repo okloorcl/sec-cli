@@ -6,7 +6,8 @@ pub use queries::{
     ThirteenFQuery,
 };
 pub use records::{
-    DocumentRecord, FactRecord, FilingRecord, Form4TransactionRecord, ParsedRecord, SearchMatch,
+    DocumentRecord, FactRecord, FilingRecord, Form4FootnoteRecord, Form4OwnerRecord,
+    Form4ReportRecord, Form4SignatureRecord, Form4TransactionRecord, ParsedRecord, SearchMatch,
     ThirteenFAggregateHoldingRecord, ThirteenFHoldingRecord, ThirteenFOtherManagerRecord,
     ThirteenFReportRecord,
 };

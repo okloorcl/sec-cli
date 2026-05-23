@@ -113,6 +113,57 @@ pub struct Form4TransactionRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct Form4ReportRecord {
+    pub accession: String,
+    pub cik: u64,
+    pub company: String,
+    pub filing_date: String,
+    pub period_of_report: Option<String>,
+    pub not_subject_to_section16: Option<bool>,
+    pub issuer: Option<String>,
+    pub issuer_cik: Option<String>,
+    pub issuer_ticker: Option<String>,
+    pub owners: Vec<Form4OwnerRecord>,
+    pub signatures: Vec<Form4SignatureRecord>,
+    pub footnotes: Vec<Form4FootnoteRecord>,
+    pub transaction_count: usize,
+    pub acquisition_count: usize,
+    pub disposition_count: usize,
+    pub derivative_transaction_count: usize,
+    pub total_shares_acquired: f64,
+    pub total_shares_disposed: f64,
+    pub net_shares: f64,
+    pub total_value: f64,
+    pub document: Option<String>,
+    pub document_sequence: Option<String>,
+    pub document_description: Option<String>,
+    pub source_url: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct Form4OwnerRecord {
+    pub owner_cik: Option<String>,
+    pub owner_name: Option<String>,
+    pub is_director: Option<bool>,
+    pub is_officer: Option<bool>,
+    pub is_ten_percent_owner: Option<bool>,
+    pub is_other: Option<bool>,
+    pub officer_title: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct Form4SignatureRecord {
+    pub signature_name: Option<String>,
+    pub signature_date: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct Form4FootnoteRecord {
+    pub id: Option<String>,
+    pub text: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ThirteenFHoldingRecord {
     pub accession: String,
     pub cik: u64,

@@ -1,39 +1,15 @@
 use anyhow::Result;
 
 use crate::sec::{
-    client::SecClient,
     documents::{DocumentSet, SubmissionDocument},
-    models::{FilingQuery, FilingRecord, Form4Query, Form4TransactionRecord},
+    models::{FilingRecord, Form4TransactionRecord},
 };
 
-use super::{XmlEvent, parse_f64, path_ends_with, read_xml};
+use crate::sec::parsers::forms::{XmlEvent, parse_f64, path_ends_with, read_xml};
 
-impl SecClient {
-    pub async fn form4_transactions(
-        &self,
-        query: Form4Query,
-    ) -> Result<Vec<Form4TransactionRecord>> {
-        let filings = self
-            .filings(FilingQuery {
-                cik: query.cik,
-                form: Some("4".to_string()),
-                latest: query.latest,
-                from: None,
-                to: None,
-                include_amends: query.include_amends,
-            })
-            .await?;
+use super::{Issuer, Owner, apply_owner_text, transaction_type};
 
-        let mut records = Vec::new();
-        for filing in filings {
-            let docs = self.filing_documents(&filing).await?;
-            records.extend(parse_form4_documents(&filing, &docs)?);
-        }
-        Ok(records)
-    }
-}
-
-pub fn parse_form4_documents(
+pub fn parse_form4_transaction_documents(
     filing: &FilingRecord,
     docs: &[SubmissionDocument],
 ) -> Result<Vec<Form4TransactionRecord>> {
@@ -49,27 +25,9 @@ fn parse_form4_xml(
     filing: &FilingRecord,
     doc: &SubmissionDocument,
 ) -> Result<Vec<Form4TransactionRecord>> {
-    let mut parser = Form4Parser::new(filing, doc);
+    let mut parser = Form4TransactionParser::new(filing, doc);
     read_xml(doc.xml_content(), |event| parser.handle(event))?;
     Ok(parser.finish())
-}
-
-#[derive(Default, Clone)]
-struct Issuer {
-    name: Option<String>,
-    cik: Option<String>,
-    ticker: Option<String>,
-}
-
-#[derive(Default, Clone)]
-struct Owner {
-    name: Option<String>,
-    cik: Option<String>,
-    is_director: Option<bool>,
-    is_officer: Option<bool>,
-    is_ten_percent_owner: Option<bool>,
-    is_other: Option<bool>,
-    officer_title: Option<String>,
 }
 
 #[derive(Default)]
@@ -94,7 +52,7 @@ struct Transaction {
     underlying_shares: Option<f64>,
 }
 
-struct Form4Parser<'a> {
+struct Form4TransactionParser<'a> {
     filing: &'a FilingRecord,
     doc: &'a SubmissionDocument,
     path: Vec<String>,
@@ -105,7 +63,7 @@ struct Form4Parser<'a> {
     records: Vec<Form4TransactionRecord>,
 }
 
-impl<'a> Form4Parser<'a> {
+impl<'a> Form4TransactionParser<'a> {
     fn new(filing: &'a FilingRecord, doc: &'a SubmissionDocument) -> Self {
         Self {
             filing,
@@ -220,24 +178,6 @@ impl<'a> Form4Parser<'a> {
     }
 }
 
-fn apply_owner_text(owner: &mut Owner, path: &[String], text: &str) {
-    if path_ends_with(path, &["reportingOwnerId", "rptOwnerName"]) {
-        owner.name = Some(text.to_string());
-    } else if path_ends_with(path, &["reportingOwnerId", "rptOwnerCik"]) {
-        owner.cik = Some(text.to_string());
-    } else if path_ends_with(path, &["reportingOwnerRelationship", "isDirector"]) {
-        owner.is_director = parse_bool(text);
-    } else if path_ends_with(path, &["reportingOwnerRelationship", "isOfficer"]) {
-        owner.is_officer = parse_bool(text);
-    } else if path_ends_with(path, &["reportingOwnerRelationship", "isTenPercentOwner"]) {
-        owner.is_ten_percent_owner = parse_bool(text);
-    } else if path_ends_with(path, &["reportingOwnerRelationship", "isOther"]) {
-        owner.is_other = parse_bool(text);
-    } else if path_ends_with(path, &["reportingOwnerRelationship", "officerTitle"]) {
-        owner.officer_title = Some(text.to_string());
-    }
-}
-
 fn apply_transaction_text(tx: &mut Transaction, path: &[String], text: &str) {
     if path_ends_with(path, &["securityTitle", "value"]) {
         tx.security_title = Some(text.to_string());
@@ -250,7 +190,7 @@ fn apply_transaction_text(tx: &mut Transaction, path: &[String], text: &str) {
     } else if path_ends_with(path, &["transactionCoding", "transactionCode"]) {
         tx.code = Some(text.to_string());
     } else if path_ends_with(path, &["transactionCoding", "equitySwapInvolved"]) {
-        tx.equity_swap_involved = parse_bool(text);
+        tx.equity_swap_involved = super::parse_bool(text);
     } else if path_ends_with(path, &["transactionShares", "value"]) {
         tx.shares = parse_f64(text);
     } else if path_ends_with(path, &["transactionPricePerShare", "value"]) {
@@ -276,62 +216,17 @@ fn apply_transaction_text(tx: &mut Transaction, path: &[String], text: &str) {
     }
 }
 
-fn parse_bool(value: &str) -> Option<bool> {
-    match value.trim().to_ascii_lowercase().as_str() {
-        "1" | "true" => Some(true),
-        "0" | "false" => Some(false),
-        _ => None,
-    }
-}
-
-fn transaction_type(code: Option<&str>, acquired_disposed: Option<&str>) -> Option<String> {
-    let label = match code {
-        Some("P") => "purchase",
-        Some("S") => "sale",
-        Some("A") => "grant/award",
-        Some("M") => "option exercise/conversion",
-        Some("G") => "gift",
-        Some("F") => "tax withholding/payment",
-        Some("D") => "disposition",
-        Some("V") => "voluntary report",
-        _ => match acquired_disposed {
-            Some("A") => "acquisition",
-            Some("D") => "disposition",
-            _ => return None,
-        },
-    };
-    Some(label.to_string())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sec::parsers::forms::form4::{sample_doc, sample_filing, sample_form4_xml};
 
     #[test]
     fn parses_non_derivative_form4_transaction() {
-        let filing = FilingRecord {
-            accession: "0000000000-00-000001".to_string(),
-            cik: 1,
-            company: "ACME Inc.".to_string(),
-            form: "4".to_string(),
-            filing_date: "2026-01-02".to_string(),
-            report_date: None,
-            primary_document: None,
-            primary_doc_description: None,
-            is_xbrl: None,
-            is_inline_xbrl: None,
-            source_url: "https://example.test/index.html".to_string(),
-            text_url: "https://example.test/submission.txt".to_string(),
-        };
-        let doc = SubmissionDocument {
-            document_type: Some("4".to_string()),
-            sequence: Some("1".to_string()),
-            filename: Some("form4.xml".to_string()),
-            description: Some("FORM 4".to_string()),
-            content: sample_form4_xml().to_string(),
-        };
+        let filing = sample_filing();
+        let doc = sample_doc(sample_form4_xml());
 
-        let records = parse_form4_documents(&filing, &[doc]).unwrap();
+        let records = parse_form4_transaction_documents(&filing, &[doc]).unwrap();
 
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].issuer.as_deref(), Some("ACME Inc."));
@@ -343,31 +238,5 @@ mod tests {
         assert_eq!(records[0].shares, Some(10.0));
         assert_eq!(records[0].value, Some(125.0));
         assert_eq!(records[0].nature_of_ownership.as_deref(), Some("By Trust"));
-    }
-
-    fn sample_form4_xml() -> &'static str {
-        r#"
-        <ownershipDocument>
-          <issuer><issuerCik>0000000001</issuerCik><issuerName>ACME Inc.</issuerName><issuerTradingSymbol>ACME</issuerTradingSymbol></issuer>
-          <reportingOwner>
-            <reportingOwnerId><rptOwnerCik>0000000002</rptOwnerCik><rptOwnerName>Jane Owner</rptOwnerName></reportingOwnerId>
-            <reportingOwnerRelationship><isOfficer>1</isOfficer><officerTitle>CFO</officerTitle></reportingOwnerRelationship>
-          </reportingOwner>
-          <nonDerivativeTable>
-            <nonDerivativeTransaction>
-              <securityTitle><value>Common Stock</value></securityTitle>
-              <transactionDate><value>2026-01-01</value></transactionDate>
-              <transactionCoding><transactionFormType>4</transactionFormType><transactionCode>S</transactionCode><equitySwapInvolved>0</equitySwapInvolved></transactionCoding>
-              <transactionAmounts>
-                <transactionShares><value>10</value></transactionShares>
-                <transactionPricePerShare><value>12.5</value></transactionPricePerShare>
-                <transactionAcquiredDisposedCode><value>D</value></transactionAcquiredDisposedCode>
-              </transactionAmounts>
-              <postTransactionAmounts><sharesOwnedFollowingTransaction><value>90</value></sharesOwnedFollowingTransaction></postTransactionAmounts>
-              <ownershipNature><directOrIndirectOwnership><value>D</value></directOrIndirectOwnership><natureOfOwnership><value>By Trust</value></natureOfOwnership></ownershipNature>
-            </nonDerivativeTransaction>
-          </nonDerivativeTable>
-        </ownershipDocument>
-        "#
     }
 }

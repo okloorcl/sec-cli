@@ -29,6 +29,9 @@ pub(crate) enum Command {
     Docs(DocsArgs),
     /// Parse Form 4 insider ownership transactions.
     Form4(Form4Args),
+    /// Summarize Form 4 issuer, owners, signatures, footnotes, and net transactions.
+    #[command(name = "form4-summary")]
+    Form4Summary(Form4Args),
     /// Parse 13F institutional holdings information tables.
     #[command(name = "13f")]
     ThirteenF(ThirteenFArgs),

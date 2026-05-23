@@ -8,6 +8,7 @@ sec facts --ticker AAPL --concept revenue
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
 sec form4 --ticker AAPL --latest 3
+sec form4-summary --ticker AAPL --latest 3
 sec 13f --cik 1067983 --latest 1
 sec 13f-aggregate --cik 1067983 --latest 1 --limit 20
 sec 13f-summary --cik 1067983 --latest 1
@@ -27,6 +28,7 @@ This is an early MVP. The first implementation focuses on:
 - Querying SEC CompanyFacts for source-backed XBRL facts
 - Searching filing submission text with snippets
 - Parsing Form 4 insider ownership transactions
+- Summarizing Form 4 reports, owners, signatures, footnotes, and net activity
 - Parsing 13F-HR information-table holdings
 - Parsing 13F-HR cover, summary, signature, and manager metadata
 - Returning JSON arrays or JSONL records
@@ -202,6 +204,37 @@ Each transaction includes:
 - `expiration_date`
 - `underlying_security_title`
 - `underlying_shares`
+- `source_url`
+
+### form4-summary
+
+Summarize each Form 4 ownership report before drilling into transaction rows.
+This is useful for agents that need a compact, source-backed answer about who
+filed, whether activity was net acquisition or disposition, and which footnotes
+or signatures are present.
+
+```bash
+sec form4-summary --ticker AAPL --latest 3 --limit 10 --pretty
+sec form4-summary --cik 320193 --include-amends --jsonl
+```
+
+Each report summary includes:
+
+- `accession`
+- `period_of_report`
+- `issuer`
+- `issuer_ticker`
+- `owners`
+- `signatures`
+- `footnotes`
+- `transaction_count`
+- `acquisition_count`
+- `disposition_count`
+- `derivative_transaction_count`
+- `total_shares_acquired`
+- `total_shares_disposed`
+- `net_shares`
+- `total_value`
 - `source_url`
 
 ### 13f

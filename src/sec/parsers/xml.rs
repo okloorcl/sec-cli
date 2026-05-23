@@ -1,4 +1,4 @@
-use quick_xml::{Reader, events::Event};
+use quick_xml::{Reader, XmlVersion, events::Event};
 
 pub(crate) fn read_xml<F>(xml: &str, mut handle: F) -> anyhow::Result<()>
 where
@@ -35,6 +35,66 @@ pub(crate) enum XmlEvent {
     Start(String),
     End(String),
     Text(String),
+}
+
+pub(crate) fn read_xml_with_attrs<F>(xml: &str, mut handle: F) -> anyhow::Result<()>
+where
+    F: FnMut(XmlEventWithAttrs) -> anyhow::Result<()>,
+{
+    let mut reader = Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+
+    loop {
+        match reader.read_event()? {
+            Event::Start(event) => {
+                let mut attributes = Vec::new();
+                for attr in event.attributes().with_checks(false) {
+                    let attr = attr?;
+                    attributes.push(XmlAttribute {
+                        name: local_name(attr.key.local_name()),
+                        value: attr
+                            .decoded_and_normalized_value(XmlVersion::Implicit1_0, event.decoder())?
+                            .into_owned(),
+                    });
+                }
+                handle(XmlEventWithAttrs::Start {
+                    name: local_name(event.local_name()),
+                    attributes,
+                })?;
+            }
+            Event::End(event) => handle(XmlEventWithAttrs::End(local_name(event.local_name())))?,
+            Event::Text(event) => {
+                let text = event.decode()?.trim().to_string();
+                if !text.is_empty() {
+                    handle(XmlEventWithAttrs::Text(text))?;
+                }
+            }
+            Event::CData(event) => {
+                let text = event.decode()?.trim().to_string();
+                if !text.is_empty() {
+                    handle(XmlEventWithAttrs::Text(text))?;
+                }
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+
+    Ok(())
+}
+
+pub(crate) enum XmlEventWithAttrs {
+    Start {
+        name: String,
+        attributes: Vec<XmlAttribute>,
+    },
+    End(String),
+    Text(String),
+}
+
+pub(crate) struct XmlAttribute {
+    pub(crate) name: String,
+    pub(crate) value: String,
 }
 
 pub(crate) fn path_ends_with(path: &[String], suffix: &[&str]) -> bool {

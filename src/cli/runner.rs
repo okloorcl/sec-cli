@@ -110,6 +110,21 @@ pub(crate) async fn run() -> Result<()> {
             }
             print_records(&transactions, output)?;
         }
+        Command::Form4Summary(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let mut reports = client
+                .form4_reports(Form4Query {
+                    cik,
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                })
+                .await?;
+            if let Some(limit) = args.limit {
+                reports.truncate(limit);
+            }
+            print_records(&reports, output)?;
+        }
         Command::ThirteenF(args) => {
             let output = output_mode(args.jsonl, args.pretty);
             let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
