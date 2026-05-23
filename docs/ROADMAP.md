@@ -23,13 +23,13 @@ real commands or modules in the repository.
 - [x] Form 13F-HR primary document summary parser.
 - [x] 8-K event parser.
 - [x] Schedule 13D / 13G parser.
+- [x] DEF 14A proxy statement parser.
 - [x] Investor/fund/person resolver with LLM fallback and SEC validation.
 - [x] Source-backed Markdown reports for insider activity, portfolio activity, and risk review.
 - [x] Cross-platform CI for Linux amd64/i686/arm64/arm32, Windows amd64, and macOS arm64.
 
 ## Planned
 
-- [ ] DEF 14A proxy statement parser.
 - [ ] S-1 / 424B IPO and prospectus parser.
 - [ ] 20-F / 6-K / 40-F foreign issuer parser.
 - [ ] N-PORT / N-CSR / N-CEN fund disclosure parser.
@@ -38,11 +38,10 @@ real commands or modules in the repository.
 
 ## Suggested Implementation Order
 
-1. DEF 14A proxy statement parser.
-2. S-1 / 424B parser.
-3. 20-F / 6-K / 40-F parser.
-4. N-PORT / N-CSR / N-CEN parser.
-5. Local HTTP API and MCP adapter.
+1. S-1 / 424B parser.
+2. 20-F / 6-K / 40-F parser.
+3. N-PORT / N-CSR / N-CEN parser.
+4. Local HTTP API and MCP adapter.
 
 ## Completion Rule
 

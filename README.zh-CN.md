@@ -23,6 +23,7 @@ sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
+sec proxy --ticker AAPL --latest 1 --pretty
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
@@ -54,6 +55,7 @@ sec forms --pretty
 - 从 CompanyFacts 组装标准化 10-K/10-Q 三大表：利润表、资产负债表、现金流量表
 - 直接从 filing HTML 流式解析 Inline XBRL facts
 - 从 filing 主 HTML 抽取表格
+- 解析 DEF 14A 股东大会委托书：会议、投票事项、董事候选人、审计师、高管薪酬表
 - 搜索 filing 原文并返回 snippet
 - 抽取 10-K/10-Q 常用 section：Business、Risk Factors、MD&A 等
 - 生成 Markdown 专业汇报：insider、portfolio、risk
@@ -82,6 +84,7 @@ sec forms --pretty
 | 最新标准化财报三大表是什么？ | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
 | filing HTML 里嵌入了哪些 Inline XBRL facts？ | `sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --pretty` |
 | filing 里有哪些 HTML 表格？ | `sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty` |
+| 最新 proxy statement 里有哪些投票事项和高管薪酬？ | `sec proxy --ticker AAPL --latest 1 --pretty` |
 | 哪些 5% 大股东提交了 13D/13G？ | `sec 13d --ticker TSLA --form 13g --include-amends --pretty` |
 | Berkshire 最新 13F 持仓是什么？ | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | 最近两期 13F 哪些仓位变化最大？ | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
@@ -159,6 +162,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | SEC CompanyFacts JSON | `facts`、`statements` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行 | fact records、financial statement rows |
 | Inline XBRL filing HTML | `ixbrl` | filing HTML 内嵌的 `ix:nonFraction` / `ix:nonNumeric`、context、unit、scale、decimals、原始值 | Inline XBRL fact records |
 | Filing HTML tables | `tables` | 主 HTML 文档里的表格行，例如薪酬表、分部表、注册证券表、债务表、合同表 | HTML table records |
+| DEF 14A proxy statement 主文档 | `proxy`、`parse --form "DEF 14A"` | 股东大会日期/地点、投票事项、董事会建议、董事候选人、审计师、NEO、高管薪酬表 | proxy statement records |
 | SEC complete submission text / archive documents | `search`、`section`、`docs`、`doc` | 原始 filing 文本、HTML/XML 附件、exhibit、可引用片段 | snippet、section、document records |
 | Form 3/4/5 XML ownership report | `form4`、`form4-summary`、`report --kind insider` | 内部人、职位、交易代码、股数、价格、金额、脚注、签名 | transaction records、ownership report records |
 | Form 8-K primary document | `8k` | 当前报告事件 item，例如 2.02 业绩、5.02 高管变化、8.01 其他事件、9.01 附件 | 8-K event records |
@@ -186,6 +190,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | Financial statement row | `statements` | `statement`、`line_order`、`line_item`、`value`、`unit`、`fiscal_year`、`fiscal_period` | `accession`、`source_url`、`fact_id` |
 | Inline XBRL fact | `ixbrl` | `name`、`context_ref`、`unit_ref`、`scale`、`raw_value`、`numeric_value` | `accession`、`document_url`、`source_url` |
 | HTML table | `tables` | `title_hint`、`row_count`、`column_count`、`headers`、`rows`、`truncated` | `accession`、`document_url`、`source_url` |
+| Proxy statement | `proxy`、`parse --form "DEF 14A"` | `meeting_date`、`proposals`、`director_nominees`、`auditor`、`named_executive_officers`、`summary_compensation_table` | `accession`、`document_url`、`source_url` |
 | Search snippet | `search` | `query`、`snippet`、`offset`、`form`、`filing_date` | `accession`、`source_url`、`document`、`section` |
 | Section | `section` | `item`、`title`、`content`、`truncated` | `accession`、`document_url`、`source_url` |
 | Document | `docs`、`doc` | `filename`、`document_type`、`description`、`content_type`、`content` | `accession`、`document_url`、`source_url` |
@@ -463,6 +468,18 @@ sec tables --cik 320193 --form 10-Q --latest 1 --limit-tables 10 --pretty
 
 输出字段：`table_index`、`title_hint`、`row_count`、`column_count`、`returned_rows`、`truncated`、`headers`、`rows`、`document_url`、`source_url`。
 
+### proxy
+
+解析 DEF 14A proxy statement，也就是年度股东大会委托书。它回答的是：什么时候开股东大会、要投哪些议案、董事会建议怎么投、董事候选人是谁、审计师是谁、NEO 是谁、高管薪酬表是什么。
+
+```bash
+sec proxy --ticker AAPL --latest 1 --pretty
+sec proxy --cik 320193 --latest 2 --include-amends --limit-rows 20 --pretty
+sec parse --ticker AAPL --form "DEF 14A" --latest 1 --pretty
+```
+
+输出字段：`meeting_date`、`meeting_time`、`meeting_site`、`record_date`、`materials_available_date`、`proposals`、`director_nominees`、`auditor`、`named_executive_officers`、`summary_compensation_table`、`document_url`、`source_url`。
+
 ### search
 
 搜索 filing 原文，返回可追溯 snippet。
@@ -650,6 +667,7 @@ sec forms --pretty
 | `statements` | `--ticker` 或 `--cik` | `--statement`、`--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `ixbrl` | `--ticker` 或 `--cik` | `--form`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `tables` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
+| `proxy` | `--ticker` 或 `--cik` | `--latest`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `search` | `--ticker` 或 `--cik`，`--query` | `--form`、`--latest`、`--context`、`--include-amends`、`--jsonl`、`--pretty` |
 | `section` | `--ticker` 或 `--cik`，`--item` | `--form`、`--latest`、`--accession`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
 | `report` | `--ticker`、`--cik`、`--manager` 或 `--investor`，`--kind` | `--latest`、`--limit`、`--limit-bytes`、`--include-amends` |

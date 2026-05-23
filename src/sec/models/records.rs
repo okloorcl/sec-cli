@@ -1,6 +1,8 @@
 use serde::Serialize;
 use serde_json::Value;
 
+use super::proxy::ProxyStatementRecord;
+
 #[derive(Debug, Serialize, Clone)]
 pub struct FilingRecord {
     pub accession: String,
@@ -463,5 +465,6 @@ pub enum ParsedRecord {
     EightKEvent(EightKEventRecord),
     Schedule13(Schedule13Record),
     InlineXbrlFact(InlineXbrlFactRecord),
+    ProxyStatement(ProxyStatementRecord),
     ThirteenfHolding(ThirteenFHoldingRecord),
 }

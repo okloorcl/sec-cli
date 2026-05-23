@@ -1,11 +1,13 @@
+pub mod proxy;
 pub mod queries;
 pub mod records;
 pub mod tables;
 
+pub use proxy::{ProxyProposalRecord, ProxyStatementRecord, ProxyTableRecord};
 pub use queries::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
-    HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery, ReportQuery, Schedule13Query,
-    SearchQuery, SectionQuery, StatementQuery, ThirteenFQuery,
+    HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery, ProxyQuery, ReportQuery,
+    Schedule13Query, SearchQuery, SectionQuery, StatementQuery, ThirteenFQuery,
 };
 pub use records::{
     DocumentContentRecord, DocumentRecord, EightKEventRecord, FactRecord, FilingRecord,

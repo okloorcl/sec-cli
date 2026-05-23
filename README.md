@@ -23,6 +23,7 @@ sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
+sec proxy --ticker AAPL --latest 1 --pretty
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
@@ -56,6 +57,7 @@ This is an early MVP. The first implementation focuses on:
 - Building standardized 10-K/10-Q income statement, balance sheet, and cash flow rows from CompanyFacts
 - Streaming Inline XBRL facts directly from primary filing HTML
 - Extracting HTML tables from filing primary documents
+- Parsing DEF 14A proxy statements for meeting details, voting proposals, directors, auditors, and executive compensation tables
 - Searching filing submission text with snippets
 - Extracting common 10-K/10-Q sections such as business, risk factors, and MD&A
 - Generating source-backed Markdown reports for insider activity, 13F portfolios, and risk review
@@ -89,6 +91,7 @@ These are useful, source-backed questions that work today:
 | What are the latest standardized financial statement rows? | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
 | What Inline XBRL facts are embedded in the filing HTML? | `sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --pretty` |
 | What tables are embedded in a filing? | `sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty` |
+| What is in the latest proxy statement? | `sec proxy --ticker AAPL --latest 1 --pretty` |
 | Which 5% beneficial owners recently filed 13D/13G? | `sec 13d --ticker TSLA --form 13g --include-amends --pretty` |
 | What is Berkshire Hathaway's latest 13F portfolio? | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | What changed between the latest two 13F filings? | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
@@ -167,6 +170,7 @@ Practical rule:
 | SEC CompanyFacts JSON | `facts`, `statements` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines | fact records, financial statement rows |
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
+| DEF 14A proxy statement primary document | `proxy`, `parse --form "DEF 14A"` | Annual meeting date/site, voting proposals, board recommendations, director nominees, auditor, named executive officers, summary compensation table | proxy statement records |
 | SEC complete submission text and archive documents | `search`, `section`, `docs`, `doc` | Original filing text, HTML/XML attachments, exhibits, source snippets | snippet, section, document records |
 | Form 3/4/5 XML ownership reports | `form4`, `form4-summary`, `report --kind insider` | Insider owners, roles, transaction codes, shares, prices, footnotes, signatures | transaction and ownership-report records |
 | Form 8-K primary document | `8k` | Current-report event items such as 2.02 earnings, 5.02 management changes, 8.01 other events, 9.01 exhibits | 8-K event records |
@@ -189,6 +193,7 @@ Output record cheat sheet:
 | Financial statement row | `statements` | `statement`, `line_order`, `line_item`, `value`, `unit`, `fiscal_year`, `fiscal_period` | `accession`, `source_url`, `fact_id` |
 | Inline XBRL fact | `ixbrl` | `name`, `context_ref`, `unit_ref`, `scale`, `raw_value`, `numeric_value` | `accession`, `document_url`, `source_url` |
 | HTML table | `tables` | `title_hint`, `row_count`, `column_count`, `headers`, `rows`, `truncated` | `accession`, `document_url`, `source_url` |
+| Proxy statement | `proxy`, `parse --form "DEF 14A"` | `meeting_date`, `proposals`, `director_nominees`, `auditor`, `named_executive_officers`, `summary_compensation_table` | `accession`, `document_url`, `source_url` |
 | Search snippet | `search` | `query`, `snippet`, `offset`, `form`, `filing_date` | `accession`, `source_url`, `document`, `section` |
 | Section | `section` | `item`, `title`, `content`, `truncated` | `accession`, `document_url`, `source_url` |
 | Document | `docs`, `doc` | `filename`, `document_type`, `description`, `content_type`, `content` | `accession`, `document_url`, `source_url` |
@@ -569,6 +574,34 @@ Each table includes:
 - `truncated`
 - `headers`
 - `rows`
+- `document_url`
+- `source_url`
+
+### proxy
+
+Parse DEF 14A proxy statements. This command turns shareholder-meeting
+materials into one structured record per filing: meeting logistics, voting
+proposals, board recommendations, director nominees, auditor, named executive
+officers, and the summary compensation table.
+
+```bash
+sec proxy --ticker AAPL --latest 1 --pretty
+sec proxy --cik 320193 --latest 2 --include-amends --limit-rows 20 --pretty
+sec parse --ticker AAPL --form "DEF 14A" --latest 1 --pretty
+```
+
+Each proxy record includes:
+
+- `meeting_date`
+- `meeting_time`
+- `meeting_site`
+- `record_date`
+- `materials_available_date`
+- `proposals`
+- `director_nominees`
+- `auditor`
+- `named_executive_officers`
+- `summary_compensation_table`
 - `document_url`
 - `source_url`
 
@@ -1042,6 +1075,7 @@ Command options:
 | `statements` | `--ticker` or `--cik` | `--statement`, `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `ixbrl` | `--ticker` or `--cik` | `--form`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `tables` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
+| `proxy` | `--ticker` or `--cik` | `--latest`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `search` | `--ticker` or `--cik`, `--query` | `--form`, `--latest`, `--context`, `--include-amends`, `--jsonl`, `--pretty` |
 | `section` | `--ticker` or `--cik`, `--item` | `--form`, `--latest`, `--accession`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
 | `report` | `--ticker`, `--cik`, `--manager`, or `--investor`; `--kind` | `--latest`, `--limit`, `--limit-bytes`, `--include-amends` |

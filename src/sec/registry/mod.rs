@@ -6,6 +6,7 @@ pub enum ParserKind {
     Form4,
     EightK,
     Schedule13,
+    Proxy,
     ThirteenF,
 }
 
@@ -35,6 +36,12 @@ const PARSERS: &[ParserSpec] = &[
         canonical_form: "SC 13D",
         forms: &["SC 13D", "SC 13D/A", "SC 13G", "SC 13G/A"],
         record_kind: "schedule13",
+    },
+    ParserSpec {
+        kind: ParserKind::Proxy,
+        canonical_form: "DEF 14A",
+        forms: &["DEF 14A", "DEF 14A/A"],
+        record_kind: "proxy_statement",
     },
     ParserSpec {
         kind: ParserKind::ThirteenF,
