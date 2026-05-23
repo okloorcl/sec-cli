@@ -5,7 +5,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::sec::{
-    FactQuery, FilingQuery, ParseQuery, SecClient, StatementQuery, supported_parsers,
+    DocumentQuery, FactQuery, FilingQuery, Form4Query, ParseQuery, ReportKind, ReportQuery,
+    SecClient, StatementQuery, ThirteenFQuery, supported_parsers,
 };
 
 const PROTOCOL_VERSION: &str = "2025-06-18";
@@ -78,6 +79,28 @@ async fn call_tool(client: &SecClient, params: Value) -> Result<Value> {
                 .financial_statements(statement_query(client, &args).await?)
                 .await?
         ),
+        "sec_docs" => json!(
+            client
+                .document_records(document_query(client, &args).await?)
+                .await?
+        ),
+        "sec_form4_summary" => {
+            json!(
+                client
+                    .form4_reports(form4_query(client, &args).await?)
+                    .await?
+            )
+        }
+        "sec_13f_diff" => json!(
+            client
+                .thirteenf_diff_holdings(thirteenf_query(client, &args).await?)
+                .await?
+        ),
+        "sec_report" => json!({
+            "markdown": client
+                .markdown_report(report_kind(&args)?, report_query(client, &args).await?)
+                .await?
+        }),
         "sec_parse" => json!(client.parse_form(parse_query(client, &args).await?).await?),
         _ => return Err(anyhow!("unknown MCP tool '{name}'")),
     };
@@ -122,6 +145,44 @@ async fn statement_query(client: &SecClient, args: &Value) -> Result<StatementQu
         form: period_form(optional_string(args, "period").as_deref()),
         unit: optional_string(args, "unit"),
         latest: optional_usize(args, "latest").unwrap_or(4),
+    })
+}
+
+async fn document_query(client: &SecClient, args: &Value) -> Result<DocumentQuery> {
+    Ok(DocumentQuery {
+        cik: resolve_cik(client, args).await?,
+        form: optional_string(args, "form"),
+        latest: optional_usize(args, "latest").unwrap_or(1),
+        include_amends: optional_bool(args, "include_amends").unwrap_or(false),
+        limit: optional_usize(args, "limit"),
+    })
+}
+
+async fn form4_query(client: &SecClient, args: &Value) -> Result<Form4Query> {
+    Ok(Form4Query {
+        cik: resolve_cik(client, args).await?,
+        latest: optional_usize(args, "latest").unwrap_or(3),
+        include_amends: optional_bool(args, "include_amends").unwrap_or(false),
+    })
+}
+
+async fn thirteenf_query(client: &SecClient, args: &Value) -> Result<ThirteenFQuery> {
+    Ok(ThirteenFQuery {
+        cik: resolve_cik(client, args).await?,
+        latest: optional_usize(args, "latest").unwrap_or(1),
+        include_amends: optional_bool(args, "include_amends").unwrap_or(false),
+    })
+}
+
+async fn report_query(client: &SecClient, args: &Value) -> Result<ReportQuery> {
+    let cik = resolve_cik(client, args).await?;
+    Ok(ReportQuery {
+        cik,
+        subject: optional_string(args, "subject").unwrap_or_else(|| cik.to_string()),
+        latest: optional_usize(args, "latest").unwrap_or(5),
+        limit: optional_usize(args, "limit").unwrap_or(10),
+        include_amends: optional_bool(args, "include_amends").unwrap_or(false),
+        limit_bytes: optional_usize(args, "limit_bytes").unwrap_or(4000),
     })
 }
 
@@ -188,6 +249,34 @@ fn tools() -> Vec<Value> {
             ),
         ),
         tool(
+            "sec_docs",
+            "List documents and attachments inside SEC complete submissions.",
+            company_schema(
+                json!({"form":{"type":"string"},"latest":{"type":"integer"},"limit":{"type":"integer"},"include_amends":{"type":"boolean"}}),
+            ),
+        ),
+        tool(
+            "sec_form4_summary",
+            "Summarize Form 4 ownership reports for a company.",
+            company_schema(
+                json!({"latest":{"type":"integer"},"include_amends":{"type":"boolean"}}),
+            ),
+        ),
+        tool(
+            "sec_13f_diff",
+            "Compare latest two 13F portfolios by CIK or ticker.",
+            company_schema(
+                json!({"latest":{"type":"integer"},"include_amends":{"type":"boolean"}}),
+            ),
+        ),
+        tool(
+            "sec_report",
+            "Generate source-backed Markdown reports for insider, portfolio, or risk workflows.",
+            company_schema(
+                json!({"kind":{"type":"string"},"subject":{"type":"string"},"latest":{"type":"integer"},"limit":{"type":"integer"},"limit_bytes":{"type":"integer"},"include_amends":{"type":"boolean"}}),
+            ),
+        ),
+        tool(
             "sec_parse",
             "Run the unified parser pipeline for a supported form.",
             company_schema(
@@ -227,6 +316,19 @@ fn period_form(period: Option<&str>) -> Option<String> {
         "quarterly" => Some("10-Q".to_string()),
         "all" => None,
         other => Some(other.to_string()),
+    }
+}
+
+fn report_kind(args: &Value) -> Result<ReportKind> {
+    match optional_string(args, "kind")
+        .unwrap_or_else(|| "risk".to_string())
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "insider" => Ok(ReportKind::Insider),
+        "portfolio" => Ok(ReportKind::Portfolio),
+        "risk" => Ok(ReportKind::Risk),
+        other => Err(anyhow!("unsupported report kind '{other}'")),
     }
 }
 
@@ -285,6 +387,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert!(names.contains(&"sec_forms".to_string()));
+        assert!(names.contains(&"sec_report".to_string()));
         assert!(names.contains(&"sec_parse".to_string()));
     }
 

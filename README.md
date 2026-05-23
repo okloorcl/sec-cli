@@ -1264,6 +1264,10 @@ Available MCP tools:
 | `sec_filings` | `sec filings` equivalent |
 | `sec_facts` | `sec facts` equivalent |
 | `sec_statements` | `sec statements` equivalent |
+| `sec_docs` | `sec docs` equivalent |
+| `sec_form4_summary` | `sec form4-summary` equivalent |
+| `sec_13f_diff` | `sec 13f-diff` equivalent for CIK/ticker selectors |
+| `sec_report` | Markdown reports for `insider`, `portfolio`, and `risk` |
 | `sec_parse` | unified parser pipeline for supported forms |
 
 Example MCP tool arguments:

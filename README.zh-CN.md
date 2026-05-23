@@ -785,6 +785,10 @@ SEC_IDENTITY="Your Name your.email@example.com" sec mcp
 | `sec_filings` | 等价于 `sec filings` |
 | `sec_facts` | 等价于 `sec facts` |
 | `sec_statements` | 等价于 `sec statements` |
+| `sec_docs` | 等价于 `sec docs` |
+| `sec_form4_summary` | 等价于 `sec form4-summary` |
+| `sec_13f_diff` | 等价于 CIK/ticker 选择器下的 `sec 13f-diff` |
+| `sec_report` | 生成 `insider`、`portfolio`、`risk` Markdown 报告 |
 | `sec_parse` | 统一 parser pipeline |
 
 MCP tool 参数示例：

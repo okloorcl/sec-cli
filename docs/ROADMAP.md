@@ -33,19 +33,18 @@ real commands or modules in the repository.
 - [x] Source-backed Markdown reports for insider activity, portfolio activity, and risk review.
 - [x] Local JSON HTTP API for core SEC queries and parser endpoints.
 - [x] Stdio MCP adapter for core SEC agent tools.
+- [x] Expanded MCP tools for documents, Form 4 summaries, 13F diff, and Markdown reports.
 - [x] Cross-platform CI for Linux amd64/i686/arm64/arm32, Windows amd64, and macOS arm64.
 
 ## Planned
 
-- [ ] Expand MCP tools for Form 4, 13F diff, documents, and reports.
 - [ ] Arrow / Parquet export layer.
 - [ ] Optional bulk archive / offline mode.
 
 ## Suggested Implementation Order
 
-1. Expand MCP tools for Form 4, 13F diff, documents, and reports.
-2. Arrow / Parquet export layer.
-3. Optional bulk archive / offline mode.
+1. Arrow / Parquet export layer.
+2. Optional bulk archive / offline mode.
 
 ## Completion Rule
 
