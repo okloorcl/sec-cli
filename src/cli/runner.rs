@@ -371,6 +371,9 @@ pub(crate) async fn run() -> Result<()> {
         Command::Serve(args) => {
             sec_cli::server::serve(client, args.host, args.port).await?;
         }
+        Command::Mcp(_) => {
+            sec_cli::mcp::serve_stdio(client).await?;
+        }
     }
 
     Ok(())

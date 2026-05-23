@@ -48,6 +48,7 @@ sec 13f-summary --cik 1067983 --latest 1
 sec parse --ticker AAPL --form 4 --latest 1
 sec forms --pretty
 sec serve --host 127.0.0.1 --port 8716
+sec mcp
 ```
 
 `sec-cli` 把 SEC filing 转成可追溯、结构稳定的 JSON/JSONL/Markdown。它不是 Python 包的外壳，而是独立 Rust CLI：适合 shell、数据流水线、本地服务、MCP/Agent 调用。
@@ -80,6 +81,7 @@ sec serve --host 127.0.0.1 --port 8716
 - 解析 13F cover、summary、signature、other managers
 - 本地缓存 SEC 响应
 - 通过本地 JSON HTTP API 对外提供同一套核心查询
+- 通过 stdio MCP adapter 给 Agent 暴露 SEC 工具
 
 长期目标：逐步覆盖 edgartools 里有价值的结构化输出，同时保持 CLI/Agent 原生体验：稳定 schema、明确 exit code、来源链接、Markdown 汇报、未来 Arrow/Parquet 和本地 HTTP/MCP。
 
@@ -105,6 +107,7 @@ sec serve --host 127.0.0.1 --port 8716
 | 公司最新 10-K 风险因素是什么？ | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
 | 生成能直接给人看的分析摘要？ | `sec report --ticker AAPL --kind risk` |
 | 本地 app 或 agent 怎么通过 HTTP 调用？ | `sec serve --port 8716`，然后 `curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"` |
+| 支持 MCP 的 Agent 怎么直接调用？ | 在 Agent 配置里启动 `sec mcp`，并设置 `SEC_IDENTITY` |
 | 答案来源在哪里？ | 结构化结果包含 `source_url`，document 结果还包含 `document_url` |
 
 ## 参数怎么选
@@ -766,6 +769,37 @@ curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
 | `/v1/fund` | `sec fund` |
 | `/v1/parse` | `sec parse` |
 
+### mcp
+
+启动 stdio Model Context Protocol adapter，给支持 MCP 的 Agent 使用。它通过 stdin/stdout 读写 JSON-RPC，不需要启动 HTTP server。
+
+```bash
+SEC_IDENTITY="Your Name your.email@example.com" sec mcp
+```
+
+当前 MCP tools：
+
+| Tool | 对应能力 |
+| --- | --- |
+| `sec_forms` | parser registry |
+| `sec_filings` | 等价于 `sec filings` |
+| `sec_facts` | 等价于 `sec facts` |
+| `sec_statements` | 等价于 `sec statements` |
+| `sec_parse` | 统一 parser pipeline |
+
+MCP tool 参数示例：
+
+```json
+{
+  "name": "sec_filings",
+  "arguments": {
+    "ticker": "AAPL",
+    "form": "10-K",
+    "latest": 1
+  }
+}
+```
+
 ## 参数参考
 
 全局参数：
@@ -801,6 +835,7 @@ curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
 | `parse` | `--ticker` 或 `--cik`，`--form` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `forms` | 无 | `--jsonl`、`--pretty` |
 | `serve` | 无 | `--host`、`--port` |
+| `mcp` | 无 | stdio JSON-RPC server；在 Agent 环境里设置 `SEC_IDENTITY` |
 
 ## 输出模式
 

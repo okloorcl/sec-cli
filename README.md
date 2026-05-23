@@ -48,6 +48,7 @@ sec 13f-summary --cik 1067983 --latest 1
 sec parse --ticker AAPL --form 4 --latest 1
 sec forms --pretty
 sec serve --host 127.0.0.1 --port 8716
+sec mcp
 ```
 
 `sec-cli` turns SEC filings into source-backed JSON for agents, analysts, and
@@ -83,6 +84,7 @@ This is an early MVP. The first implementation focuses on:
 - Returning JSON arrays or JSONL records
 - Caching SEC responses locally
 - Serving the same core queries through a local JSON HTTP API
+- Serving core SEC tools through a stdio MCP adapter for agents
 
 Longer term, the project aims to grow into a Rust-powered SEC disclosure engine:
 more form-specific parsers, XBRL streaming parsing, table extraction,
@@ -111,6 +113,7 @@ These are useful, source-backed questions that work today:
 | What if I know the investor name but not the CIK? | `sec resolve --query 段永平 --pretty`, then `sec 13f-diff --investor 段永平 --pretty` |
 | What are a company's latest 10-K risk factors? | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
 | How can an app or local agent call sec-cli over HTTP? | `sec serve --port 8716`, then `curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"` |
+| How can an MCP-capable agent call sec-cli directly? | Configure the agent to launch `sec mcp` with `SEC_IDENTITY` set |
 | Where did the answer come from? | Every structured result includes `source_url`; document results also include `document_url` |
 
 ## How To Choose Selectors
@@ -1243,6 +1246,39 @@ Available endpoints:
 | `/v1/fund` | `sec fund` |
 | `/v1/parse` | `sec parse` |
 
+### mcp
+
+Run a stdio Model Context Protocol adapter for MCP-capable agents. The adapter
+uses JSON-RPC over stdin/stdout and exposes source-backed SEC tools without
+requiring an HTTP server.
+
+```bash
+SEC_IDENTITY="Your Name your.email@example.com" sec mcp
+```
+
+Available MCP tools:
+
+| Tool | What it calls |
+| --- | --- |
+| `sec_forms` | parser registry |
+| `sec_filings` | `sec filings` equivalent |
+| `sec_facts` | `sec facts` equivalent |
+| `sec_statements` | `sec statements` equivalent |
+| `sec_parse` | unified parser pipeline for supported forms |
+
+Example MCP tool arguments:
+
+```json
+{
+  "name": "sec_filings",
+  "arguments": {
+    "ticker": "AAPL",
+    "form": "10-K",
+    "latest": 1
+  }
+}
+```
+
 ## Options Reference
 
 Global options:
@@ -1282,6 +1318,7 @@ Command options:
 | `parse` | `--ticker` or `--cik`, `--form` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `forms` | none | `--jsonl`, `--pretty` |
 | `serve` | none | `--host`, `--port` |
+| `mcp` | none | stdio JSON-RPC server; configure `SEC_IDENTITY` in the agent environment |
 
 ## Output Modes
 

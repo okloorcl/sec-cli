@@ -44,6 +44,7 @@ src/main.rs                         minimal binary entry point
 src/cli/                            CLI shell split from the SEC core
 src/cli/args.rs                     CLI argument schema
 src/cli/runner.rs                   CLI orchestration only
+src/mcp/                            stdio MCP adapter over the SEC core
 src/server/                         local JSON HTTP API over the SEC core
 src/sec/mod.rs                      public SEC module surface
 src/sec/client/                     SEC domain client facade and cached fetch entry point
@@ -160,6 +161,7 @@ The current codebase already has these boundaries in place:
 - `models`: query DTOs and stable output record schemas.
 - `registry`: parser discovery and supported form families.
 - `pipeline`: runtime dispatch from `form` to parser.
+- `mcp`: JSON-RPC stdio adapter exposing a small, stable tool surface for agents.
 - `server`: local HTTP API that reuses the same client and parser records as the CLI.
 
 This means future CLI commands, HTTP handlers, MCP tools, and batch jobs should
@@ -167,6 +169,6 @@ not talk directly to `reqwest`, file caches, or parser internals.
 
 ## Near-Term Build Order
 
-1. Add MCP adapters after the core records and parser pipeline are stable.
+1. Expand MCP tools for high-value first-class workflows such as Form 4, 13F diff, documents, and Markdown reports.
 2. Split storage into a trait-backed cache/store layer if an alternate backend is needed.
 3. Add export layer for Arrow/Parquet.

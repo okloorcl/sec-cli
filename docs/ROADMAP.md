@@ -32,15 +32,20 @@ real commands or modules in the repository.
 - [x] Investor/fund/person resolver with LLM fallback and SEC validation.
 - [x] Source-backed Markdown reports for insider activity, portfolio activity, and risk review.
 - [x] Local JSON HTTP API for core SEC queries and parser endpoints.
+- [x] Stdio MCP adapter for core SEC agent tools.
 - [x] Cross-platform CI for Linux amd64/i686/arm64/arm32, Windows amd64, and macOS arm64.
 
 ## Planned
 
-- [ ] MCP adapter for agent tools.
+- [ ] Expand MCP tools for Form 4, 13F diff, documents, and reports.
+- [ ] Arrow / Parquet export layer.
+- [ ] Optional bulk archive / offline mode.
 
 ## Suggested Implementation Order
 
-1. MCP adapter for agent tools.
+1. Expand MCP tools for Form 4, 13F diff, documents, and reports.
+2. Arrow / Parquet export layer.
+3. Optional bulk archive / offline mode.
 
 ## Completion Rule
 

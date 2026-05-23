@@ -81,6 +81,8 @@ pub(crate) enum Command {
     Forms(OutputArgs),
     /// Run the local JSON HTTP API server.
     Serve(ServeArgs),
+    /// Run a stdio MCP server for agent tools.
+    Mcp(McpArgs),
 }
 
 #[derive(Args, Debug)]
@@ -112,6 +114,9 @@ pub(crate) struct ServeArgs {
     #[arg(long, default_value_t = 8716)]
     pub(crate) port: u16,
 }
+
+#[derive(Args, Debug)]
+pub(crate) struct McpArgs {}
 
 #[derive(Args, Debug)]
 pub(crate) struct FactsArgs {
