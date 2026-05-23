@@ -26,6 +26,18 @@ impl<'a> DocumentSet<'a> {
         })
     }
 
+    pub fn thirteenf_primary_documents(&self) -> impl Iterator<Item = &'a SubmissionDocument> {
+        self.docs.iter().filter(|doc| {
+            let content = doc.xml_content();
+            content.contains("<edgarSubmission")
+                || (doc.is_primary()
+                    && (doc.is_type("13F-HR")
+                        || doc.is_type("13F-HR/A")
+                        || doc.is_type("13F-NT")
+                        || doc.is_type("13F-NT/A")))
+        })
+    }
+
     pub fn primary_documents(&self) -> impl Iterator<Item = &'a SubmissionDocument> {
         self.docs.iter().filter(|doc| {
             doc.sequence

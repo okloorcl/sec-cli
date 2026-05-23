@@ -112,6 +112,8 @@ pub struct ThirteenFHoldingRecord {
     pub class: Option<String>,
     pub cusip: Option<String>,
     pub value_reported: Option<u64>,
+    pub value_scale: String,
+    pub value_usd: Option<u64>,
     pub shares: Option<f64>,
     pub share_type: Option<String>,
     pub put_call: Option<String>,
@@ -124,6 +126,46 @@ pub struct ThirteenFHoldingRecord {
     pub document_sequence: Option<String>,
     pub document_description: Option<String>,
     pub source_url: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ThirteenFReportRecord {
+    pub accession: String,
+    pub cik: u64,
+    pub manager: String,
+    pub filing_date: String,
+    pub report_date: Option<String>,
+    pub report_calendar_or_quarter: Option<String>,
+    pub report_type: Option<String>,
+    pub other_included_managers_count: Option<u64>,
+    pub total_holdings_reported: Option<u64>,
+    pub total_value_reported: Option<u64>,
+    pub value_scale: String,
+    pub total_value_usd: Option<u64>,
+    pub filing_manager_name: Option<String>,
+    pub filing_manager_city: Option<String>,
+    pub filing_manager_state_or_country: Option<String>,
+    pub filing_manager_zipcode: Option<String>,
+    pub signature_name: Option<String>,
+    pub signature_title: Option<String>,
+    pub signature_phone: Option<String>,
+    pub signature_city: Option<String>,
+    pub signature_state_or_country: Option<String>,
+    pub signature_date: Option<String>,
+    pub additional_information: Option<String>,
+    pub other_managers: Vec<ThirteenFOtherManagerRecord>,
+    pub document: Option<String>,
+    pub document_sequence: Option<String>,
+    pub document_description: Option<String>,
+    pub source_url: String,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct ThirteenFOtherManagerRecord {
+    pub sequence_number: Option<u64>,
+    pub cik: Option<String>,
+    pub name: Option<String>,
+    pub form13f_file_number: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

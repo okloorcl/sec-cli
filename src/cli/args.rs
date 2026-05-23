@@ -32,6 +32,9 @@ pub(crate) enum Command {
     /// Parse 13F institutional holdings information tables.
     #[command(name = "13f")]
     ThirteenF(ThirteenFArgs),
+    /// Parse 13F cover, summary, signature, and manager metadata.
+    #[command(name = "13f-summary")]
+    ThirteenFSummary(ThirteenFArgs),
     /// Parse a supported filing form through the unified parser pipeline.
     Parse(ParseArgs),
     /// List supported structured form parsers.

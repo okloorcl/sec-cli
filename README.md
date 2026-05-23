@@ -9,6 +9,7 @@ sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
 sec form4 --ticker AAPL --latest 3
 sec 13f --cik 1067983 --latest 1
+sec 13f-summary --cik 1067983 --latest 1
 sec parse --ticker AAPL --form 4 --latest 1
 sec forms --pretty
 ```
@@ -26,6 +27,7 @@ This is an early MVP. The first implementation focuses on:
 - Searching filing submission text with snippets
 - Parsing Form 4 insider ownership transactions
 - Parsing 13F-HR information-table holdings
+- Parsing 13F-HR cover, summary, signature, and manager metadata
 - Returning JSON arrays or JSONL records
 - Caching SEC responses locally
 
@@ -190,7 +192,9 @@ Each transaction includes:
 
 ### 13f
 
-Parse 13F-HR information table holdings.
+Parse 13F-HR information-table holdings. Values include both the SEC-reported
+number and a normalized USD value because older 13F filings reported values in
+thousands while modern XML filings report dollars.
 
 ```bash
 sec 13f --cik 1067983 --latest 1 --limit 20 --pretty
@@ -206,11 +210,38 @@ Each holding includes:
 - `class`
 - `cusip`
 - `value_reported`
+- `value_scale`
+- `value_usd`
 - `shares`
 - `investment_discretion`
 - `voting_sole`
 - `voting_shared`
 - `voting_none`
+- `source_url`
+
+### 13f-summary
+
+Parse the 13F primary document: report metadata, summary totals, signature, and
+included manager information.
+
+```bash
+sec 13f-summary --cik 1067983 --latest 1 --pretty
+sec 13f-summary --ticker BRK-B --latest 4 --jsonl
+```
+
+Each report summary includes:
+
+- `accession`
+- `manager`
+- `report_date`
+- `report_type`
+- `total_holdings_reported`
+- `total_value_reported`
+- `value_scale`
+- `total_value_usd`
+- `filing_manager_name`
+- `signature_name`
+- `other_managers`
 - `source_url`
 
 ### parse

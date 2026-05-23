@@ -125,6 +125,21 @@ pub(crate) async fn run() -> Result<()> {
             }
             print_records(&holdings, output)?;
         }
+        Command::ThirteenFSummary(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let mut reports = client
+                .thirteenf_reports(ThirteenFQuery {
+                    cik,
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                })
+                .await?;
+            if let Some(limit) = args.limit {
+                reports.truncate(limit);
+            }
+            print_records(&reports, output)?;
+        }
         Command::Parse(args) => {
             let output = output_mode(args.jsonl, args.pretty);
             let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
