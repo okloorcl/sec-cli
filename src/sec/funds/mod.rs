@@ -11,8 +11,10 @@ use crate::sec::{
         FilingQuery, FilingRecord, FundDisclosureQuery, FundDisclosureRecord, FundExcerptRecord,
         FundHoldingRecord, FundProxyVoteRecord,
     },
-    parsers::xml::{XmlEvent, parse_f64, read_xml},
-    utils::truncate_utf8,
+    parsers::{
+        text_helpers,
+        xml::{XmlEvent, parse_f64, read_xml},
+    },
 };
 
 const FUND_FORMS: &[&str] = &[
@@ -296,15 +298,7 @@ fn assign_vote_field(vote: &mut FundProxyVoteRecord, name: &str, value: &str) {
 }
 
 fn capture_label(text: &str, label: &str) -> Option<String> {
-    let pattern = format!(
-        r"(?i)\b{}\b\s*[:\-]\s*([^\n]{{2,120}})",
-        regex::escape(label)
-    );
-    Regex::new(&pattern)
-        .ok()?
-        .captures(text)
-        .and_then(|capture| capture.get(1))
-        .and_then(|m| clean(m.as_str()))
+    text_helpers::capture_label(text, label)
 }
 
 fn capture_period(text: &str) -> Option<String> {
@@ -319,25 +313,21 @@ fn capture_period(text: &str) -> Option<String> {
 }
 
 fn excerpt(text: &str, title: &str, limit_bytes: Option<usize>) -> Option<FundExcerptRecord> {
-    let start = section_start(text, title)?;
-    let end = next_section_start(text, start + title.len()).unwrap_or(text.len());
-    let content_full = text[start..end].trim();
-    if content_full.len() < title.len() + 12 {
-        return None;
-    }
-    let (content, truncated) = truncate_utf8(content_full, limit_bytes.or(Some(1200)));
+    let start = text_helpers::section_start(text, title, 0)?;
+    let excerpt = text_helpers::excerpt_from_range(
+        text,
+        title,
+        start,
+        next_section_start(text, start + title.len()),
+        limit_bytes,
+    )?;
     Some(FundExcerptRecord {
         title: title.to_string(),
-        byte_length: content_full.len(),
-        returned_bytes: content.len(),
-        truncated,
-        content,
+        byte_length: excerpt.byte_length,
+        returned_bytes: excerpt.returned_bytes,
+        truncated: excerpt.truncated,
+        content: excerpt.content,
     })
-}
-
-fn section_start(text: &str, title: &str) -> Option<usize> {
-    let pattern = format!(r"(?i)\b{}\b", regex::escape(title));
-    Regex::new(&pattern).ok()?.find(text).map(|m| m.start())
 }
 
 fn next_section_start(text: &str, from: usize) -> Option<usize> {
@@ -351,8 +341,7 @@ fn next_section_start(text: &str, from: usize) -> Option<usize> {
 }
 
 fn clean(value: &str) -> Option<String> {
-    let cleaned = value.split_whitespace().collect::<Vec<_>>().join(" ");
-    (!cleaned.is_empty()).then_some(cleaned)
+    text_helpers::clean_option(value)
 }
 
 fn parse_bool(value: &str) -> Option<bool> {

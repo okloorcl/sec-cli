@@ -8,6 +8,7 @@ use crate::sec::{
     documents::{DocumentSet, SubmissionDocument, read::plain_text},
     edgar::accession_document_url,
     models::{FilingQuery, FilingRecord, Schedule13Query, Schedule13Record},
+    parsers::text_helpers,
 };
 
 impl SecClient {
@@ -393,15 +394,13 @@ fn parse_number(value: &str) -> Option<f64> {
 }
 
 fn clean_value(value: &str) -> String {
-    value
+    let trimmed = value
         .split('|')
         .next()
         .unwrap_or(value)
         .trim()
-        .trim_matches([':', '.', ';', ',', '(', ')'])
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
+        .trim_matches([':', '.', ';', ',', '(', ')']);
+    text_helpers::clean_text(trimmed)
 }
 
 fn clean_signature(value: &str) -> String {

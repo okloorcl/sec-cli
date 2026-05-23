@@ -11,6 +11,7 @@ use crate::sec::{
         FilingQuery, FilingRecord, HtmlTableRecord, ProxyProposalRecord, ProxyQuery,
         ProxyStatementRecord, ProxyTableRecord,
     },
+    parsers::text_helpers,
     tables::extract_html_tables,
 };
 
@@ -412,7 +413,7 @@ fn push_unique(values: &mut Vec<String>, value: String) {
 }
 
 fn clean_text(value: &str) -> String {
-    value.split_whitespace().collect::<Vec<_>>().join(" ")
+    text_helpers::clean_text(value)
 }
 
 #[cfg(test)]

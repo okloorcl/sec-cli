@@ -10,7 +10,7 @@ use crate::sec::{
     models::{
         FilingQuery, FilingRecord, ForeignExcerptRecord, ForeignIssuerQuery, ForeignIssuerRecord,
     },
-    utils::truncate_utf8,
+    parsers::text_helpers,
 };
 
 const FOREIGN_FORMS: &[&str] = &["20-F", "20-F/A", "6-K", "6-K/A", "40-F", "40-F/A"];
@@ -165,29 +165,21 @@ fn event_signals(text: &str) -> Vec<String> {
 }
 
 fn excerpt(text: &str, title: &str, limit_bytes: Option<usize>) -> Option<ForeignExcerptRecord> {
-    let start = section_start(text, title)?;
-    let end = next_section_start(text, start + title.len()).unwrap_or(text.len());
-    let content_full = text[start..end].trim();
-    if content_full.len() < title.len() + 12 {
-        return None;
-    }
-    let (content, truncated) = truncate_utf8(content_full, limit_bytes.or(Some(1200)));
+    let start = text_helpers::section_start(text, title, 101)?;
+    let excerpt = text_helpers::excerpt_from_range(
+        text,
+        title,
+        start,
+        next_section_start(text, start + title.len()),
+        limit_bytes,
+    )?;
     Some(ForeignExcerptRecord {
         title: title.to_string(),
-        byte_length: content_full.len(),
-        returned_bytes: content.len(),
-        truncated,
-        content,
+        byte_length: excerpt.byte_length,
+        returned_bytes: excerpt.returned_bytes,
+        truncated: excerpt.truncated,
+        content: excerpt.content,
     })
-}
-
-fn section_start(text: &str, title: &str) -> Option<usize> {
-    let pattern = format!(r"(?i)\b{}\b", regex::escape(title));
-    Regex::new(&pattern)
-        .ok()?
-        .find_iter(text)
-        .map(|m| m.start())
-        .find(|pos| *pos > 100)
 }
 
 fn next_section_start(text: &str, from: usize) -> Option<usize> {
@@ -201,21 +193,11 @@ fn next_section_start(text: &str, from: usize) -> Option<usize> {
 }
 
 fn capture_first(text: &str, pattern: &str) -> Option<String> {
-    Regex::new(pattern)
-        .ok()?
-        .captures(text)
-        .and_then(|capture| capture.get(1))
-        .map(|m| clean_text(m.as_str()))
-        .filter(|value| !value.is_empty())
+    text_helpers::capture_first(text, pattern)
 }
 
 fn contains_ci(text: &str, needle: &str) -> bool {
-    text.to_ascii_lowercase()
-        .contains(&needle.to_ascii_lowercase())
-}
-
-fn clean_text(value: &str) -> String {
-    value.split_whitespace().collect::<Vec<_>>().join(" ")
+    text_helpers::contains_ci(text, needle)
 }
 
 #[cfg(test)]
