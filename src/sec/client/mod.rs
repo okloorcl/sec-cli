@@ -1,7 +1,8 @@
-use std::{collections::HashMap, path::PathBuf, time::Duration};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, de::DeserializeOwned};
+use tokio::sync::Mutex;
 
 use super::{edgar::company_tickers_url, http::EdgarTransport, storage::FileStore};
 
@@ -9,9 +10,10 @@ use super::{edgar::company_tickers_url, http::EdgarTransport, storage::FileStore
 pub struct SecClient {
     transport: EdgarTransport,
     store: FileStore,
+    ticker_cache: Arc<Mutex<Option<Arc<HashMap<String, TickerRecord>>>>>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 struct TickerRecord {
     cik_str: u64,
     ticker: String,
@@ -24,17 +26,29 @@ impl SecClient {
         Ok(Self {
             transport: EdgarTransport::new(identity)?,
             store: FileStore::new(cache_dir)?,
+            ticker_cache: Arc::new(Mutex::new(None)),
         })
     }
 
     pub async fn cik_for_ticker(&self, ticker: &str) -> Result<u64> {
-        let data: HashMap<String, TickerRecord> = self.get_json(&company_tickers_url()).await?;
+        let data = self.company_tickers().await?;
         let needle = ticker.trim().to_ascii_uppercase().replace('.', "-");
 
         data.values()
             .find(|record| record.ticker.eq_ignore_ascii_case(&needle))
             .map(|record| record.cik_str)
             .ok_or_else(|| anyhow!("ticker not found in SEC company_tickers.json"))
+    }
+
+    async fn company_tickers(&self) -> Result<Arc<HashMap<String, TickerRecord>>> {
+        let mut cache = self.ticker_cache.lock().await;
+        if let Some(data) = cache.as_ref() {
+            return Ok(Arc::clone(data));
+        }
+        let data: HashMap<String, TickerRecord> = self.get_json(&company_tickers_url()).await?;
+        let data = Arc::new(data);
+        *cache = Some(Arc::clone(&data));
+        Ok(data)
     }
 
     pub async fn get_text(&self, url: &str) -> Result<String> {
