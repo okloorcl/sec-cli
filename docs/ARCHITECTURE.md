@@ -68,6 +68,7 @@ src/sec/prospectus/                 S-1/F-1/424B prospectus parser
 src/sec/foreign/                    20-F/6-K/40-F foreign issuer parser
 src/sec/funds/                      N-PORT/N-CSR/N-CEN/N-PX/497K/24F-2NT fund disclosure parser
 src/sec/metrics/                    SEC-derived financial metrics and secondary analysis
+src/sec/xbrl/                       XBRL linkbase relationships from EX-101 PRE/CAL/DEF/LAB/SCH
 src/sec/utils.rs                    shared string, legal suffix, and truncation helpers
 src/sec/parsers/xml.rs              streaming XML helpers
 src/sec/parsers/forms/              form-specific parsers
@@ -97,6 +98,7 @@ Examples:
 - `funds`: N-PORT portfolio holdings, N-PX proxy votes, 497K summary prospectus excerpts, 24F-2NT securities-sold notices, N-CSR shareholder reports, and N-CEN fund census data.
 - `proxy`: DEF 14A compensation and governance tables.
 - `schedule13`: SC 13D / SC 13G beneficial ownership.
+- `xbrl`: filing-specific XBRL presentation, calculation, definition, label, and schema attachments.
 
 Not every HTML table needs a separate top-level parser. The right split is:
 

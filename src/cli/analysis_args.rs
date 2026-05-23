@@ -38,6 +38,32 @@ pub(crate) struct MetricsArgs {
     pub(crate) pretty: bool,
 }
 
+#[derive(Args, Debug)]
+pub(crate) struct XbrlLinkbaseArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long, default_value = "10-K")]
+    pub(crate) form: String,
+    #[arg(long)]
+    pub(crate) linkbase: Option<String>,
+    #[arg(long)]
+    pub(crate) role: Option<String>,
+    #[arg(long)]
+    pub(crate) concept: Option<String>,
+    #[arg(long, default_value_t = 1)]
+    pub(crate) latest: usize,
+    #[arg(long)]
+    pub(crate) include_amends: bool,
+    #[arg(long, default_value_t = 200)]
+    pub(crate) limit: usize,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
 #[derive(Clone, Debug, ValueEnum)]
 pub(crate) enum StatementPeriodArg {
     Annual,

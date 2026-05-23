@@ -142,6 +142,18 @@ pub struct HtmlTableQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct XbrlLinkbaseQuery {
+    pub cik: u64,
+    pub form: Option<String>,
+    pub latest: usize,
+    pub include_amends: bool,
+    pub linkbase: Option<String>,
+    pub role: Option<String>,
+    pub concept: Option<String>,
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
 pub struct CompanyReportQuery {
     pub cik: u64,
     pub form: Option<String>,

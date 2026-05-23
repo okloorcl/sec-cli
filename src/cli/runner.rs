@@ -4,7 +4,7 @@ use clap_complete::generate;
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
     MetricsQuery, OutputMode, ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery,
-    SecClient, SectionQuery, StatementQuery, ThirteenFQuery,
+    SecClient, SectionQuery, StatementQuery, ThirteenFQuery, XbrlLinkbaseQuery,
     documents::read::{content_for_terminal, validate_doc_args},
     find_matches,
     llm::{LlmConfig, LlmProvider},
@@ -98,6 +98,23 @@ pub(crate) async fn run() -> Result<()> {
                     form: statement_period_form(args.period),
                     unit: args.unit,
                     latest: args.latest,
+                })
+                .await?;
+            print_records(&records, output)?;
+        }
+        Command::XbrlLinks(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let records = client
+                .xbrl_linkbases(XbrlLinkbaseQuery {
+                    cik,
+                    form: Some(args.form),
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                    linkbase: args.linkbase,
+                    role: args.role,
+                    concept: args.concept,
+                    limit: Some(args.limit),
                 })
                 .await?;
             print_records(&records, output)?;

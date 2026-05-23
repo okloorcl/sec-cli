@@ -54,20 +54,21 @@ where
         match reader.read_event()? {
             Event::Start(event) => {
                 flush_text_with_attrs(&mut text_buffer, &mut handle)?;
-                let mut attributes = Vec::new();
-                for attr in event.attributes().with_checks(false) {
-                    let attr = attr?;
-                    attributes.push(XmlAttribute {
-                        name: local_name(attr.key.local_name()),
-                        value: attr
-                            .decoded_and_normalized_value(XmlVersion::Implicit1_0, event.decoder())?
-                            .into_owned(),
-                    });
-                }
+                let attributes = event_attributes(&event)?;
                 handle(XmlEventWithAttrs::Start {
                     name: local_name(event.local_name()),
                     attributes,
                 })?;
+            }
+            Event::Empty(event) => {
+                flush_text_with_attrs(&mut text_buffer, &mut handle)?;
+                let name = local_name(event.local_name());
+                let attributes = event_attributes(&event)?;
+                handle(XmlEventWithAttrs::Start {
+                    name: name.clone(),
+                    attributes,
+                })?;
+                handle(XmlEventWithAttrs::End(name))?;
             }
             Event::End(event) => {
                 flush_text_with_attrs(&mut text_buffer, &mut handle)?;
@@ -125,6 +126,22 @@ pub(crate) fn parse_u64(value: &str) -> Option<u64> {
 
 fn local_name(name: impl AsRef<[u8]>) -> String {
     String::from_utf8_lossy(name.as_ref()).into_owned()
+}
+
+fn event_attributes(
+    event: &quick_xml::events::BytesStart<'_>,
+) -> anyhow::Result<Vec<XmlAttribute>> {
+    let mut attributes = Vec::new();
+    for attr in event.attributes().with_checks(false) {
+        let attr = attr?;
+        attributes.push(XmlAttribute {
+            name: local_name(attr.key.local_name()),
+            value: attr
+                .decoded_and_normalized_value(XmlVersion::Implicit1_0, event.decoder())?
+                .into_owned(),
+        });
+    }
+    Ok(attributes)
 }
 
 fn flush_text<F>(buffer: &mut String, handle: &mut F) -> anyhow::Result<()>

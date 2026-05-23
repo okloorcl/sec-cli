@@ -31,6 +31,7 @@ sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
+sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
 sec company-report --ticker AAPL --form 10-K --topic segment --pretty
 sec proxy --ticker AAPL --latest 1 --pretty
@@ -79,6 +80,7 @@ This is an early MVP. The first implementation focuses on:
 - Building standardized 10-K/10-Q income statement, balance sheet, and cash flow rows from CompanyFacts
 - Calculating source-backed financial metrics such as growth, margins, free cash flow, ROA/ROE, current ratio, and leverage
 - Streaming Inline XBRL facts directly from primary filing HTML
+- Parsing XBRL presentation, calculation, definition, label, and schema linkbase attachments
 - Extracting HTML tables from filing primary documents
 - Parsing deeper 10-K/10-Q company-report topic tables such as segment revenue, geography, debt maturities, obligations, leases, taxes, and repurchases
 - Parsing DEF 14A proxy statements for meeting details, voting proposals, directors, auditors, and executive compensation tables
@@ -219,6 +221,7 @@ Practical rule:
 | SEC EDGAR Full-Text Search / EFTS | `efts`, `full-text`, `global-search` | All-market text-search hits with score, company, CIK, form, dates, accession, document URL | EFTS search records |
 | SEC CompanyFacts JSON | `facts`, `statements`, `metrics`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, derived margins/growth/returns/liquidity/leverage | fact records, financial statement rows, financial metric records, Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
+| XBRL linkbase attachments | `xbrl-links`, `linkbase` | EX-101.PRE/CAL/DEF/LAB/SCH relationships: presentation arcs, calculation weights, definition arcs, labels, schema elements | XBRL linkbase relationship records |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
 | 10-K/10-Q company report primary document | `company-report`, `parse --form "10-K"` | Classified topic tables: segment revenue, geography, revenue disaggregation, debt maturities, contractual obligations, leases, taxes, share repurchases | company report records |
 | DEF 14A proxy statement primary document | `proxy`, `parse --form "DEF 14A"` | Annual meeting date/site, voting proposals, board recommendations, director nominees, auditor, named executive officers, summary compensation table | proxy statement records |
@@ -250,6 +253,7 @@ Output record cheat sheet:
 | Financial statement row | `statements` | `statement`, `line_order`, `line_item`, `value`, `unit`, `fiscal_year`, `fiscal_period` | `accession`, `source_url`, `fact_id` |
 | Financial metric | `metrics` | `metric`, `category`, `value`, `display_value`, `period_end`, `calculation`, `components` | `source_urls`, component `accession`, component `fact_id` |
 | Inline XBRL fact | `ixbrl` | `name`, `context_ref`, `unit_ref`, `scale`, `raw_value`, `numeric_value` | `accession`, `document_url`, `source_url` |
+| XBRL linkbase relationship | `xbrl-links` | `linkbase`, `relationship`, `role`, `parent_concept`, `child_concept`, `concept`, `label`, `order`, `weight` | `accession`, `document_url`, `source_url` |
 | HTML table | `tables` | `title_hint`, `row_count`, `column_count`, `headers`, `rows`, `truncated` | `accession`, `document_url`, `source_url` |
 | Company report topic table | `company-report` | `topics[].topic`, `confidence`, `headers`, `rows`, `matched_table_count`, `scanned_table_count` | `accession`, `document_url`, `source_url` |
 | Proxy statement | `proxy`, `parse --form "DEF 14A"` | `meeting_date`, `proposals`, `director_nominees`, `auditor`, `named_executive_officers`, `summary_compensation_table` | `accession`, `document_url`, `source_url` |
@@ -509,6 +513,7 @@ cargo run --bin sec -- facts --ticker AAPL --concept revenue --form 10-K --lates
 cargo run --bin sec -- statements --ticker AAPL --statement income --period annual --latest 2 --pretty
 cargo run --bin sec -- statements --ticker AAPL --statement cashflow --period quarterly --latest 4 --jsonl
 cargo run --bin sec -- ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --latest 1 --limit 3 --pretty
+cargo run --bin sec -- xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 10 --pretty
 cargo run --bin sec -- tables --ticker AAPL --form 10-K --latest 1 --limit-tables 3 --limit-rows 5 --pretty
 cargo run --bin sec -- foreign --ticker TSM --form 20-F --latest 1 --limit-bytes 800 --pretty
 cargo run --bin sec -- fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 5 --pretty
@@ -745,6 +750,27 @@ Each fact includes:
 - `numeric_value`
 - `document_url`
 - `source_url`
+
+### xbrl-links
+
+Parse XBRL linkbase attachments from complete SEC submissions. This command is
+the low-level foundation for true filing-specific financial statement rendering:
+it exposes the presentation tree, calculation weights, definition arcs, labels,
+and schema elements that are not available in SEC CompanyFacts JSON.
+
+```bash
+sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
+sec xbrl-links --ticker AAPL --form 10-K --linkbase calculation --concept NetIncomeLoss --pretty
+sec linkbase --cik 320193 --form 10-Q --linkbase label --concept Revenue --jsonl
+```
+
+`--linkbase` accepts `presentation`, `calculation`, `definition`, `label`, or
+`schema`. `--concept` matches parent, child, or label concepts and accepts either
+`us-gaap:Revenues` style names or local names such as `Revenues`.
+
+Each relationship includes: `linkbase`, `relationship`, `role`, `arcrole`,
+`parent_concept`, `child_concept`, `concept`, `label`, `label_role`, `order`,
+`weight`, `preferred_label`, `document_url`, and `source_url`.
 
 ### tables
 
@@ -1538,6 +1564,7 @@ Command options:
 | `metrics` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `company-report` | `--ticker` or `--cik` | `--form`, `--topic`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `ixbrl` | `--ticker` or `--cik` | `--form`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `xbrl-links` / `linkbase` | `--ticker` or `--cik` | `--form`, `--linkbase`, `--role`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `tables` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `proxy` | `--ticker` or `--cik` | `--latest`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `prospectus` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-bytes`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |

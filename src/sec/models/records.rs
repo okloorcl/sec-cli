@@ -372,6 +372,33 @@ pub struct InlineXbrlFactRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct XbrlLinkbaseRecord {
+    pub accession: String,
+    pub cik: u64,
+    pub company: String,
+    pub form: String,
+    pub filing_date: String,
+    pub report_date: Option<String>,
+    pub linkbase: String,
+    pub relationship: String,
+    pub role: Option<String>,
+    pub arcrole: Option<String>,
+    pub parent_concept: Option<String>,
+    pub child_concept: Option<String>,
+    pub concept: Option<String>,
+    pub label: Option<String>,
+    pub label_role: Option<String>,
+    pub order: Option<f64>,
+    pub weight: Option<f64>,
+    pub preferred_label: Option<String>,
+    pub document: Option<String>,
+    pub document_sequence: Option<String>,
+    pub document_description: Option<String>,
+    pub document_url: Option<String>,
+    pub source_url: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ThirteenFHoldingRecord {
     pub accession: String,
     pub cik: u64,

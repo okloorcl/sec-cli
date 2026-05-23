@@ -14,6 +14,7 @@ real commands or modules in the repository.
 - [x] Source-backed financial metrics and secondary analysis from CompanyFacts.
 - [x] Financial trend Markdown report over SEC-derived metrics.
 - [x] Inline XBRL streaming parser.
+- [x] XBRL linkbase parser for presentation, calculation, definition, label, and schema attachments.
 - [x] HTML table extraction.
 - [x] SEC complete submission document listing and document reading.
 - [x] SEC filing text search with source snippets.
@@ -50,13 +51,23 @@ real commands or modules in the repository.
 
 ## Planned
 
+- [ ] Presentation-tree financial statement rendering from XBRL linkbases and filing facts.
+- [ ] Calculation-linkbase validation for rendered statements.
+- [ ] Expanded standard concept mapping for 100+ financial statement concepts.
+- [ ] Financial metrics expansion toward 50+ ratios and financial-health scores.
+- [ ] Cross-form 10-K / 10-Q financial statement stitching.
 - [ ] Arrow / Parquet export layer.
 - [ ] Optional bulk archive / offline mode.
 
 ## Suggested Implementation Order
 
-1. Arrow / Parquet export layer.
-2. Optional bulk archive / offline mode.
+1. Presentation-tree statement renderer over `xbrl-links` output.
+2. Calculation-linkbase validation.
+3. Expanded standard concept mapping.
+4. Metrics and financial-health score expansion.
+5. Cross-form statement stitching.
+6. Arrow / Parquet export layer.
+7. Optional bulk archive / offline mode.
 
 ## Completion Rule
 

@@ -31,6 +31,7 @@ sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
+sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
 sec company-report --ticker AAPL --form 10-K --topic segment --pretty
 sec proxy --ticker AAPL --latest 1 --pretty
@@ -77,6 +78,7 @@ sec mcp
 - 从 CompanyFacts 组装标准化 10-K/10-Q 三大表：利润表、资产负债表、现金流量表
 - 基于 SEC CompanyFacts 计算二次分析指标：增长率、利润率、自由现金流、ROA/ROE、流动比率、杠杆
 - 直接从 filing HTML 流式解析 Inline XBRL facts
+- 解析 XBRL presentation、calculation、definition、label 和 schema linkbase 附件
 - 从 filing 主 HTML 抽取表格
 - 深度解析 10-K/10-Q 专题表：segment revenue、geography、debt maturity、contract obligations、lease、tax、share repurchases
 - 解析 DEF 14A 股东大会委托书：会议、投票事项、董事候选人、审计师、高管薪酬表
@@ -212,6 +214,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | SEC EDGAR Full-Text Search / EFTS | `efts`、`full-text`、`global-search` | 全市场全文搜索命中：分数、公司、CIK、form、日期、accession、document URL | EFTS search records |
 | SEC CompanyFacts JSON | `facts`、`statements`、`metrics`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行，以及二次推导的利润率/增长率/回报率/流动性/杠杆 | fact records、financial statement rows、financial metric records、Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | filing HTML 内嵌的 `ix:nonFraction` / `ix:nonNumeric`、context、unit、scale、decimals、原始值 | Inline XBRL fact records |
+| XBRL linkbase 附件 | `xbrl-links`、`linkbase` | EX-101.PRE/CAL/DEF/LAB/SCH 关系：presentation arcs、calculation weights、definition arcs、标签、schema elements | XBRL linkbase relationship records |
 | Filing HTML tables | `tables` | 主 HTML 文档里的表格行，例如薪酬表、分部表、注册证券表、债务表、合同表 | HTML table records |
 | 10-K/10-Q company report 主文档 | `company-report`、`parse --form "10-K"` | 已分类专题表：分部收入、地域收入、收入拆分、债务到期、合同义务、租赁、税、股票回购 | company report records |
 | DEF 14A proxy statement 主文档 | `proxy`、`parse --form "DEF 14A"` | 股东大会日期/地点、投票事项、董事会建议、董事候选人、审计师、NEO、高管薪酬表 | proxy statement records |
@@ -248,6 +251,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | Financial statement row | `statements` | `statement`、`line_order`、`line_item`、`value`、`unit`、`fiscal_year`、`fiscal_period` | `accession`、`source_url`、`fact_id` |
 | Financial metric | `metrics` | `metric`、`category`、`value`、`display_value`、`period_end`、`calculation`、`components` | `source_urls`、component `accession`、component `fact_id` |
 | Inline XBRL fact | `ixbrl` | `name`、`context_ref`、`unit_ref`、`scale`、`raw_value`、`numeric_value` | `accession`、`document_url`、`source_url` |
+| XBRL linkbase relationship | `xbrl-links` | `linkbase`、`relationship`、`role`、`parent_concept`、`child_concept`、`concept`、`label`、`order`、`weight` | `accession`、`document_url`、`source_url` |
 | Company report topic table | `company-report` | `topics[].topic`、`confidence`、`headers`、`rows`、`matched_table_count`、`scanned_table_count` | `accession`、`document_url`、`source_url` |
 | HTML table | `tables` | `title_hint`、`row_count`、`column_count`、`headers`、`rows`、`truncated` | `accession`、`document_url`、`source_url` |
 | Proxy statement | `proxy`、`parse --form "DEF 14A"` | `meeting_date`、`proposals`、`director_nominees`、`auditor`、`named_executive_officers`、`summary_compensation_table` | `accession`、`document_url`、`source_url` |
@@ -487,6 +491,7 @@ cargo run --bin sec -- facts --ticker AAPL --concept revenue --form 10-K --lates
 cargo run --bin sec -- statements --ticker AAPL --statement income --period annual --latest 2 --pretty
 cargo run --bin sec -- statements --ticker AAPL --statement cashflow --period quarterly --latest 4 --jsonl
 cargo run --bin sec -- ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --latest 1 --limit 3 --pretty
+cargo run --bin sec -- xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 10 --pretty
 cargo run --bin sec -- tables --ticker AAPL --form 10-K --latest 1 --limit-tables 3 --limit-rows 5 --pretty
 cargo run --bin sec -- foreign --ticker TSM --form 20-F --latest 1 --limit-bytes 800 --pretty
 cargo run --bin sec -- fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 5 --pretty
@@ -637,6 +642,20 @@ sec ixbrl --cik 320193 --form 10-Q --latest 1 --limit 100 --pretty
 `--concept` 可以写完整概念，例如 `us-gaap:NetIncomeLoss`，也可以只写本地名，例如 `NetIncomeLoss`。
 
 输出字段：`accession`、`fact_type`、`name`、`namespace`、`local_name`、`context_ref`、`unit_ref`、`decimals`、`scale`、`format`、`sign`、`id`、`raw_value`、`value`、`numeric_value`、`document_url`、`source_url`。
+
+### xbrl-links
+
+解析完整 SEC submission 里的 XBRL linkbase 附件。这是未来做“真正 filing 专属财报树渲染”的底座：CompanyFacts 只给事实值，linkbase 才告诉你 presentation tree、calculation 权重、definition 关系、人类可读 label 和 schema element。
+
+```bash
+sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
+sec xbrl-links --ticker AAPL --form 10-K --linkbase calculation --concept NetIncomeLoss --pretty
+sec linkbase --cik 320193 --form 10-Q --linkbase label --concept Revenue --jsonl
+```
+
+`--linkbase` 支持：`presentation`、`calculation`、`definition`、`label`、`schema`。`--concept` 会匹配 parent、child 或 label concept，可以写 `us-gaap:Revenues`，也可以只写 `Revenues`。
+
+输出字段：`linkbase`、`relationship`、`role`、`arcrole`、`parent_concept`、`child_concept`、`concept`、`label`、`label_role`、`order`、`weight`、`preferred_label`、`document_url`、`source_url`。
 
 ### tables
 
@@ -1031,6 +1050,7 @@ MCP tool 参数示例：
 | `metrics` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `company-report` | `--ticker` 或 `--cik` | `--form`、`--topic`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `ixbrl` | `--ticker` 或 `--cik` | `--form`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
+| `xbrl-links` / `linkbase` | `--ticker` 或 `--cik` | `--form`、`--linkbase`、`--role`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `tables` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `proxy` | `--ticker` 或 `--cik` | `--latest`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `prospectus` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-bytes`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |

@@ -25,6 +25,7 @@ pub mod statements;
 pub mod storage;
 pub mod tables;
 pub(crate) mod utils;
+pub mod xbrl;
 
 pub use client::SecClient;
 pub use edgar::accession_text_url;
@@ -33,7 +34,7 @@ pub use models::{
     EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
     FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery, OutputMode, ParseQuery,
     ProspectusQuery, ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery,
-    StatementQuery, ThirteenFQuery,
+    StatementQuery, ThirteenFQuery, XbrlLinkbaseQuery,
 };
 pub use models::{DailyFilingRecord, EftsSearchRecord};
 pub use models::{FinancialMetricRecord, MetricComponentRecord};
