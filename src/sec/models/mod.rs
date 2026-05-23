@@ -3,7 +3,7 @@ pub mod records;
 
 pub use queries::{
     DocumentQuery, DocumentReadQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery,
-    SearchQuery, SectionQuery, ThirteenFQuery,
+    ReportQuery, SearchQuery, SectionQuery, ThirteenFQuery,
 };
 pub use records::{
     DocumentContentRecord, DocumentRecord, FactRecord, FilingRecord, Form4FootnoteRecord,

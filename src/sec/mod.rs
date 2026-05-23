@@ -7,6 +7,7 @@ pub mod output;
 pub mod parsers;
 pub mod pipeline;
 pub mod registry;
+pub mod reports;
 pub mod search;
 pub mod sections;
 pub mod storage;
@@ -15,8 +16,9 @@ pub use client::SecClient;
 pub use edgar::accession_text_url;
 pub use models::{
     DocumentQuery, DocumentReadQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery,
-    SearchQuery, SectionQuery, ThirteenFQuery,
+    ReportQuery, SearchQuery, SectionQuery, ThirteenFQuery,
 };
 pub use output::print_records;
 pub use registry::supported_parsers;
+pub use reports::ReportKind;
 pub use search::find_matches;

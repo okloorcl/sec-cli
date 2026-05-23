@@ -59,6 +59,16 @@ pub struct SectionQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct ReportQuery {
+    pub cik: u64,
+    pub subject: String,
+    pub latest: usize,
+    pub limit: usize,
+    pub include_amends: bool,
+    pub limit_bytes: usize,
+}
+
+#[derive(Debug, Clone)]
 pub struct Form4Query {
     pub cik: u64,
     pub latest: usize,

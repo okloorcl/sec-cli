@@ -1,5 +1,5 @@
 use chrono::NaiveDate;
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Parser, Debug)]
 #[command(name = "sec")]
@@ -27,6 +27,8 @@ pub(crate) enum Command {
     Search(SearchArgs),
     /// Extract a named 10-K/10-Q section from a primary filing document.
     Section(SectionArgs),
+    /// Generate a source-backed Markdown report.
+    Report(ReportArgs),
     /// List documents and attachments inside SEC complete submissions.
     Docs(DocsArgs),
     /// Read one document from a complete SEC submission.
@@ -140,6 +142,31 @@ pub(crate) struct SectionArgs {
     pub(crate) jsonl: bool,
     #[arg(long)]
     pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct ReportArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long, value_enum)]
+    pub(crate) kind: ReportKindArg,
+    #[arg(long, default_value_t = 5)]
+    pub(crate) latest: usize,
+    #[arg(long, default_value_t = 10)]
+    pub(crate) limit: usize,
+    #[arg(long)]
+    pub(crate) include_amends: bool,
+    #[arg(long, default_value_t = 4000)]
+    pub(crate) limit_bytes: usize,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub(crate) enum ReportKindArg {
+    Insider,
+    Portfolio,
+    Risk,
 }
 
 #[derive(Args, Debug)]

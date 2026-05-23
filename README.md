@@ -2,11 +2,26 @@
 
 Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 
+[![Rust](https://img.shields.io/badge/Rust-2024-orange)](https://www.rust-lang.org/)
+[![SEC EDGAR](https://img.shields.io/badge/Data-SEC%20EDGAR-blue)](https://www.sec.gov/edgar)
+[![Output](https://img.shields.io/badge/Output-JSON%20%7C%20JSONL%20%7C%20Markdown-green)](#output-modes)
+[![Agent Ready](https://img.shields.io/badge/Agent-ready-111827)](#agent-workflows)
+[![中文](https://img.shields.io/badge/README-中文-red)](README.zh-CN.md)
+
+| Core | What it gives you |
+| --- | --- |
+| Insider activity | Form 4 owner, role, transaction code, shares, price, value, footnotes, signatures |
+| Institutional holdings | 13F holdings, portfolio summary, top positions, quarter-over-quarter changes |
+| Company disclosure | 10-K/10-Q risk factors, MD&A, filing search, exact source snippets |
+| Agent interface | Stable JSON/JSONL, source URLs, accession numbers, document metadata |
+
 ```bash
 sec filings --ticker AAPL --form 10-K
 sec facts --ticker AAPL --concept revenue
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
+sec report --ticker AAPL --kind risk
+sec report --cik 1067983 --kind portfolio --limit 10
 sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
 sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000
 sec form4 --ticker AAPL --latest 3
@@ -31,6 +46,7 @@ This is an early MVP. The first implementation focuses on:
 - Querying SEC CompanyFacts for source-backed XBRL facts
 - Searching filing submission text with snippets
 - Extracting common 10-K/10-Q sections such as business, risk factors, and MD&A
+- Generating source-backed Markdown reports for insider activity, 13F portfolios, and risk review
 - Listing and reading individual SEC submission documents
 - Parsing Form 4 insider ownership transactions
 - Summarizing Form 4 reports, owners, signatures, footnotes, and net activity
@@ -43,6 +59,26 @@ This is an early MVP. The first implementation focuses on:
 Longer term, the project aims to grow into a Rust-powered SEC disclosure engine:
 more form-specific parsers, XBRL streaming parsing, table extraction,
 Parquet/Arrow exports, and agent-native query workflows.
+
+## What You Can Answer Accurately
+
+These are useful, source-backed questions that work today:
+
+| Question | Command |
+| --- | --- |
+| What did insiders recently buy or sell? | `sec form4 --ticker AAPL --latest 5 --pretty` |
+| Which executives/directors filed Form 4s and what was net activity? | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
+| What is Berkshire Hathaway's latest 13F portfolio? | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
+| What changed between the latest two 13F filings? | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
+| What are a company's latest 10-K risk factors? | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
+| Where did the answer come from? | Every structured result includes `source_url`; document results also include `document_url` |
+
+`edgartools` already has Python objects, rich displays, DataFrame exports, AI
+context helpers, and many filing-type parsers. `sec-cli` is deliberately
+different: it is a standalone Rust CLI optimized for automation and agents. The
+parity goal is to cover the useful structured outputs edgartools exposes, while
+adding stable command-line schemas, precise exit behavior, source URLs on every
+record, and Markdown reports that can be dropped directly into an analyst note.
 
 ## Architecture
 
@@ -190,6 +226,23 @@ Each section includes:
 - `document_url`
 - `source_url`
 - `content`
+
+### report
+
+Generate a source-backed Markdown report for a human analyst or an AI agent.
+Reports reuse the same structured parsers used by the JSON commands.
+
+```bash
+sec report --ticker AAPL --kind insider --latest 5 --limit 10
+sec report --cik 1067983 --kind portfolio --limit 10
+sec report --ticker AAPL --kind risk --limit-bytes 4000
+```
+
+Report kinds:
+
+- `insider`: Form 4 summary table with owner, role, net shares, value, and SEC source
+- `portfolio`: 13F summary, top holdings, visual bars, and largest position changes
+- `risk`: 10-K risk factor and MD&A excerpts with source links
 
 ### docs
 
@@ -447,6 +500,35 @@ List supported structured parser families.
 sec forms --pretty
 ```
 
+## Options Reference
+
+Global options:
+
+| Option | Meaning |
+| --- | --- |
+| `--identity <TEXT>` | SEC request identity / user agent. Prefer a real name and email. |
+| `--cache-dir <PATH>` | Override the local response cache directory. |
+
+Command options:
+
+| Command | Required selector | Important options |
+| --- | --- | --- |
+| `filings` | `--ticker` or `--cik` | `--form`, `--latest`, `--from`, `--to`, `--include-amends`, `--jsonl`, `--pretty` |
+| `facts` | `--ticker` or `--cik`, `--concept` | `--form`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
+| `search` | `--ticker` or `--cik`, `--query` | `--form`, `--latest`, `--context`, `--include-amends`, `--jsonl`, `--pretty` |
+| `section` | `--ticker` or `--cik`, `--item` | `--form`, `--latest`, `--accession`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
+| `report` | `--ticker` or `--cik`, `--kind` | `--latest`, `--limit`, `--limit-bytes`, `--include-amends` |
+| `docs` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `doc` | `--ticker` or `--cik` | `--form`, `--latest`, `--accession`, `--filename`, `--sequence`, `--primary`, `--limit-bytes`, `--raw`, `--text`, `--jsonl`, `--pretty` |
+| `form4` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `form4-summary` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f-aggregate` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f-diff` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f-summary` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `parse` | `--ticker` or `--cik`, `--form` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `forms` | none | `--jsonl`, `--pretty` |
+
 ## Output Modes
 
 Default output is compact JSON:
@@ -466,6 +548,25 @@ JSONL:
 ```bash
 sec facts --ticker AAPL --concept revenue --jsonl
 ```
+
+## Agent Workflows
+
+For AI agents, prefer JSON/JSONL commands when the next step is computation,
+filtering, or citation, and prefer `sec report` when the next step is a human
+readable briefing.
+
+Useful patterns:
+
+```bash
+sec form4-summary --ticker AAPL --latest 5 --pretty
+sec 13f-diff --cik 1067983 --limit 20 --jsonl
+sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 12000 --pretty
+sec report --ticker AAPL --kind risk > aapl-risk.md
+```
+
+Every result is designed to preserve traceability with fields like `accession`,
+`document`, `section`, `fact_id`, `source_url`, and `document_url` where
+applicable.
 
 ## Cache
 

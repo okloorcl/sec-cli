@@ -5,11 +5,11 @@ use clap::Parser;
 use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery,
-    SearchQuery, SecClient, SectionQuery, ThirteenFQuery, accession_text_url, find_matches,
-    print_records, supported_parsers,
+    ReportKind, ReportQuery, SearchQuery, SecClient, SectionQuery, ThirteenFQuery,
+    accession_text_url, find_matches, print_records, supported_parsers,
 };
 
-use super::args::{Cli, Command};
+use super::args::{Cli, Command, ReportKindArg};
 
 pub(crate) async fn run() -> Result<()> {
     let cli = Cli::parse();
@@ -98,6 +98,28 @@ pub(crate) async fn run() -> Result<()> {
                 })
                 .await?;
             print_records(&records, output)?;
+        }
+        Command::Report(args) => {
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let subject = args
+                .ticker
+                .clone()
+                .map(|ticker| ticker.to_ascii_uppercase())
+                .unwrap_or_else(|| cik.to_string());
+            let report = client
+                .markdown_report(
+                    report_kind(args.kind),
+                    ReportQuery {
+                        cik,
+                        subject,
+                        latest: args.latest,
+                        limit: args.limit,
+                        include_amends: args.include_amends,
+                        limit_bytes: args.limit_bytes,
+                    },
+                )
+                .await?;
+            println!("{report}");
         }
         Command::Docs(args) => {
             let output = output_mode(args.jsonl, args.pretty);
@@ -251,6 +273,14 @@ pub(crate) async fn run() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn report_kind(kind: ReportKindArg) -> ReportKind {
+    match kind {
+        ReportKindArg::Insider => ReportKind::Insider,
+        ReportKindArg::Portfolio => ReportKind::Portfolio,
+        ReportKindArg::Risk => ReportKind::Risk,
+    }
 }
 
 fn output_mode(jsonl: bool, pretty: bool) -> OutputMode {
