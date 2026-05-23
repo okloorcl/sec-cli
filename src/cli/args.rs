@@ -1,6 +1,7 @@
 use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+use super::analysis_args::{MetricsArgs, StatementsArgs};
 use super::disclosure_args::{ForeignArgs, FundArgs, ProspectusArgs};
 
 #[derive(Parser, Debug)]
@@ -27,6 +28,8 @@ pub(crate) enum Command {
     Facts(FactsArgs),
     /// Build standardized financial statement rows from SEC CompanyFacts.
     Statements(StatementsArgs),
+    /// Calculate source-backed financial ratios and growth metrics.
+    Metrics(MetricsArgs),
     /// Stream Inline XBRL facts from primary filing HTML.
     Ixbrl(InlineXbrlArgs),
     /// Extract HTML tables from primary filing documents.
@@ -136,33 +139,6 @@ pub(crate) struct FactsArgs {
     pub(crate) jsonl: bool,
     #[arg(long)]
     pub(crate) pretty: bool,
-}
-
-#[derive(Args, Debug)]
-pub(crate) struct StatementsArgs {
-    #[arg(long, conflicts_with = "cik")]
-    pub(crate) ticker: Option<String>,
-    #[arg(long)]
-    pub(crate) cik: Option<u64>,
-    #[arg(long, default_value = "all")]
-    pub(crate) statement: String,
-    #[arg(long, value_enum, default_value_t = StatementPeriodArg::Annual)]
-    pub(crate) period: StatementPeriodArg,
-    #[arg(long)]
-    pub(crate) unit: Option<String>,
-    #[arg(long, default_value_t = 4)]
-    pub(crate) latest: usize,
-    #[arg(long)]
-    pub(crate) jsonl: bool,
-    #[arg(long)]
-    pub(crate) pretty: bool,
-}
-
-#[derive(Clone, Debug, ValueEnum)]
-pub(crate) enum StatementPeriodArg {
-    Annual,
-    Quarterly,
-    All,
 }
 
 #[derive(Args, Debug)]

@@ -10,6 +10,7 @@ real commands or modules in the repository.
 - [x] SEC submissions JSON filing metadata.
 - [x] SEC CompanyFacts XBRL fact lookup.
 - [x] 10-K / 10-Q financial statements builder.
+- [x] Source-backed financial metrics and secondary analysis from CompanyFacts.
 - [x] Inline XBRL streaming parser.
 - [x] HTML table extraction.
 - [x] SEC complete submission document listing and document reading.
@@ -38,13 +39,15 @@ real commands or modules in the repository.
 
 ## Planned
 
+- [ ] Financial trend report that summarizes multi-year metrics in Markdown.
 - [ ] Arrow / Parquet export layer.
 - [ ] Optional bulk archive / offline mode.
 
 ## Suggested Implementation Order
 
-1. Arrow / Parquet export layer.
-2. Optional bulk archive / offline mode.
+1. Financial trend report that summarizes multi-year metrics in Markdown.
+2. Arrow / Parquet export layer.
+3. Optional bulk archive / offline mode.
 
 ## Completion Rule
 

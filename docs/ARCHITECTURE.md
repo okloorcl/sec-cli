@@ -64,6 +64,7 @@ src/sec/proxy/                      DEF 14A proxy statement parser
 src/sec/prospectus/                 S-1/F-1/424B prospectus parser
 src/sec/foreign/                    20-F/6-K/40-F foreign issuer parser
 src/sec/funds/                      N-PORT/N-CSR/N-CEN fund disclosure parser
+src/sec/metrics/                    SEC-derived financial metrics and secondary analysis
 src/sec/utils.rs                    shared string, legal suffix, and truncation helpers
 src/sec/parsers/xml.rs              streaming XML helpers
 src/sec/parsers/forms/              form-specific parsers
@@ -107,6 +108,7 @@ Primary SEC sources:
 - `company_tickers.json`: ticker/name to CIK reference.
 - `submissions/CIK##########.json`: recent and historical filing metadata.
 - `companyfacts/CIK##########.json`: normalized XBRL facts by concept.
+- Financial metrics are derived locally from CompanyFacts statement rows; no paid market-data API is used.
 - `Archives/edgar/data/.../*.txt`: complete submission text with all documents.
 - Filing index pages and archive attachments: primary documents, exhibits, XBRL files.
 - Future daily index feeds: high-volume discovery and monitoring.
@@ -157,6 +159,7 @@ The current codebase already has these boundaries in place:
 - `documents`: SEC SGML container scanning and attachment selection.
 - `llm`: protocol adapters for OpenAI-compatible and Anthropic-compatible models.
 - `resolve`: public-name resolution that turns model candidates into SEC-verified records.
+- `metrics`: secondary analysis over CompanyFacts-derived statement rows.
 - `parsers`: reusable XML parser helpers and form-specific regulatory parsers.
 - `models`: query DTOs and stable output record schemas.
 - `registry`: parser discovery and supported form families.
@@ -169,6 +172,6 @@ not talk directly to `reqwest`, file caches, or parser internals.
 
 ## Near-Term Build Order
 
-1. Expand MCP tools for high-value first-class workflows such as Form 4, 13F diff, documents, and Markdown reports.
+1. Add a financial trend Markdown report over the metrics layer.
 2. Split storage into a trait-backed cache/store layer if an alternate backend is needed.
 3. Add export layer for Arrow/Parquet.

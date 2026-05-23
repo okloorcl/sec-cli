@@ -2,16 +2,17 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
-    DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query, OutputMode,
-    ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery, SecClient, SectionQuery,
-    StatementQuery, ThirteenFQuery, accession_text_url, find_matches,
+    DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
+    MetricsQuery, OutputMode, ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery,
+    SecClient, SectionQuery, StatementQuery, ThirteenFQuery, accession_text_url, find_matches,
     llm::{LlmConfig, LlmProvider},
     print_records,
     resolve::{ResolveInput, resolve_verified_13f_cik, resolve_verified_13f_manager},
     supported_parsers,
 };
 
-use super::args::{Cli, Command, LlmProviderArg, ReportKindArg, ResolveArgs, StatementPeriodArg};
+use super::analysis_args::StatementPeriodArg;
+use super::args::{Cli, Command, LlmProviderArg, ReportKindArg, ResolveArgs};
 use super::handlers;
 use super::identity::resolve_identity;
 
@@ -58,6 +59,19 @@ pub(crate) async fn run() -> Result<()> {
                 .financial_statements(StatementQuery {
                     cik,
                     statement: args.statement,
+                    form: statement_period_form(args.period),
+                    unit: args.unit,
+                    latest: args.latest,
+                })
+                .await?;
+            print_records(&records, output)?;
+        }
+        Command::Metrics(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let records = client
+                .financial_metrics(MetricsQuery {
+                    cik,
                     form: statement_period_form(args.period),
                     unit: args.unit,
                     latest: args.latest,

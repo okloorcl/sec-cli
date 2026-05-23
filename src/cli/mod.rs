@@ -1,3 +1,4 @@
+mod analysis_args;
 pub(crate) mod args;
 mod disclosure_args;
 mod handlers;

@@ -18,12 +18,14 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 | Company disclosure | 8-K events, 10-K/10-Q risk factors, MD&A, foreign issuer 20-F/6-K/40-F, filing search |
 | Fund disclosure | N-PORT holdings, N-CSR shareholder reports, N-CEN annual fund census metadata |
 | Capital markets | S-1/F-1/424B prospectus terms, IPO signals, proceeds, risks, underwriters |
+| Financial analysis | SEC-derived margins, growth, free cash flow, ROA/ROE, liquidity, leverage |
 | Agent interface | Stable JSON/JSONL, LLM name resolution, source URLs, accession numbers |
 
 ```bash
 sec filings --ticker AAPL --form 10-K
 sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
+sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
 sec proxy --ticker AAPL --latest 1 --pretty
@@ -63,6 +65,7 @@ This is an early MVP. The first implementation focuses on:
 - Finding company filings from SEC submissions data
 - Querying SEC CompanyFacts for source-backed XBRL facts
 - Building standardized 10-K/10-Q income statement, balance sheet, and cash flow rows from CompanyFacts
+- Calculating source-backed financial metrics such as growth, margins, free cash flow, ROA/ROE, current ratio, and leverage
 - Streaming Inline XBRL facts directly from primary filing HTML
 - Extracting HTML tables from filing primary documents
 - Parsing DEF 14A proxy statements for meeting details, voting proposals, directors, auditors, and executive compensation tables
@@ -102,6 +105,7 @@ These are useful, source-backed questions that work today:
 | Which 8-K events did a company recently report? | `sec 8k --ticker AAPL --latest 5 --pretty` |
 | Did a company file earnings-related 8-K events? | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
 | What are the latest standardized financial statement rows? | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
+| What are the latest SEC-derived financial ratios and growth metrics? | `sec metrics --ticker AAPL --period annual --latest 4 --pretty` |
 | What Inline XBRL facts are embedded in the filing HTML? | `sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --pretty` |
 | What tables are embedded in a filing? | `sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty` |
 | What is in the latest proxy statement? | `sec proxy --ticker AAPL --latest 1 --pretty` |
@@ -127,6 +131,7 @@ Company-disclosure commands use `--ticker` or `--cik`:
 - `filings`
 - `facts`
 - `statements`
+- `metrics`
 - `search`
 - `section`
 - `docs`
@@ -189,7 +194,7 @@ Practical rule:
 | Data/source | Commands | What it contains | Main output table |
 | --- | --- | --- | --- |
 | SEC submissions JSON | `filings` | Filing list, dates, accession numbers, primary document names | filing records |
-| SEC CompanyFacts JSON | `facts`, `statements` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines | fact records, financial statement rows |
+| SEC CompanyFacts JSON | `facts`, `statements`, `metrics` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, derived margins/growth/returns/liquidity/leverage | fact records, financial statement rows, financial metric records |
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
 | DEF 14A proxy statement primary document | `proxy`, `parse --form "DEF 14A"` | Annual meeting date/site, voting proposals, board recommendations, director nominees, auditor, named executive officers, summary compensation table | proxy statement records |
@@ -216,6 +221,7 @@ Output record cheat sheet:
 | Filing | `filings` | `company`, `form`, `filing_date`, `report_date`, `primary_document` | `accession`, `source_url`, `text_url` |
 | Fact | `facts` | `concept`, `label`, `value`, `unit`, `fy`, `fp`, `filed` | `accession`, `source_url`, `fact_id` |
 | Financial statement row | `statements` | `statement`, `line_order`, `line_item`, `value`, `unit`, `fiscal_year`, `fiscal_period` | `accession`, `source_url`, `fact_id` |
+| Financial metric | `metrics` | `metric`, `category`, `value`, `display_value`, `period_end`, `calculation`, `components` | `source_urls`, component `accession`, component `fact_id` |
 | Inline XBRL fact | `ixbrl` | `name`, `context_ref`, `unit_ref`, `scale`, `raw_value`, `numeric_value` | `accession`, `document_url`, `source_url` |
 | HTML table | `tables` | `title_hint`, `row_count`, `column_count`, `headers`, `rows`, `truncated` | `accession`, `document_url`, `source_url` |
 | Proxy statement | `proxy`, `parse --form "DEF 14A"` | `meeting_date`, `proposals`, `director_nominees`, `auditor`, `named_executive_officers`, `summary_compensation_table` | `accession`, `document_url`, `source_url` |
@@ -252,6 +258,7 @@ The code is intentionally split by responsibility:
 - `storage`: local byte cache/store
 - `client`: SEC domain facade, ticker-to-CIK lookup
 - `edgar`: SEC data sources, submissions, facts, archive URLs
+- `metrics`: source-backed financial ratios and growth analysis
 - `documents`: complete-submission `.txt` splitting and attachment selection
 - `llm`: OpenAI-compatible and Anthropic-compatible model clients
 - `resolve`: LLM candidate resolution plus SEC 13F validation
@@ -590,6 +597,39 @@ Each row includes:
 - `accession`
 - `source_url`
 - `fact_id`
+
+### metrics
+
+Calculate source-backed financial metrics from standardized CompanyFacts
+statement rows. This is the first secondary-analysis layer: every metric keeps
+the SEC facts used in `components`, including accession, fact id, and source
+URL.
+
+```bash
+sec metrics --ticker AAPL --period annual --latest 4 --pretty
+sec metrics --ticker AAPL --period quarterly --latest 8 --jsonl
+sec metrics --cik 320193 --period annual --latest 1 --pretty
+```
+
+`--period` accepts:
+
+- `annual`: derive metrics from 10-K facts
+- `quarterly`: derive metrics from 10-Q facts
+- `all`: use any available filing form
+
+Metrics currently include:
+
+- profitability: `gross_margin`, `operating_margin`, `net_margin`
+- growth: `revenue_growth`, `net_income_growth`
+- cash flow: `free_cash_flow`, `free_cash_flow_margin`
+- returns: `return_on_assets`, `return_on_equity`
+- liquidity: `current_ratio`, `cash_to_assets`
+- leverage: `liabilities_to_assets`
+- capital return: `share_repurchases_to_revenue`
+
+Each metric includes: `metric`, `category`, `value`, `display_value`, `unit`,
+`period_end`, `fiscal_year`, `fiscal_period`, `form`, `calculation`,
+`components`, and `source_urls`.
 
 ### ixbrl
 
@@ -1344,6 +1384,7 @@ Command options:
 | `filings` | `--ticker` or `--cik` | `--form`, `--latest`, `--from`, `--to`, `--include-amends`, `--jsonl`, `--pretty` |
 | `facts` | `--ticker` or `--cik`, `--concept` | `--form`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `statements` | `--ticker` or `--cik` | `--statement`, `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
+| `metrics` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `ixbrl` | `--ticker` or `--cik` | `--form`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `tables` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `proxy` | `--ticker` or `--cik` | `--latest`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
