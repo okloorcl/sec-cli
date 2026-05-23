@@ -160,6 +160,7 @@ The current codebase already has these boundaries in place:
 - `llm`: protocol adapters for OpenAI-compatible and Anthropic-compatible models.
 - `resolve`: public-name resolution that turns model candidates into SEC-verified records.
 - `metrics`: secondary analysis over CompanyFacts-derived statement rows.
+- `reports`: Markdown reports for financial trends, insider activity, 13F portfolios, and risk review.
 - `parsers`: reusable XML parser helpers and form-specific regulatory parsers.
 - `models`: query DTOs and stable output record schemas.
 - `registry`: parser discovery and supported form families.
@@ -172,6 +173,5 @@ not talk directly to `reqwest`, file caches, or parser internals.
 
 ## Near-Term Build Order
 
-1. Add a financial trend Markdown report over the metrics layer.
-2. Split storage into a trait-backed cache/store layer if an alternate backend is needed.
-3. Add export layer for Arrow/Parquet.
+1. Split storage into a trait-backed cache/store layer if an alternate backend is needed.
+2. Add export layer for Arrow/Parquet.

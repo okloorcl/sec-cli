@@ -2,11 +2,14 @@ use anyhow::Result;
 
 use crate::sec::{
     client::SecClient,
-    models::{Form4Query, ReportQuery, SectionQuery, ThirteenFQuery},
+    models::{
+        FinancialMetricRecord, Form4Query, MetricsQuery, ReportQuery, SectionQuery, ThirteenFQuery,
+    },
 };
 
 #[derive(Debug, Clone, Copy)]
 pub enum ReportKind {
+    Financial,
     Insider,
     Portfolio,
     Risk,
@@ -15,10 +18,63 @@ pub enum ReportKind {
 impl SecClient {
     pub async fn markdown_report(&self, kind: ReportKind, query: ReportQuery) -> Result<String> {
         match kind {
+            ReportKind::Financial => self.financial_report(query).await,
             ReportKind::Insider => self.insider_report(query).await,
             ReportKind::Portfolio => self.portfolio_report(query).await,
             ReportKind::Risk => self.risk_report(query).await,
         }
+    }
+
+    async fn financial_report(&self, query: ReportQuery) -> Result<String> {
+        let metrics = self
+            .financial_metrics(MetricsQuery {
+                cik: query.cik,
+                form: Some("10-K".to_string()),
+                unit: None,
+                latest: query.latest.max(2),
+            })
+            .await?;
+
+        let mut out = String::new();
+        push_header(
+            &mut out,
+            "Financial Trend Report",
+            &query.subject,
+            query.cik,
+        );
+        out.push_str("## Latest metrics\n\n");
+        out.push_str("| Metric | Category | Value | Period | Calculation | Source |\n");
+        out.push_str("| --- | --- | ---: | --- | --- | --- |\n");
+        for metric in latest_metrics(&metrics).into_iter().take(query.limit) {
+            out.push_str(&format!(
+                "| {} | {} | {} | {} | {} | {} |\n",
+                metric.metric,
+                metric.category,
+                metric_display(metric),
+                opt(metric.period_end.as_deref()),
+                cell(&metric.calculation),
+                first_source_link(metric)
+            ));
+        }
+
+        out.push_str("\n## Trend snapshot\n\n");
+        out.push_str("| Period | Revenue growth | Net margin | FCF margin | ROA | ROE | Current ratio | Liabilities/assets |\n");
+        out.push_str("| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n");
+        for period in metric_periods(&metrics).into_iter().take(query.latest) {
+            out.push_str(&format!(
+                "| {} | {} | {} | {} | {} | {} | {} | {} |\n",
+                period,
+                metric_cell(&metrics, &period, "revenue_growth"),
+                metric_cell(&metrics, &period, "net_margin"),
+                metric_cell(&metrics, &period, "free_cash_flow_margin"),
+                metric_cell(&metrics, &period, "return_on_assets"),
+                metric_cell(&metrics, &period, "return_on_equity"),
+                metric_cell(&metrics, &period, "current_ratio"),
+                metric_cell(&metrics, &period, "liabilities_to_assets")
+            ));
+        }
+        out.push_str("\nUse `sec metrics` for stable JSON with component facts and source URLs.\n");
+        Ok(out)
     }
 
     async fn insider_report(&self, query: ReportQuery) -> Result<String> {
@@ -210,6 +266,55 @@ fn push_section_excerpt(
     }
 }
 
+fn latest_metrics(metrics: &[FinancialMetricRecord]) -> Vec<&FinancialMetricRecord> {
+    let latest_period = metrics
+        .iter()
+        .filter_map(|metric| metric.period_end.as_deref())
+        .max();
+    metrics
+        .iter()
+        .filter(|metric| metric.period_end.as_deref() == latest_period)
+        .collect()
+}
+
+fn metric_periods(metrics: &[FinancialMetricRecord]) -> Vec<String> {
+    let mut periods = metrics
+        .iter()
+        .filter_map(|metric| metric.period_end.clone())
+        .collect::<Vec<_>>();
+    periods.sort();
+    periods.dedup();
+    periods.reverse();
+    periods
+}
+
+fn metric_cell(metrics: &[FinancialMetricRecord], period: &str, metric_name: &str) -> String {
+    metrics
+        .iter()
+        .find(|metric| metric.metric == metric_name && metric.period_end.as_deref() == Some(period))
+        .map(metric_display)
+        .unwrap_or_else(|| "-".to_string())
+}
+
+fn metric_display(metric: &FinancialMetricRecord) -> String {
+    match (metric.unit.as_str(), metric.value) {
+        ("USD", Some(value)) => dollars_f64(value),
+        _ => metric.display_value.clone().unwrap_or_else(|| {
+            metric
+                .value
+                .map_or_else(|| "-".to_string(), |value| format!("{value:.4}"))
+        }),
+    }
+}
+
+fn first_source_link(metric: &FinancialMetricRecord) -> String {
+    metric
+        .source_urls
+        .first()
+        .map(|url| format!("[SEC]({url})"))
+        .unwrap_or_else(|| "-".to_string())
+}
+
 fn opt(value: Option<&str>) -> &str {
     value.filter(|v| !v.is_empty()).unwrap_or("-")
 }
@@ -220,6 +325,14 @@ fn cell(value: &str) -> String {
 
 fn dollars(value: u64) -> String {
     format!("${}", grouped(value))
+}
+
+fn dollars_f64(value: f64) -> String {
+    if value < 0.0 {
+        format!("-${}", grouped(value.abs().round() as u64))
+    } else {
+        dollars(value.round() as u64)
+    }
 }
 
 fn signed_dollars(value: i128) -> String {

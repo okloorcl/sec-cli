@@ -395,6 +395,7 @@ pub(crate) async fn run() -> Result<()> {
 
 fn report_kind(kind: ReportKindArg) -> ReportKind {
     match kind {
+        ReportKindArg::Financial => ReportKind::Financial,
         ReportKindArg::Insider => ReportKind::Insider,
         ReportKindArg::Portfolio => ReportKind::Portfolio,
         ReportKindArg::Risk => ReportKind::Risk,

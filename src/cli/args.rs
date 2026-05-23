@@ -273,6 +273,7 @@ pub(crate) struct ReportArgs {
 
 #[derive(Clone, Debug, ValueEnum)]
 pub(crate) enum ReportKindArg {
+    Financial,
     Insider,
     Portfolio,
     Risk,

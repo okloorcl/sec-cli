@@ -34,6 +34,7 @@ sec foreign --ticker TSM --form 20-F --latest 1 --pretty
 sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
+sec report --ticker AAPL --kind financial --latest 4
 sec report --ticker AAPL --kind risk
 sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty
@@ -99,6 +100,7 @@ sec mcp
 | 公司有没有 earnings 相关 8-K？ | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
 | 最新标准化财报三大表是什么？ | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
 | 最新 SEC 原始数据推导的财务指标是什么？ | `sec metrics --ticker AAPL --period annual --latest 4 --pretty` |
+| 能不能直接生成一份财务趋势 Markdown？ | `sec report --ticker AAPL --kind financial --latest 4` |
 | filing HTML 里嵌入了哪些 Inline XBRL facts？ | `sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --pretty` |
 | filing 里有哪些 HTML 表格？ | `sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty` |
 | 最新 proxy statement 里有哪些投票事项和高管薪酬？ | `sec proxy --ticker AAPL --latest 1 --pretty` |
@@ -186,7 +188,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | 数据源 | 对应命令 | 里面有什么 | 输出表 / record |
 | --- | --- | --- | --- |
 | SEC submissions JSON | `filings` | 公司提交过哪些 filing、日期、accession、主文档名 | filing records |
-| SEC CompanyFacts JSON | `facts`、`statements`、`metrics` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行，以及二次推导的利润率/增长率/回报率/流动性/杠杆 | fact records、financial statement rows、financial metric records |
+| SEC CompanyFacts JSON | `facts`、`statements`、`metrics`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行，以及二次推导的利润率/增长率/回报率/流动性/杠杆 | fact records、financial statement rows、financial metric records、Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | filing HTML 内嵌的 `ix:nonFraction` / `ix:nonNumeric`、context、unit、scale、decimals、原始值 | Inline XBRL fact records |
 | Filing HTML tables | `tables` | 主 HTML 文档里的表格行，例如薪酬表、分部表、注册证券表、债务表、合同表 | HTML table records |
 | DEF 14A proxy statement 主文档 | `proxy`、`parse --form "DEF 14A"` | 股东大会日期/地点、投票事项、董事会建议、董事候选人、审计师、NEO、高管薪酬表 | proxy statement records |
@@ -673,12 +675,14 @@ sec report --ticker AAPL --kind insider --latest 5 --limit 10
 sec report --investor 段永平 --kind portfolio --limit 10
 sec report --manager "H&H International Investment LLC" --kind portfolio --limit 10
 sec report --cik 1067983 --kind portfolio --limit 10
+sec report --ticker AAPL --kind financial --latest 4 --limit 20
 sec report --ticker AAPL --kind risk --limit-bytes 4000
 sec report --ticker AAPL --kind risk --latest 1 --limit-bytes 12000 > aapl-risk.md
 ```
 
 `--kind`：
 
+- `financial`：SEC 原始财务指标表 + 多期趋势快照
 - `insider`：Form 4 owner、role、净股数、交易金额、SEC 来源
 - `portfolio`：13F 摘要、Top holdings、可视化条、最大仓位变化
 - `risk`：10-K Risk Factors 和 MD&A 摘要
@@ -950,6 +954,7 @@ sec 13f-diff --cik 1067983 --limit 20 --jsonl
 sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 12000 --pretty
+sec report --ticker AAPL --kind financial > aapl-financial.md
 sec report --ticker AAPL --kind risk > aapl-risk.md
 ```
 

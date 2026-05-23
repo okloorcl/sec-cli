@@ -292,7 +292,7 @@ fn tools() -> Vec<Value> {
         ),
         tool(
             "sec_report",
-            "Generate source-backed Markdown reports for insider, portfolio, or risk workflows.",
+            "Generate source-backed Markdown reports for financial, insider, portfolio, or risk workflows.",
             company_schema(
                 json!({"kind":{"type":"string"},"subject":{"type":"string"},"latest":{"type":"integer"},"limit":{"type":"integer"},"limit_bytes":{"type":"integer"},"include_amends":{"type":"boolean"}}),
             ),
@@ -346,6 +346,7 @@ fn report_kind(args: &Value) -> Result<ReportKind> {
         .to_ascii_lowercase()
         .as_str()
     {
+        "financial" => Ok(ReportKind::Financial),
         "insider" => Ok(ReportKind::Insider),
         "portfolio" => Ok(ReportKind::Portfolio),
         "risk" => Ok(ReportKind::Risk),

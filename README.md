@@ -34,6 +34,7 @@ sec foreign --ticker TSM --form 20-F --latest 1 --pretty
 sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
+sec report --ticker AAPL --kind financial --latest 4
 sec report --ticker AAPL --kind risk
 sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty
@@ -106,6 +107,7 @@ These are useful, source-backed questions that work today:
 | Did a company file earnings-related 8-K events? | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
 | What are the latest standardized financial statement rows? | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
 | What are the latest SEC-derived financial ratios and growth metrics? | `sec metrics --ticker AAPL --period annual --latest 4 --pretty` |
+| Can I get a human-readable financial trend memo? | `sec report --ticker AAPL --kind financial --latest 4` |
 | What Inline XBRL facts are embedded in the filing HTML? | `sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --pretty` |
 | What tables are embedded in a filing? | `sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty` |
 | What is in the latest proxy statement? | `sec proxy --ticker AAPL --latest 1 --pretty` |
@@ -194,7 +196,7 @@ Practical rule:
 | Data/source | Commands | What it contains | Main output table |
 | --- | --- | --- | --- |
 | SEC submissions JSON | `filings` | Filing list, dates, accession numbers, primary document names | filing records |
-| SEC CompanyFacts JSON | `facts`, `statements`, `metrics` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, derived margins/growth/returns/liquidity/leverage | fact records, financial statement rows, financial metric records |
+| SEC CompanyFacts JSON | `facts`, `statements`, `metrics`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, derived margins/growth/returns/liquidity/leverage | fact records, financial statement rows, financial metric records, Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
 | DEF 14A proxy statement primary document | `proxy`, `parse --form "DEF 14A"` | Annual meeting date/site, voting proposals, board recommendations, director nominees, auditor, named executive officers, summary compensation table | proxy statement records |
@@ -896,12 +898,14 @@ sec report --ticker AAPL --kind insider --latest 5 --limit 10
 sec report --investor 段永平 --kind portfolio --limit 10
 sec report --manager "H&H International Investment LLC" --kind portfolio --limit 10
 sec report --cik 1067983 --kind portfolio --limit 10
+sec report --ticker AAPL --kind financial --latest 4 --limit 20
 sec report --ticker AAPL --kind risk --limit-bytes 4000
 sec report --ticker AAPL --kind risk --latest 1 --limit-bytes 12000 > aapl-risk.md
 ```
 
 Report kinds:
 
+- `financial`: SEC-derived metric table and multi-period trend snapshot
 - `insider`: Form 4 summary table with owner, role, net shares, value, and SEC source
 - `portfolio`: 13F summary, top holdings, visual bars, and largest position changes
 - `risk`: 10-K risk factor and MD&A excerpts with source links
@@ -1453,6 +1457,7 @@ sec 13f-diff --cik 1067983 --limit 20 --jsonl
 sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 12000 --pretty
+sec report --ticker AAPL --kind financial > aapl-financial.md
 sec report --ticker AAPL --kind risk > aapl-risk.md
 ```
 
