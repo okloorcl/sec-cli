@@ -11,6 +11,7 @@ real commands or modules in the repository.
 - [x] SEC CompanyFacts XBRL fact lookup.
 - [x] 10-K / 10-Q financial statements builder.
 - [x] Inline XBRL streaming parser.
+- [x] HTML table extraction.
 - [x] SEC complete submission document listing and document reading.
 - [x] SEC filing text search with source snippets.
 - [x] 10-K / 10-Q section extraction for common items.
@@ -28,7 +29,6 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] HTML table extraction.
 - [ ] DEF 14A proxy statement parser.
 - [ ] S-1 / 424B IPO and prospectus parser.
 - [ ] 20-F / 6-K / 40-F foreign issuer parser.
@@ -38,12 +38,11 @@ real commands or modules in the repository.
 
 ## Suggested Implementation Order
 
-1. HTML table extraction.
-2. DEF 14A proxy statement parser.
-3. S-1 / 424B parser.
-4. 20-F / 6-K / 40-F parser.
-5. N-PORT / N-CSR / N-CEN parser.
-6. Local HTTP API and MCP adapter.
+1. DEF 14A proxy statement parser.
+2. S-1 / 424B parser.
+3. 20-F / 6-K / 40-F parser.
+4. N-PORT / N-CSR / N-CEN parser.
+5. Local HTTP API and MCP adapter.
 
 ## Completion Rule
 

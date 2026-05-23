@@ -5,8 +5,9 @@ use clap::Parser;
 use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
-    InlineXbrlQuery, OutputMode, ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery,
-    SecClient, SectionQuery, StatementQuery, ThirteenFQuery, accession_text_url, find_matches,
+    HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery, ReportKind, ReportQuery,
+    Schedule13Query, SearchQuery, SecClient, SectionQuery, StatementQuery, ThirteenFQuery,
+    accession_text_url, find_matches,
     llm::{LlmConfig, LlmProvider},
     print_records,
     resolve::{ResolveInput, resolve_verified_13f_cik, resolve_verified_13f_manager},
@@ -80,6 +81,21 @@ pub(crate) async fn run() -> Result<()> {
                     include_amends: args.include_amends,
                     concept: args.concept,
                     limit: Some(args.limit),
+                })
+                .await?;
+            print_records(&records, output)?;
+        }
+        Command::Tables(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let records = client
+                .html_tables(HtmlTableQuery {
+                    cik,
+                    form: Some(args.form),
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                    limit_tables: Some(args.limit_tables),
+                    limit_rows: Some(args.limit_rows),
                 })
                 .await?;
             print_records(&records, output)?;

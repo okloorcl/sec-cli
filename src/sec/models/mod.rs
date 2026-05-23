@@ -1,10 +1,11 @@
 pub mod queries;
 pub mod records;
+pub mod tables;
 
 pub use queries::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
-    InlineXbrlQuery, OutputMode, ParseQuery, ReportQuery, Schedule13Query, SearchQuery,
-    SectionQuery, StatementQuery, ThirteenFQuery,
+    HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery, ReportQuery, Schedule13Query,
+    SearchQuery, SectionQuery, StatementQuery, ThirteenFQuery,
 };
 pub use records::{
     DocumentContentRecord, DocumentRecord, EightKEventRecord, FactRecord, FilingRecord,
@@ -14,3 +15,4 @@ pub use records::{
     ThirteenFAggregateHoldingRecord, ThirteenFDiffRecord, ThirteenFHoldingRecord,
     ThirteenFOtherManagerRecord, ThirteenFReportRecord,
 };
+pub use tables::HtmlTableRecord;

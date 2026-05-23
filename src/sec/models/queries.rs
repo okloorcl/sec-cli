@@ -104,6 +104,16 @@ pub struct InlineXbrlQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct HtmlTableQuery {
+    pub cik: u64,
+    pub form: Option<String>,
+    pub latest: usize,
+    pub include_amends: bool,
+    pub limit_tables: Option<usize>,
+    pub limit_rows: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
 pub struct StatementQuery {
     pub cik: u64,
     pub statement: String,

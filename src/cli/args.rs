@@ -27,6 +27,8 @@ pub(crate) enum Command {
     Statements(StatementsArgs),
     /// Stream Inline XBRL facts from primary filing HTML.
     Ixbrl(InlineXbrlArgs),
+    /// Extract HTML tables from primary filing documents.
+    Tables(TablesArgs),
     /// Search filing submission text and return source-backed snippets.
     Search(SearchArgs),
     /// Extract a named 10-K/10-Q section from a primary filing document.
@@ -152,6 +154,28 @@ pub(crate) struct InlineXbrlArgs {
     pub(crate) latest: usize,
     #[arg(long, default_value_t = 100)]
     pub(crate) limit: usize,
+    #[arg(long)]
+    pub(crate) include_amends: bool,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct TablesArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long, default_value = "10-K")]
+    pub(crate) form: String,
+    #[arg(long, default_value_t = 1)]
+    pub(crate) latest: usize,
+    #[arg(long, default_value_t = 20)]
+    pub(crate) limit_tables: usize,
+    #[arg(long, default_value_t = 25)]
+    pub(crate) limit_rows: usize,
     #[arg(long)]
     pub(crate) include_amends: bool,
     #[arg(long)]
