@@ -18,6 +18,12 @@ roadmap reached the DEF 14A milestone.
 - [x] Documented the 13F value-scale cutoff.
 - [x] Tightened resolver company-name matching to avoid short-name false positives.
 - [x] Preserved the original LLM parse error when repair fails.
+- [x] Added focused tests for search matching, reports formatting, parser dispatch,
+  output rendering, filing filters, fact aliases, and storage cache behavior.
+- [x] Removed the placeholder default SEC User-Agent; commands now require
+  `--identity`, `SEC_IDENTITY`, or `EDGAR_IDENTITY`.
+- [x] Simplified thousands grouping and covered money/visual report formatting.
+- [x] Made SGML `extract_tag` handle nested same-name tags.
 
 ## Still Intentional
 

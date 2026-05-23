@@ -25,6 +25,7 @@ real commands or modules in the repository.
 - [x] Schedule 13D / 13G parser.
 - [x] DEF 14A proxy statement parser.
 - [x] Shared parser utilities, cache TTL policy, and hot-path parser performance cleanup.
+- [x] Core utility test coverage for search, reports, output, filings, facts, storage, and parser dispatch.
 - [x] Investor/fund/person resolver with LLM fallback and SEC validation.
 - [x] Source-backed Markdown reports for insider activity, portfolio activity, and risk review.
 - [x] Cross-platform CI for Linux amd64/i686/arm64/arm32, Windows amd64, and macOS arm64.
