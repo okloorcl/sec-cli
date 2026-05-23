@@ -47,6 +47,7 @@ sec 13f-diff --cik 1067983 --limit 20
 sec 13f-summary --cik 1067983 --latest 1
 sec parse --ticker AAPL --form 4 --latest 1
 sec forms --pretty
+sec serve --host 127.0.0.1 --port 8716
 ```
 
 `sec-cli` 把 SEC filing 转成可追溯、结构稳定的 JSON/JSONL/Markdown。它不是 Python 包的外壳，而是独立 Rust CLI：适合 shell、数据流水线、本地服务、MCP/Agent 调用。
@@ -78,6 +79,7 @@ sec forms --pretty
 - 比较最近两期 13F 组合变化
 - 解析 13F cover、summary、signature、other managers
 - 本地缓存 SEC 响应
+- 通过本地 JSON HTTP API 对外提供同一套核心查询
 
 长期目标：逐步覆盖 edgartools 里有价值的结构化输出，同时保持 CLI/Agent 原生体验：稳定 schema、明确 exit code、来源链接、Markdown 汇报、未来 Arrow/Parquet 和本地 HTTP/MCP。
 
@@ -102,6 +104,7 @@ sec forms --pretty
 | 我只知道投资人名字，不知道 CIK？ | `sec resolve --query 段永平 --pretty`，然后 `sec 13f-diff --investor 段永平 --pretty` |
 | 公司最新 10-K 风险因素是什么？ | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
 | 生成能直接给人看的分析摘要？ | `sec report --ticker AAPL --kind risk` |
+| 本地 app 或 agent 怎么通过 HTTP 调用？ | `sec serve --port 8716`，然后 `curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"` |
 | 答案来源在哪里？ | 结构化结果包含 `source_url`，document 结果还包含 `document_url` |
 
 ## 参数怎么选
@@ -720,6 +723,49 @@ sec parse --cik 1067983 --form 13F-HR --latest 1 --limit 20 --jsonl
 sec forms --pretty
 ```
 
+### serve
+
+启动本地 JSON HTTP API，给本地 app、dashboard 或 agent 调用。HTTP server 使用同一个 `SecClient`、缓存、parser 和可追溯输出 schema。
+
+```bash
+SEC_IDENTITY="Your Name your.email@example.com" sec serve --host 127.0.0.1 --port 8716
+
+curl "http://127.0.0.1:8716/health"
+curl "http://127.0.0.1:8716/v1/forms"
+curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"
+curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
+curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
+curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
+curl "http://127.0.0.1:8716/v1/13f?cik=1067983&latest=1&limit=20"
+curl "http://127.0.0.1:8716/v1/proxy?ticker=AAPL&latest=1"
+curl "http://127.0.0.1:8716/v1/prospectus?ticker=RDDT&form=S-1&include_amends=true"
+curl "http://127.0.0.1:8716/v1/foreign?ticker=TSM&form=20-F&latest=1"
+curl "http://127.0.0.1:8716/v1/fund?cik=0000036405&form=NPORT-P&limit_holdings=10"
+curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
+```
+
+端点对应关系：
+
+| Endpoint | 对应 CLI |
+| --- | --- |
+| `/health` | 健康检查 |
+| `/v1/forms` | `sec forms` |
+| `/v1/filings` | `sec filings` |
+| `/v1/facts` | `sec facts` |
+| `/v1/statements` | `sec statements` |
+| `/v1/ixbrl` | `sec ixbrl` |
+| `/v1/sections` | `sec section` |
+| `/v1/docs` | `sec docs` |
+| `/v1/form4`、`/v1/form4-summary` | `sec form4`、`sec form4-summary` |
+| `/v1/8k` | `sec 8k` |
+| `/v1/schedule13` | `sec 13d` / `sec 13g` |
+| `/v1/13f`、`/v1/13f-summary`、`/v1/13f-diff` | `sec 13f`、`sec 13f-summary`、`sec 13f-diff` |
+| `/v1/proxy` | `sec proxy` |
+| `/v1/prospectus` | `sec prospectus` |
+| `/v1/foreign` | `sec foreign` |
+| `/v1/fund` | `sec fund` |
+| `/v1/parse` | `sec parse` |
+
 ## 参数参考
 
 全局参数：
@@ -754,6 +800,7 @@ sec forms --pretty
 | `13f` / `13f-aggregate` / `13f-diff` / `13f-summary` | `--ticker`、`--cik`、`--manager` 或 `--investor` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `parse` | `--ticker` 或 `--cik`，`--form` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `forms` | 无 | `--jsonl`、`--pretty` |
+| `serve` | 无 | `--host`、`--port` |
 
 ## 输出模式
 

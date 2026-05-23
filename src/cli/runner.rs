@@ -368,6 +368,9 @@ pub(crate) async fn run() -> Result<()> {
             let output = output_mode(args.jsonl, args.pretty);
             print_records(supported_parsers(), output)?;
         }
+        Command::Serve(args) => {
+            sec_cli::server::serve(client, args.host, args.port).await?;
+        }
     }
 
     Ok(())

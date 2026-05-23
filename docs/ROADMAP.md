@@ -31,17 +31,16 @@ real commands or modules in the repository.
 - [x] Core utility test coverage for search, reports, output, filings, facts, storage, and parser dispatch.
 - [x] Investor/fund/person resolver with LLM fallback and SEC validation.
 - [x] Source-backed Markdown reports for insider activity, portfolio activity, and risk review.
+- [x] Local JSON HTTP API for core SEC queries and parser endpoints.
 - [x] Cross-platform CI for Linux amd64/i686/arm64/arm32, Windows amd64, and macOS arm64.
 
 ## Planned
 
-- [ ] Local HTTP API.
 - [ ] MCP adapter for agent tools.
 
 ## Suggested Implementation Order
 
-1. Local HTTP API.
-2. MCP adapter for agent tools.
+1. MCP adapter for agent tools.
 
 ## Completion Rule
 

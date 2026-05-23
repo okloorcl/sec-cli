@@ -47,6 +47,7 @@ sec 13f-diff --cik 1067983 --limit 20
 sec 13f-summary --cik 1067983 --latest 1
 sec parse --ticker AAPL --form 4 --latest 1
 sec forms --pretty
+sec serve --host 127.0.0.1 --port 8716
 ```
 
 `sec-cli` turns SEC filings into source-backed JSON for agents, analysts, and
@@ -81,6 +82,7 @@ This is an early MVP. The first implementation focuses on:
 - Parsing 13F-HR cover, summary, signature, and manager metadata
 - Returning JSON arrays or JSONL records
 - Caching SEC responses locally
+- Serving the same core queries through a local JSON HTTP API
 
 Longer term, the project aims to grow into a Rust-powered SEC disclosure engine:
 more form-specific parsers, XBRL streaming parsing, table extraction,
@@ -108,6 +110,7 @@ These are useful, source-backed questions that work today:
 | What changed between the latest two 13F filings? | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
 | What if I know the investor name but not the CIK? | `sec resolve --query 段永平 --pretty`, then `sec 13f-diff --investor 段永平 --pretty` |
 | What are a company's latest 10-K risk factors? | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
+| How can an app or local agent call sec-cli over HTTP? | `sec serve --port 8716`, then `curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"` |
 | Where did the answer come from? | Every structured result includes `source_url`; document results also include `document_url` |
 
 ## How To Choose Selectors
@@ -1196,6 +1199,50 @@ List supported structured parser families.
 sec forms --pretty
 ```
 
+### serve
+
+Run a local JSON HTTP API for apps, dashboards, and local agents. The server uses
+the same `SecClient`, cache, parsers, and source-backed records as the CLI.
+
+```bash
+SEC_IDENTITY="Your Name your.email@example.com" sec serve --host 127.0.0.1 --port 8716
+
+curl "http://127.0.0.1:8716/health"
+curl "http://127.0.0.1:8716/v1/forms"
+curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"
+curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
+curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
+curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
+curl "http://127.0.0.1:8716/v1/13f?cik=1067983&latest=1&limit=20"
+curl "http://127.0.0.1:8716/v1/proxy?ticker=AAPL&latest=1"
+curl "http://127.0.0.1:8716/v1/prospectus?ticker=RDDT&form=S-1&include_amends=true"
+curl "http://127.0.0.1:8716/v1/foreign?ticker=TSM&form=20-F&latest=1"
+curl "http://127.0.0.1:8716/v1/fund?cik=0000036405&form=NPORT-P&limit_holdings=10"
+curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
+```
+
+Available endpoints:
+
+| Endpoint | Equivalent CLI |
+| --- | --- |
+| `/health` | health check |
+| `/v1/forms` | `sec forms` |
+| `/v1/filings` | `sec filings` |
+| `/v1/facts` | `sec facts` |
+| `/v1/statements` | `sec statements` |
+| `/v1/ixbrl` | `sec ixbrl` |
+| `/v1/sections` | `sec section` |
+| `/v1/docs` | `sec docs` |
+| `/v1/form4`, `/v1/form4-summary` | `sec form4`, `sec form4-summary` |
+| `/v1/8k` | `sec 8k` |
+| `/v1/schedule13` | `sec 13d` / `sec 13g` |
+| `/v1/13f`, `/v1/13f-summary`, `/v1/13f-diff` | `sec 13f`, `sec 13f-summary`, `sec 13f-diff` |
+| `/v1/proxy` | `sec proxy` |
+| `/v1/prospectus` | `sec prospectus` |
+| `/v1/foreign` | `sec foreign` |
+| `/v1/fund` | `sec fund` |
+| `/v1/parse` | `sec parse` |
+
 ## Options Reference
 
 Global options:
@@ -1234,6 +1281,7 @@ Command options:
 | `13f-summary` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `parse` | `--ticker` or `--cik`, `--form` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `forms` | none | `--jsonl`, `--pretty` |
+| `serve` | none | `--host`, `--port` |
 
 ## Output Modes
 

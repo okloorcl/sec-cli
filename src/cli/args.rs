@@ -79,6 +79,8 @@ pub(crate) enum Command {
     Parse(ParseArgs),
     /// List supported structured form parsers.
     Forms(OutputArgs),
+    /// Run the local JSON HTTP API server.
+    Serve(ServeArgs),
 }
 
 #[derive(Args, Debug)]
@@ -101,6 +103,14 @@ pub(crate) struct FilingsArgs {
     pub(crate) jsonl: bool,
     #[arg(long)]
     pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct ServeArgs {
+    #[arg(long, default_value = "127.0.0.1")]
+    pub(crate) host: String,
+    #[arg(long, default_value_t = 8716)]
+    pub(crate) port: u16,
 }
 
 #[derive(Args, Debug)]
