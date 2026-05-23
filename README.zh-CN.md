@@ -626,17 +626,19 @@ sec metrics --cik 320193 --period annual --latest 1 --pretty
 - `quarterly`：只用 10-Q facts 推导季度指标
 - `all`：不过滤 filing form
 
-当前在底层 facts 足够时大约输出 30 个 SEC 派生指标：
+当前在底层 facts 足够时可输出 50+ 个 SEC 派生指标：
 
-- 盈利能力：`gross_margin`、`operating_margin`、`net_margin`
+- 盈利能力：`gross_margin`、`operating_margin`、`net_margin`、`cost_of_revenue_margin`、`pretax_margin`
 - 盈利/税率：`effective_tax_rate`
 - 增长：`revenue_growth`、`net_income_growth`
-- 现金流：`free_cash_flow`、`free_cash_flow_margin`、`operating_cash_flow_margin`、`free_cash_flow_to_net_income`
-- 回报率：`return_on_assets`、`return_on_equity`、`roic`
-- 流动性：`working_capital`、`current_ratio`、`quick_ratio`、`cash_ratio`、`cash_to_assets`
-- 杠杆/偿债：`total_debt`、`net_debt`、`liabilities_to_assets`、`debt_to_equity`、`debt_to_assets`、`net_debt_to_equity`、`interest_coverage`
-- 效率：`asset_turnover`
-- 资本强度/资本回报：`capex_to_revenue`、`dividend_payout_ratio`、`share_repurchases_to_revenue`、`share_repurchases_to_free_cash_flow`
+- 费用强度：`rd_to_revenue`、`sga_to_revenue`、`operating_expense_ratio`
+- 现金流：`free_cash_flow`、`free_cash_flow_margin`、`operating_cash_flow_margin`、`cash_conversion`、`free_cash_flow_to_net_income`
+- 回报率：`return_on_assets`、`return_on_equity`、`roic`、`cash_flow_return_on_assets`
+- 流动性：`working_capital`、`current_ratio`、`quick_ratio`、`cash_ratio`、`cash_to_assets`、`cash_and_securities_to_assets`、`cash_and_securities_coverage`
+- 杠杆/偿债：`total_debt`、`net_debt`、`liabilities_to_assets`、`debt_to_equity`、`debt_to_assets`、`net_debt_to_equity`、`debt_to_capital`、`cash_flow_to_debt`、`fcf_to_debt`、`interest_coverage`
+- 效率：`asset_turnover`、`inventory_turnover`、`receivables_turnover`、`inventory_to_current_assets`、`receivables_to_revenue`
+- 资产质量：`goodwill_to_assets`、`intangibles_to_assets`、`marketable_securities_to_assets`
+- 资本强度/资本回报：`capex_to_revenue`、`capex_to_operating_cash_flow`、`dividend_payout_ratio`、`share_repurchases_to_revenue`、`share_repurchases_to_free_cash_flow`
 
 输出字段：`metric`、`category`、`value`、`display_value`、`unit`、`period_end`、`fiscal_year`、`fiscal_period`、`form`、`calculation`、`components`、`source_urls`。
 

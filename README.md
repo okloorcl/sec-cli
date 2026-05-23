@@ -714,18 +714,20 @@ sec metrics --cik 320193 --period annual --latest 1 --pretty
 - `quarterly`: derive metrics from 10-Q facts
 - `all`: use any available filing form
 
-Metrics currently include roughly 30 SEC-derived records when the required
+Metrics currently include 50+ SEC-derived records when the required
 facts are available:
 
-- profitability: `gross_margin`, `operating_margin`, `net_margin`
+- profitability: `gross_margin`, `operating_margin`, `net_margin`, `cost_of_revenue_margin`, `pretax_margin`
 - profitability/tax: `effective_tax_rate`
 - growth: `revenue_growth`, `net_income_growth`
-- cash flow: `free_cash_flow`, `free_cash_flow_margin`, `operating_cash_flow_margin`, `free_cash_flow_to_net_income`
-- returns: `return_on_assets`, `return_on_equity`, `roic`
-- liquidity: `working_capital`, `current_ratio`, `quick_ratio`, `cash_ratio`, `cash_to_assets`
-- leverage/solvency: `total_debt`, `net_debt`, `liabilities_to_assets`, `debt_to_equity`, `debt_to_assets`, `net_debt_to_equity`, `interest_coverage`
-- efficiency: `asset_turnover`
-- capital intensity/return: `capex_to_revenue`, `dividend_payout_ratio`, `share_repurchases_to_revenue`, `share_repurchases_to_free_cash_flow`
+- expense intensity: `rd_to_revenue`, `sga_to_revenue`, `operating_expense_ratio`
+- cash flow: `free_cash_flow`, `free_cash_flow_margin`, `operating_cash_flow_margin`, `cash_conversion`, `free_cash_flow_to_net_income`
+- returns: `return_on_assets`, `return_on_equity`, `roic`, `cash_flow_return_on_assets`
+- liquidity: `working_capital`, `current_ratio`, `quick_ratio`, `cash_ratio`, `cash_to_assets`, `cash_and_securities_to_assets`, `cash_and_securities_coverage`
+- leverage/solvency: `total_debt`, `net_debt`, `liabilities_to_assets`, `debt_to_equity`, `debt_to_assets`, `net_debt_to_equity`, `debt_to_capital`, `cash_flow_to_debt`, `fcf_to_debt`, `interest_coverage`
+- efficiency: `asset_turnover`, `inventory_turnover`, `receivables_turnover`, `inventory_to_current_assets`, `receivables_to_revenue`
+- asset quality: `goodwill_to_assets`, `intangibles_to_assets`, `marketable_securities_to_assets`
+- capital intensity/return: `capex_to_revenue`, `capex_to_operating_cash_flow`, `dividend_payout_ratio`, `share_repurchases_to_revenue`, `share_repurchases_to_free_cash_flow`
 
 Each metric includes: `metric`, `category`, `value`, `display_value`, `unit`,
 `period_end`, `fiscal_year`, `fiscal_period`, `form`, `calculation`,

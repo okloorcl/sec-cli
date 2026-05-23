@@ -14,7 +14,7 @@ real commands or modules in the repository.
 - [x] Standard concept mapping expanded beyond 100 common US-GAAP candidates across income statement, balance sheet, and cash-flow lines.
 - [x] 10-K / 10-Q company-report topic table parser.
 - [x] Source-backed financial metrics and secondary analysis from CompanyFacts.
-- [x] Expanded SEC-derived metrics to roughly 30 profitability, growth, cash-flow, liquidity, leverage, solvency, efficiency, and capital-return records.
+- [x] Expanded SEC-derived metrics to 50+ profitability, growth, expense-intensity, cash-flow, liquidity, leverage, solvency, efficiency, asset-quality, and capital-return records.
 - [x] Financial trend Markdown report over SEC-derived metrics.
 - [x] Inline XBRL streaming parser.
 - [x] XBRL linkbase parser for presentation, calculation, definition, label, and schema attachments.
@@ -57,14 +57,14 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] Financial metrics expansion toward 50+ ratios and financial-health scores.
+- [ ] Financial-health scores such as Piotroski F-Score, Altman Z-Score, and Beneish M-Score.
 - [ ] Cross-form 10-K / 10-Q financial statement stitching.
 - [ ] Arrow / Parquet export layer.
 - [ ] Optional bulk archive / offline mode.
 
 ## Suggested Implementation Order
 
-1. Metrics and financial-health score expansion.
+1. Financial-health score expansion.
 2. Cross-form statement stitching.
 3. Arrow / Parquet export layer.
 4. Optional bulk archive / offline mode.
