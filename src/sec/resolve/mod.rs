@@ -303,11 +303,32 @@ fn company_matches_candidate(
     let Some(sec_company) = sec_company else {
         return false;
     };
+    let left = comparable_name(sec_company);
     [manager, investor].into_iter().flatten().any(|candidate| {
-        let left = comparable_name(sec_company);
         let right = comparable_name(candidate);
-        !left.is_empty() && !right.is_empty() && (left.contains(&right) || right.contains(&left))
+        comparable_names_match(&left, &right)
     })
+}
+
+fn comparable_names_match(left: &str, right: &str) -> bool {
+    if left.is_empty() || right.is_empty() {
+        return false;
+    }
+    if left == right {
+        return true;
+    }
+
+    let left_words = left.split_whitespace().collect::<Vec<_>>();
+    let right_words = right.split_whitespace().collect::<Vec<_>>();
+    let (short, long) = if left_words.len() <= right_words.len() {
+        (left_words, right_words)
+    } else {
+        (right_words, left_words)
+    };
+    if short.len() < 2 || short.join(" ").len() < 8 {
+        return false;
+    }
+    long.windows(short.len()).any(|window| window == short)
 }
 
 fn comparable_name(name: &str) -> String {
@@ -378,6 +399,11 @@ mod tests {
         assert!(!company_matches_candidate(
             Some("Scion Asset Management, LLC"),
             Some("H&H INTERNATIONAL INVESTMENT GROUP, LTD."),
+            None
+        ));
+        assert!(!company_matches_candidate(
+            Some("Very Large Industrial Group Inc."),
+            Some("The Group"),
             None
         ));
     }

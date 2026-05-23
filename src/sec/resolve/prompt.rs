@@ -52,7 +52,11 @@ pub(super) async fn parse_or_repair(
             let repaired = llm
                 .complete(REPAIR_PROMPT, &repair_prompt(query, raw))
                 .await
-                .with_context(|| format!("failed to repair non-JSON LLM response for '{query}'"))?;
+                .with_context(|| {
+                    format!(
+                        "failed to repair non-JSON LLM response for '{query}'; original parse error: {first_error}"
+                    )
+                })?;
             parse_candidates(query, &repaired).with_context(|| {
                 format!("failed to parse LLM response after repair: {first_error}")
             })

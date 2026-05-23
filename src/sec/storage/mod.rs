@@ -1,6 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
+    time::{Duration, SystemTime},
 };
 
 use anyhow::{Context, Result};
@@ -19,9 +20,12 @@ impl FileStore {
         Ok(Self { root })
     }
 
-    pub fn read_url(&self, url: &str, ext: &str) -> Result<Option<Vec<u8>>> {
+    pub fn read_url(&self, url: &str, ext: &str, ttl: Option<Duration>) -> Result<Option<Vec<u8>>> {
         let path = self.url_path(url, ext);
         if !path.exists() {
+            return Ok(None);
+        }
+        if ttl.is_some_and(|ttl| is_expired(&path, ttl)) {
             return Ok(None);
         }
         fs::read(&path)
@@ -59,4 +63,12 @@ fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     fs::write(&tmp, bytes)?;
     fs::rename(tmp, path)?;
     Ok(())
+}
+
+fn is_expired(path: &Path, ttl: Duration) -> bool {
+    fs::metadata(path)
+        .and_then(|metadata| metadata.modified())
+        .ok()
+        .and_then(|modified| SystemTime::now().duration_since(modified).ok())
+        .is_some_and(|age| age > ttl)
 }

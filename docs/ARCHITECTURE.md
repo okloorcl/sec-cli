@@ -45,9 +45,9 @@ src/cli/                            CLI shell split from the SEC core
 src/cli/args.rs                     CLI argument schema
 src/cli/runner.rs                   CLI orchestration only
 src/sec/mod.rs                      public SEC module surface
-src/sec/client/                     SEC domain client facade
+src/sec/client/                     SEC domain client facade and cached fetch entry point
 src/sec/http/                       low-level SEC HTTP transport
-src/sec/storage/                    local cache/store abstraction
+src/sec/storage/                    local cache/store abstraction with TTL-aware reads
 src/sec/edgar/                      SEC data sources and URL builders
 src/sec/edgar/filings.rs            submissions index -> FilingRecord
 src/sec/edgar/facts.rs              CompanyFacts -> FactRecord
@@ -58,6 +58,8 @@ src/sec/documents/submission.rs     complete-submission.txt -> SubmissionDocumen
 src/sec/documents/selectors.rs      primary XML, ownership XML, 13F table selectors
 src/sec/documents/records.rs        document inventory records for CLI/API use
 src/sec/parsers/                    shared parser machinery and form parsers
+src/sec/proxy/                      DEF 14A proxy statement parser
+src/sec/utils.rs                    shared string, legal suffix, and truncation helpers
 src/sec/parsers/xml.rs              streaming XML helpers
 src/sec/parsers/forms/              form-specific parsers
 src/sec/models/                     query models and output records
@@ -141,8 +143,8 @@ adapters should call the same library entry points that the CLI calls.
 The current codebase already has these boundaries in place:
 
 - `http`: HTTP only. It knows about user-agent headers and SEC responses.
-- `storage`: cache only. It knows how to persist bytes by URL-derived keys.
-- `client`: EDGAR domain facade. It combines HTTP/storage and exposes operations.
+- `storage`: cache only. It persists bytes by URL-derived keys and supports TTL-aware reads.
+- `client`: EDGAR domain facade. It combines HTTP/storage, owns cached fetch behavior, and exposes operations.
 - `edgar`: source-specific API handling for submissions, facts, and archive URLs.
 - `documents`: SEC SGML container scanning and attachment selection.
 - `llm`: protocol adapters for OpenAI-compatible and Anthropic-compatible models.
@@ -157,11 +159,9 @@ not talk directly to `reqwest`, file caches, or parser internals.
 
 ## Near-Term Build Order
 
-1. Harden `documents/submission.rs` into a zero-copy SGML document scanner.
-2. Add more document selectors: primary XML, primary HTML, information table, exhibits.
-3. Finish Form 4 ownership coverage: derivatives, holdings, footnotes, signatures.
-4. Finish 13F coverage: primary document metadata, value scale, aggregation, comparison.
-5. Add HTML table parser and text section parser for 10-K/10-Q/8-K.
-6. Split storage into a trait-backed cache/store layer.
-7. Add export layer for JSONL first, then Arrow/Parquet.
-8. Add API/MCP adapters after the core records and parser pipeline are stable.
+1. Add S-1 / 424B IPO and prospectus parser.
+2. Add 20-F / 6-K / 40-F foreign issuer parser.
+3. Add N-PORT / N-CSR / N-CEN fund disclosure parser.
+4. Split storage into a trait-backed cache/store layer if an alternate backend is needed.
+5. Add export layer for Arrow/Parquet.
+6. Add HTTP API and MCP adapters after the core records and parser pipeline are stable.

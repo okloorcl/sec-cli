@@ -321,7 +321,7 @@ pub(crate) async fn run() -> Result<()> {
             let mut changes = client
                 .thirteenf_diff_holdings(ThirteenFQuery {
                     cik,
-                    latest: args.latest.max(2),
+                    latest: args.latest,
                     include_amends: args.include_amends,
                 })
                 .await?;

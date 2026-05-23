@@ -1,7 +1,7 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf, time::Duration};
 
 use anyhow::{Context, Result, anyhow};
-use serde::Deserialize;
+use serde::{Deserialize, de::DeserializeOwned};
 
 use super::{edgar::company_tickers_url, http::EdgarTransport, storage::FileStore};
 
@@ -38,28 +38,45 @@ impl SecClient {
     }
 
     pub async fn get_text(&self, url: &str) -> Result<String> {
-        if let Some(bytes) = self.store.read_url(url, "txt")? {
-            return String::from_utf8(bytes).with_context(|| "cached text was not valid UTF-8");
-        }
-
-        let bytes = self.transport.get_bytes(url).await?;
-        self.store.write_url(url, "txt", &bytes)?;
-        String::from_utf8(bytes)
-            .with_context(|| format!("text response was not valid UTF-8: {url}"))
+        self.cached_fetch(url, "txt", |bytes| {
+            String::from_utf8(bytes.to_vec()).context("text response was not valid UTF-8")
+        })
+        .await
     }
 
-    pub(crate) async fn get_json<T: for<'de> Deserialize<'de>>(&self, url: &str) -> Result<T> {
-        if let Some(bytes) = self.store.read_url(url, "json")? {
-            return serde_json::from_slice(&bytes)
-                .with_context(|| format!("failed to parse cached JSON for {}", url));
-        }
-
-        let bytes = self.transport.get_bytes(url).await?;
-        self.store.write_url(url, "json", &bytes)?;
-        serde_json::from_slice(&bytes).with_context(|| format!("failed to parse JSON from {}", url))
+    pub(crate) async fn get_json<T: DeserializeOwned>(&self, url: &str) -> Result<T> {
+        self.cached_fetch(url, "json", |bytes| {
+            serde_json::from_slice(bytes).context("failed to parse JSON response")
+        })
+        .await
     }
 
     pub fn cache_dir(&self) -> &std::path::Path {
         self.store.root()
+    }
+
+    async fn cached_fetch<T, F>(&self, url: &str, ext: &str, parse: F) -> Result<T>
+    where
+        F: Fn(&[u8]) -> Result<T>,
+    {
+        if let Some(bytes) = self.store.read_url(url, ext, cache_ttl(url))? {
+            return parse(&bytes).with_context(|| format!("failed to parse cached {ext}: {url}"));
+        }
+
+        let bytes = self.transport.get_bytes(url).await?;
+        self.store.write_url(url, ext, &bytes)?;
+        parse(&bytes).with_context(|| format!("failed to parse {ext} response: {url}"))
+    }
+}
+
+fn cache_ttl(url: &str) -> Option<Duration> {
+    if url.contains("/Archives/edgar/data/") {
+        None
+    } else if url.ends_with("/company_tickers.json") {
+        Some(Duration::from_secs(24 * 60 * 60))
+    } else if url.contains("/submissions/") {
+        Some(Duration::from_secs(60 * 60))
+    } else {
+        Some(Duration::from_secs(6 * 60 * 60))
     }
 }

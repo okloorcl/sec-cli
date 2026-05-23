@@ -13,6 +13,9 @@ use crate::sec::{
     },
 };
 
+// SEC 13F XML information tables historically report `value` in thousands of
+// dollars. Modern 13F XML filings observed after this report date use dollar
+// units directly, so older reports are scaled for comparable `value_usd`.
 pub(crate) const VALUE_SCALE_CUTOFF: &str = "2022-09-30";
 
 impl SecClient {
@@ -52,10 +55,13 @@ impl SecClient {
 
     pub async fn thirteenf_diff_holdings(
         &self,
-        mut query: ThirteenFQuery,
+        query: ThirteenFQuery,
     ) -> Result<Vec<ThirteenFDiffRecord>> {
-        query.latest = query.latest.max(2);
-        let filings = self.thirteenf_filings(&query).await?;
+        let diff_query = ThirteenFQuery {
+            latest: query.latest.max(2),
+            ..query
+        };
+        let filings = self.thirteenf_filings(&diff_query).await?;
         let Some(current) = filings.first() else {
             return Ok(Vec::new());
         };
