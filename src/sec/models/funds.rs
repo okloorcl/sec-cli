@@ -19,8 +19,13 @@ pub struct FundDisclosureRecord {
     pub net_assets: Option<f64>,
     pub holdings_count: usize,
     pub holdings: Vec<FundHoldingRecord>,
+    pub proxy_votes_count: usize,
+    pub proxy_votes: Vec<FundProxyVoteRecord>,
     pub shareholder_report: Option<FundExcerptRecord>,
     pub portfolio_summary: Option<FundExcerptRecord>,
+    pub proxy_voting_record: Option<FundExcerptRecord>,
+    pub summary_prospectus: Option<FundExcerptRecord>,
+    pub registration_fee_notice: Option<FundExcerptRecord>,
     pub financial_statements: Option<FundExcerptRecord>,
     pub controls: Option<FundExcerptRecord>,
     pub document: Option<String>,
@@ -46,6 +51,17 @@ pub struct FundHoldingRecord {
     pub country: Option<String>,
     pub is_restricted: Option<bool>,
     pub liquidity_category: Option<String>,
+}
+
+#[derive(Debug, Default, Serialize)]
+pub struct FundProxyVoteRecord {
+    pub issuer_name: Option<String>,
+    pub cusip: Option<String>,
+    pub meeting_date: Option<String>,
+    pub matter: Option<String>,
+    pub vote_cast: Option<String>,
+    pub management_recommendation: Option<String>,
+    pub shares_voted: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]

@@ -64,7 +64,7 @@ src/sec/parsers/                    shared parser machinery and form parsers
 src/sec/proxy/                      DEF 14A proxy statement parser
 src/sec/prospectus/                 S-1/F-1/424B prospectus parser
 src/sec/foreign/                    20-F/6-K/40-F foreign issuer parser
-src/sec/funds/                      N-PORT/N-CSR/N-CEN fund disclosure parser
+src/sec/funds/                      N-PORT/N-CSR/N-CEN/N-PX/497K/24F-2NT fund disclosure parser
 src/sec/metrics/                    SEC-derived financial metrics and secondary analysis
 src/sec/utils.rs                    shared string, legal suffix, and truncation helpers
 src/sec/parsers/xml.rs              streaming XML helpers
@@ -90,10 +90,9 @@ Examples:
 - `eightk`: 8-K item extraction plus exhibit discovery and earnings-release classification.
 - `prospectus`: S-1 / F-1 / 424B offering and IPO signals.
 - `foreign`: 20-F / 6-K / 40-F foreign issuer annual/current reports.
-- `funds`: N-PORT portfolio holdings, N-CSR shareholder reports, and N-CEN fund census data.
+- `funds`: N-PORT portfolio holdings, N-PX proxy votes, 497K summary prospectus excerpts, 24F-2NT securities-sold notices, N-CSR shareholder reports, and N-CEN fund census data.
 - `proxy`: DEF 14A compensation and governance tables.
 - `schedule13`: SC 13D / SC 13G beneficial ownership.
-- Future `forms/fund_votes.rs`: N-PX voting records, 497K summaries, and 24F-2NT notices.
 
 Not every HTML table needs a separate top-level parser. The right split is:
 

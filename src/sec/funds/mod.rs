@@ -9,7 +9,7 @@ use crate::sec::{
     edgar::accession_document_url,
     models::{
         FilingQuery, FilingRecord, FundDisclosureQuery, FundDisclosureRecord, FundExcerptRecord,
-        FundHoldingRecord,
+        FundHoldingRecord, FundProxyVoteRecord,
     },
     parsers::xml::{XmlEvent, parse_f64, read_xml},
     utils::truncate_utf8,
@@ -26,6 +26,12 @@ const FUND_FORMS: &[&str] = &[
     "N-CSRS/A",
     "N-CEN",
     "N-CEN/A",
+    "N-PX",
+    "N-PX/A",
+    "497K",
+    "497K/A",
+    "24F-2NT",
+    "24F-2NT/A",
 ];
 
 impl SecClient {
@@ -83,6 +89,7 @@ pub fn parse_fund_disclosure(
     let xml_data = parse_fund_xml(xml, query.limit_holdings)?;
     let text = plain_text(&doc.content);
     let holdings_count = xml_data.holdings.len();
+    let proxy_votes_count = xml_data.proxy_votes.len();
 
     Ok(FundDisclosureRecord {
         accession: filing.accession.clone(),
@@ -108,8 +115,15 @@ pub fn parse_fund_disclosure(
         net_assets: xml_data.net_assets,
         holdings_count,
         holdings: xml_data.holdings,
+        proxy_votes_count,
+        proxy_votes: xml_data.proxy_votes,
         shareholder_report: excerpt(&text, "Shareholder Report", query.limit_bytes),
         portfolio_summary: excerpt(&text, "Portfolio", query.limit_bytes),
+        proxy_voting_record: excerpt(&text, "Proxy Voting", query.limit_bytes)
+            .or_else(|| excerpt(&text, "Proxy Voting Record", query.limit_bytes)),
+        summary_prospectus: excerpt(&text, "Summary Prospectus", query.limit_bytes),
+        registration_fee_notice: excerpt(&text, "Registration Fee", query.limit_bytes)
+            .or_else(|| excerpt(&text, "24F-2", query.limit_bytes)),
         financial_statements: excerpt(&text, "Financial Statements", query.limit_bytes),
         controls: excerpt(&text, "Controls and Procedures", query.limit_bytes),
         document: doc.filename.clone(),
@@ -137,9 +151,11 @@ fn is_fund_form(form: &str, include_amends: bool) -> bool {
         .iter()
         .any(|candidate| form.eq_ignore_ascii_case(candidate))
         || include_amends
-            && ["NPORT-P", "N-PORT", "N-CSR", "N-CSRS", "N-CEN"]
-                .iter()
-                .any(|base| form.eq_ignore_ascii_case(&format!("{base}/A")))
+            && [
+                "NPORT-P", "N-PORT", "N-CSR", "N-CSRS", "N-CEN", "N-PX", "497K", "24F-2NT",
+            ]
+            .iter()
+            .any(|base| form.eq_ignore_ascii_case(&format!("{base}/A")))
 }
 
 fn disclosure_type(form: &str) -> &'static str {
@@ -148,6 +164,12 @@ fn disclosure_type(form: &str) -> &'static str {
         "portfolio_holdings"
     } else if normalized.starts_with("N-CEN") {
         "annual_fund_census"
+    } else if normalized.starts_with("N-PX") {
+        "proxy_voting_record"
+    } else if normalized.starts_with("497K") {
+        "summary_prospectus"
+    } else if normalized.starts_with("24F-2NT") {
+        "annual_notice_of_securities_sold"
     } else {
         "shareholder_report"
     }
@@ -164,18 +186,22 @@ struct FundXmlData {
     total_liabilities: Option<f64>,
     net_assets: Option<f64>,
     holdings: Vec<FundHoldingRecord>,
+    proxy_votes: Vec<FundProxyVoteRecord>,
 }
 
 fn parse_fund_xml(xml: &str, limit_holdings: Option<usize>) -> Result<FundXmlData> {
     let mut data = FundXmlData::default();
     let mut path = Vec::<String>::new();
     let mut current = None::<FundHoldingRecord>;
+    let mut current_vote = None::<FundProxyVoteRecord>;
 
     read_xml(xml, |event| {
         match event {
             XmlEvent::Start(name) => {
                 if name.eq_ignore_ascii_case("invstOrSec") {
                     current = Some(FundHoldingRecord::default());
+                } else if is_vote_record_tag(&name) {
+                    current_vote = Some(FundProxyVoteRecord::default());
                 }
                 path.push(name);
             }
@@ -185,6 +211,8 @@ fn parse_fund_xml(xml: &str, limit_holdings: Option<usize>) -> Result<FundXmlDat
                 };
                 if let Some(holding) = current.as_mut() {
                     assign_holding_field(holding, name, &value);
+                } else if let Some(vote) = current_vote.as_mut() {
+                    assign_vote_field(vote, name, &value);
                 } else {
                     assign_fund_field(&mut data, name, &value);
                 }
@@ -196,6 +224,12 @@ fn parse_fund_xml(xml: &str, limit_holdings: Option<usize>) -> Result<FundXmlDat
                 {
                     data.holdings.push(holding);
                 }
+                if is_vote_record_tag(&name)
+                    && limit_holdings.is_none_or(|limit| data.proxy_votes.len() < limit)
+                    && let Some(vote) = current_vote.take()
+                {
+                    data.proxy_votes.push(vote);
+                }
                 path.pop();
             }
         }
@@ -203,6 +237,13 @@ fn parse_fund_xml(xml: &str, limit_holdings: Option<usize>) -> Result<FundXmlDat
     })?;
 
     Ok(data)
+}
+
+fn is_vote_record_tag(name: &str) -> bool {
+    matches!(
+        name,
+        "proxyVote" | "proxyVotingRecord" | "votingRecord" | "proxyVoteRecord"
+    )
 }
 
 fn assign_fund_field(data: &mut FundXmlData, name: &str, value: &str) {
@@ -235,6 +276,21 @@ fn assign_holding_field(holding: &mut FundHoldingRecord, name: &str, value: &str
         "invCountry" => holding.country = clean(value),
         "isRestrictedSec" => holding.is_restricted = parse_bool(value),
         "liquidityCat" => holding.liquidity_category = clean(value),
+        _ => {}
+    }
+}
+
+fn assign_vote_field(vote: &mut FundProxyVoteRecord, name: &str, value: &str) {
+    match name {
+        "issuerName" | "nameOfIssuer" | "issuer" => vote.issuer_name = clean(value),
+        "cusip" => vote.cusip = clean(value),
+        "meetingDate" | "voteDate" => vote.meeting_date = clean(value),
+        "matter" | "voteDescription" | "proposal" => vote.matter = clean(value),
+        "vote" | "howVoted" | "voteCast" => vote.vote_cast = clean(value),
+        "managementRecommendation" | "mgmtRecommendation" => {
+            vote.management_recommendation = clean(value)
+        }
+        "sharesVoted" | "shares" => vote.shares_voted = parse_f64(value),
         _ => {}
     }
 }
@@ -342,6 +398,40 @@ mod tests {
     fn classifies_fund_disclosure_forms() {
         assert_eq!(disclosure_type("NPORT-P"), "portfolio_holdings");
         assert_eq!(disclosure_type("N-CEN"), "annual_fund_census");
+        assert_eq!(disclosure_type("N-PX"), "proxy_voting_record");
+        assert_eq!(disclosure_type("497K"), "summary_prospectus");
+        assert_eq!(
+            disclosure_type("24F-2NT"),
+            "annual_notice_of_securities_sold"
+        );
         assert_eq!(disclosure_type("N-CSR"), "shareholder_report");
+    }
+
+    #[test]
+    fn parses_npx_proxy_vote_records() {
+        let xml = r#"
+        <edgarSubmission>
+          <registrantName>Example Trust</registrantName>
+          <proxyVote>
+            <issuerName>Apple Inc.</issuerName>
+            <cusip>037833100</cusip>
+            <meetingDate>2026-02-01</meetingDate>
+            <matter>Elect director</matter>
+            <voteCast>For</voteCast>
+            <managementRecommendation>For</managementRecommendation>
+            <sharesVoted>1000</sharesVoted>
+          </proxyVote>
+        </edgarSubmission>"#;
+
+        let data = parse_fund_xml(xml, Some(10)).unwrap();
+
+        assert_eq!(data.registrant_name.as_deref(), Some("Example Trust"));
+        assert_eq!(data.proxy_votes.len(), 1);
+        assert_eq!(
+            data.proxy_votes[0].issuer_name.as_deref(),
+            Some("Apple Inc.")
+        );
+        assert_eq!(data.proxy_votes[0].vote_cast.as_deref(), Some("For"));
+        assert_eq!(data.proxy_votes[0].shares_voted, Some(1000.0));
     }
 }

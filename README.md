@@ -16,7 +16,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 | Insider activity | Form 4 owner, role, transaction code, shares, price, value, footnotes, signatures |
 | Institutional holdings | 13F holdings, portfolio summary, top positions, quarter-over-quarter changes |
 | Company disclosure | 8-K events, 10-K/10-Q risk factors, MD&A, foreign issuer 20-F/6-K/40-F, filing search |
-| Fund disclosure | N-PORT holdings, N-CSR shareholder reports, N-CEN annual fund census metadata |
+| Fund disclosure | N-PORT holdings, N-CSR shareholder reports, N-CEN census, N-PX votes, 497K summaries, 24F notices |
 | Capital markets | S-1/F-1/424B prospectus terms, IPO signals, proceeds, risks, underwriters |
 | Financial analysis | SEC-derived margins, growth, free cash flow, ROA/ROE, liquidity, leverage |
 | Agent interface | Stable JSON/JSONL, LLM name resolution, source URLs, accession numbers |
@@ -33,6 +33,7 @@ sec proxy --ticker AAPL --latest 1 --pretty
 sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty
 sec foreign --ticker TSM --form 20-F --latest 1 --pretty
 sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty
+sec fund --cik 0000036405 --form N-PX --latest 1 --limit-holdings 20 --pretty
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind financial --latest 4
@@ -75,7 +76,7 @@ This is an early MVP. The first implementation focuses on:
 - Parsing DEF 14A proxy statements for meeting details, voting proposals, directors, auditors, and executive compensation tables
 - Parsing S-1/F-1/424B prospectuses for securities offered, ticker/exchange, price range, proceeds, risks, underwriters, and selected offering tables
 - Parsing 20-F/6-K/40-F foreign issuer disclosures for annual reports, current reports, exchanges, symbols, auditors, event signals, and key excerpts
-- Parsing N-PORT/N-CSR/N-CEN fund disclosures for portfolio holdings, fund metadata, shareholder-report excerpts, and financial statement sections
+- Parsing N-PORT/N-CSR/N-CEN/N-PX/497K/24F-2NT fund disclosures for portfolio holdings, fund metadata, proxy votes, summary prospectuses, securities-sold notices, shareholder-report excerpts, and financial statement sections
 - Searching filing submission text with snippets
 - Extracting common 10-K/10-Q sections such as business, risk factors, and MD&A
 - Generating source-backed Markdown reports for insider activity, 13F portfolios, and risk review
@@ -120,6 +121,7 @@ These are useful, source-backed questions that work today:
 | What are the key terms in an IPO prospectus? | `sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty` |
 | What did a foreign private issuer disclose in its latest annual/current report? | `sec foreign --ticker TSM --form 20-F --latest 1 --pretty` |
 | What holdings did a fund disclose in N-PORT? | `sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty` |
+| How did a fund vote proxies in N-PX? | `sec fund --cik 0000036405 --form N-PX --latest 1 --limit-holdings 20 --pretty` |
 | Which 5% beneficial owners recently filed 13D/13G? | `sec 13d --ticker TSLA --form 13g --include-amends --pretty` |
 | What is Berkshire Hathaway's latest 13F portfolio? | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | What changed between the latest two 13F filings? | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
@@ -210,7 +212,7 @@ Practical rule:
 | DEF 14A proxy statement primary document | `proxy`, `parse --form "DEF 14A"` | Annual meeting date/site, voting proposals, board recommendations, director nominees, auditor, named executive officers, summary compensation table | proxy statement records |
 | S-1/F-1/424B prospectus primary document | `prospectus`, `parse --form "S-1"` | Securities offered, IPO/prospectus type, ticker/exchange, price range, shares, proceeds, underwriters, auditor, risk/business/proceeds excerpts | prospectus records |
 | 20-F/6-K/40-F foreign issuer primary document | `foreign`, `parse --form "20-F"` | Foreign private issuer annual/current reports, exchanges, symbols, auditors, event signals, risk/business/operating review/controls/financial statements excerpts | foreign issuer records |
-| N-PORT/N-CSR/N-CEN fund documents | `fund`, `parse --form "NPORT-P"` | Fund registrant/series/class metadata, N-PORT holdings, assets/liabilities/net assets, N-CSR shareholder report excerpts, controls and financial statements | fund disclosure records |
+| N-PORT/N-CSR/N-CEN/N-PX/497K/24F-2NT fund documents | `fund`, `parse --form "NPORT-P"` | Fund registrant/series/class metadata, N-PORT holdings, N-PX proxy votes, 497K summary prospectus excerpts, 24F securities-sold notices, assets/liabilities/net assets, N-CSR shareholder report excerpts, controls and financial statements | fund disclosure records |
 | SEC complete submission text and archive documents | `search`, `section`, `docs`, `doc` | Original filing text, HTML/XML attachments, exhibits, source snippets | snippet, section, document records |
 | Form 3/4/5 XML ownership reports | `form4`, `form4-summary`, `report --kind insider` | Insider owners, roles, transaction codes, shares, prices, footnotes, signatures | transaction and ownership-report records |
 | Form 8-K primary document | `8k` | Current-report event items such as 2.02 earnings, 5.02 management changes, 8.01 other events, 9.01 exhibits | 8-K event records |
@@ -239,7 +241,7 @@ Output record cheat sheet:
 | Proxy statement | `proxy`, `parse --form "DEF 14A"` | `meeting_date`, `proposals`, `director_nominees`, `auditor`, `named_executive_officers`, `summary_compensation_table` | `accession`, `document_url`, `source_url` |
 | Prospectus | `prospectus`, `parse --form "S-1"` | `securities_offered`, `proposed_ticker`, `exchange`, `price_range`, `shares_offered`, `underwriters`, `risk_factors` | `accession`, `document_url`, `source_url` |
 | Foreign issuer | `foreign`, `parse --form "20-F"` | `report_type`, `exchange`, `ticker_or_symbol`, `auditor`, `event_signals`, `risk_factors`, `operating_review` | `accession`, `document_url`, `source_url` |
-| Fund disclosure | `fund`, `parse --form "NPORT-P"` | `disclosure_type`, `registrant_name`, `series_name`, `period_end`, `holdings`, `net_assets` | `accession`, `document_url`, `source_url` |
+| Fund disclosure | `fund`, `parse --form "NPORT-P"` | `disclosure_type`, `registrant_name`, `series_name`, `period_end`, `holdings`, `proxy_votes`, `summary_prospectus`, `registration_fee_notice`, `net_assets` | `accession`, `document_url`, `source_url` |
 | Search snippet | `search` | `query`, `snippet`, `offset`, `form`, `filing_date` | `accession`, `source_url`, `document`, `section` |
 | Section | `section` | `item`, `title`, `content`, `truncated` | `accession`, `document_url`, `source_url` |
 | Document | `docs`, `doc` | `filename`, `document_type`, `description`, `content_type`, `content` | `accession`, `document_url`, `source_url` |
@@ -829,14 +831,19 @@ Each foreign issuer record includes:
 
 ### fund
 
-Parse N-PORT, N-CSR/N-CSRS, and N-CEN fund disclosures. `NPORT-P` is the most
-structured source: it contains portfolio holdings, security identifiers, values,
-portfolio percentages, asset categories, issuer categories, country, and
-restricted-security flags. `N-CSR` and `N-CSRS` are shareholder reports, while
-`N-CEN` is the annual fund census.
+Parse N-PORT, N-CSR/N-CSRS, N-CEN, N-PX, 497K, and 24F-2NT fund disclosures.
+`NPORT-P` is the most structured holdings source: it contains portfolio holdings,
+security identifiers, values, portfolio percentages, asset categories, issuer
+categories, country, and restricted-security flags. `N-PX` exposes proxy voting
+records, `497K` is a summary prospectus, `24F-2NT` is an annual notice of
+securities sold, `N-CSR`/`N-CSRS` are shareholder reports, and `N-CEN` is the
+annual fund census.
 
 ```bash
 sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty
+sec fund --cik 0000036405 --form N-PX --latest 1 --limit-holdings 20 --pretty
+sec fund --cik 0000036405 --form 497K --latest 1 --limit-bytes 1200 --pretty
+sec fund --cik 0000036405 --form 24F-2NT --latest 1 --pretty
 sec fund --cik 0000036405 --form N-CSR --latest 1 --limit-bytes 1200 --pretty
 sec fund --cik 0000036405 --form N-CEN --latest 1 --pretty
 sec fund --cik 0000036405 --form all --latest 5 --include-amends --jsonl
@@ -844,8 +851,9 @@ sec parse --cik 0000036405 --form "NPORT-P" --latest 1 --limit 10 --pretty
 ```
 
 `--form` accepts `all`, `NPORT-P`, `NPORT-P/A`, `N-PORT`, `N-PORT/A`,
-`N-CSR`, `N-CSR/A`, `N-CSRS`, `N-CSRS/A`, `N-CEN`, and `N-CEN/A`. Use
-`--limit-holdings` to cap the returned N-PORT holdings array.
+`N-CSR`, `N-CSR/A`, `N-CSRS`, `N-CSRS/A`, `N-CEN`, `N-CEN/A`, `N-PX`,
+`N-PX/A`, `497K`, `497K/A`, `24F-2NT`, and `24F-2NT/A`. Use
+`--limit-holdings` to cap the returned N-PORT holdings or N-PX proxy-vote array.
 
 Each fund disclosure record includes:
 
@@ -860,8 +868,13 @@ Each fund disclosure record includes:
 - `net_assets`
 - `holdings_count`
 - `holdings`
+- `proxy_votes_count`
+- `proxy_votes`
 - `shareholder_report`
 - `portfolio_summary`
+- `proxy_voting_record`
+- `summary_prospectus`
+- `registration_fee_notice`
 - `financial_statements`
 - `controls`
 - `document_url`

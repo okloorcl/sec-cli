@@ -180,6 +180,14 @@ mod tests {
             ParserKind::FundDisclosure
         );
         assert_eq!(
+            parser_kind_for_form("N-PX").unwrap(),
+            ParserKind::FundDisclosure
+        );
+        assert_eq!(
+            parser_kind_for_form("497K").unwrap(),
+            ParserKind::FundDisclosure
+        );
+        assert_eq!(
             parser_kind_for_form("13F-HR").unwrap(),
             ParserKind::ThirteenF
         );
