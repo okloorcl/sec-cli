@@ -9,10 +9,10 @@ use sec_cli::sec::{
 };
 
 use super::{
-    args::{EightKExhibitsArgs, InlineXbrlArgs, ProxyArgs, TablesArgs},
-    disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs},
+    args::{EightKExhibitsArgs, InlineXbrlArgs, TablesArgs},
+    common::{output_mode, resolve_cik},
+    disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs, ProxyArgs},
     monitoring_args::{DailyArgs, EftsArgs},
-    runner::{output_mode, resolve_cik},
 };
 
 pub(super) async fn daily(client: &SecClient, args: DailyArgs) -> Result<()> {

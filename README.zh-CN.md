@@ -58,6 +58,8 @@ sec 13f-diff --cik 1067983 --limit 20
 sec 13f-summary --cik 1067983 --latest 1
 sec parse --ticker AAPL --form 4 --latest 1
 sec forms --pretty
+sec config set-identity "Your Name your.email@example.com"
+sec completions zsh > ~/.zfunc/_sec
 sec serve --host 127.0.0.1 --port 8716
 sec mcp
 ```
@@ -333,7 +335,14 @@ Expand-Archive sec-cli.zip -DestinationPath .
 .\sec-cli-x86_64-pc-windows-msvc\sec.exe --help
 ```
 
-SEC identity 是必需的，建议设置为真实姓名和邮箱：
+SEC identity 是必需的，建议设置为真实姓名和邮箱。最省心的方式是写入本地配置：
+
+```bash
+sec config set-identity "Your Name your.email@example.com"
+sec config show
+```
+
+也可以使用环境变量：
 
 ```bash
 export SEC_IDENTITY="Your Name your.email@example.com"
@@ -343,6 +352,14 @@ export SEC_IDENTITY="Your Name your.email@example.com"
 
 ```bash
 sec --identity "Your Name your.email@example.com" filings --ticker AAPL
+```
+
+Shell 补全脚本可以本地生成：
+
+```bash
+sec completions zsh > ~/.zfunc/_sec
+sec completions bash > sec.bash
+sec completions fish > ~/.config/fish/completions/sec.fish
 ```
 
 ## 开发
@@ -979,7 +996,7 @@ MCP tool 参数示例：
 
 | 参数 | 含义 |
 | --- | --- |
-| `--identity <TEXT>` | SEC 请求身份 / user agent；未设置 `SEC_IDENTITY` 或 `EDGAR_IDENTITY` 时必填 |
+| `--identity <TEXT>` | SEC 请求身份 / user agent；未设置本地配置、`SEC_IDENTITY` 或 `EDGAR_IDENTITY` 时必填 |
 | `--cache-dir <PATH>` | 指定本地缓存目录 |
 | `--output <MODE>` | 全局覆盖结构化输出：`json`、`pretty`、`jsonl`、`csv`、`table` |
 
@@ -1013,8 +1030,10 @@ MCP tool 参数示例：
 | `13f` / `13f-aggregate` / `13f-diff` / `13f-summary` | `--ticker`、`--cik`、`--manager` 或 `--investor` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `parse` | `--ticker` 或 `--cik`，`--form` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `forms` | 无 | `--jsonl`、`--pretty` |
+| `config` | 无 | `set-identity <TEXT>`、`show`、`path` |
+| `completions` | shell 名称 | `bash`、`zsh`、`fish`、`power-shell`、`elvish` |
 | `serve` | 无 | `--host`、`--port` |
-| `mcp` | 无 | stdio JSON-RPC server；在 Agent 环境里设置 `SEC_IDENTITY` |
+| `mcp` | 无 | stdio JSON-RPC server；在 Agent 环境里设置本地 identity 或 `SEC_IDENTITY` |
 
 ## 输出模式
 

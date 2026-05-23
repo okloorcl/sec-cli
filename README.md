@@ -58,6 +58,8 @@ sec 13f-diff --cik 1067983 --limit 20
 sec 13f-summary --cik 1067983 --latest 1
 sec parse --ticker AAPL --form 4 --latest 1
 sec forms --pretty
+sec config set-identity "Your Name your.email@example.com"
+sec completions zsh > ~/.zfunc/_sec
 sec serve --host 127.0.0.1 --port 8716
 sec mcp
 ```
@@ -347,7 +349,14 @@ Expand-Archive sec-cli.zip -DestinationPath .
 .\sec-cli-x86_64-pc-windows-msvc\sec.exe --help
 ```
 
-SEC requests must include a real identity:
+SEC requests must include a real identity. The easiest durable setup is:
+
+```bash
+sec config set-identity "Your Name your.email@example.com"
+sec config show
+```
+
+You can also use environment variables:
 
 ```bash
 export SEC_IDENTITY="Your Name your.email@example.com"
@@ -357,6 +366,14 @@ You can also pass it per command:
 
 ```bash
 sec --identity "Your Name your.email@example.com" filings --ticker AAPL
+```
+
+Shell completion scripts are generated locally:
+
+```bash
+sec completions zsh > ~/.zfunc/_sec
+sec completions bash > sec.bash
+sec completions fish > ~/.config/fish/completions/sec.fish
 ```
 
 ## Development
@@ -1487,7 +1504,7 @@ Global options:
 
 | Option | Meaning |
 | --- | --- |
-| `--identity <TEXT>` | SEC request identity / user agent. Required unless `SEC_IDENTITY` or `EDGAR_IDENTITY` is set. |
+| `--identity <TEXT>` | SEC request identity / user agent. Required unless local config, `SEC_IDENTITY`, or `EDGAR_IDENTITY` is set. |
 | `--cache-dir <PATH>` | Override the local response cache directory. |
 | `--output <MODE>` | Override structured output globally: `json`, `pretty`, `jsonl`, `csv`, or `table`. |
 
@@ -1525,8 +1542,10 @@ Command options:
 | `13f-summary` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `parse` | `--ticker` or `--cik`, `--form` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `forms` | none | `--jsonl`, `--pretty` |
+| `config` | none | `set-identity <TEXT>`, `show`, `path` |
+| `completions` | shell name | `bash`, `zsh`, `fish`, `power-shell`, `elvish` |
 | `serve` | none | `--host`, `--port` |
-| `mcp` | none | stdio JSON-RPC server; configure `SEC_IDENTITY` in the agent environment |
+| `mcp` | none | stdio JSON-RPC server; configure local identity or `SEC_IDENTITY` in the agent environment |
 
 ## Output Modes
 

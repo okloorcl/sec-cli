@@ -1,7 +1,6 @@
-use std::sync::OnceLock;
-
-use anyhow::{Context, Result, bail};
-use clap::Parser;
+use anyhow::{Result, bail};
+use clap::{CommandFactory, Parser};
+use clap_complete::generate;
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
     MetricsQuery, OutputMode, ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery,
@@ -10,18 +9,36 @@ use sec_cli::sec::{
     find_matches,
     llm::{LlmConfig, LlmProvider},
     print_records,
-    resolve::{ResolveInput, resolve_verified_13f_cik, resolve_verified_13f_manager},
+    resolve::ResolveInput,
     supported_parsers,
 };
 
 use super::analysis_args::StatementPeriodArg;
 use super::args::{Cli, Command, LlmProviderArg, ReportKindArg, ResolveArgs};
+use super::common::{output_mode, resolve_cik, resolve_subject, set_output_override};
+use super::config::{config_path, read_config, set_identity};
 use super::handlers;
 use super::identity::resolve_identity;
+use super::system_args::ConfigCommand;
 
 pub(crate) async fn run() -> Result<()> {
     let cli = Cli::parse();
-    let _ = OUTPUT_OVERRIDE.set(cli.output.map(OutputMode::from));
+    set_output_override(cli.output.map(OutputMode::from));
+
+    match &cli.command {
+        Command::Completions(args) => {
+            let mut command = Cli::command();
+            let shell: clap_complete::Shell = args.shell.into();
+            generate(shell, &mut command, "sec", &mut std::io::stdout());
+            return Ok(());
+        }
+        Command::Config(args) => {
+            handle_config(args.command.clone())?;
+            return Ok(());
+        }
+        _ => {}
+    }
+
     let identity = resolve_identity(cli.identity)?;
 
     let client = SecClient::new(identity, cli.cache_dir)?;
@@ -391,8 +408,24 @@ pub(crate) async fn run() -> Result<()> {
         Command::Mcp(_) => {
             sec_cli::mcp::serve_stdio(client).await?;
         }
+        Command::Completions(_) | Command::Config(_) => unreachable!("handled before client init"),
     }
 
+    Ok(())
+}
+
+fn handle_config(command: ConfigCommand) -> Result<()> {
+    match command {
+        ConfigCommand::SetIdentity { identity } => {
+            let config = set_identity(identity)?;
+            println!("{}", serde_json::to_string_pretty(&config)?);
+        }
+        ConfigCommand::Show => {
+            let config = read_config()?;
+            println!("{}", serde_json::to_string_pretty(&config)?);
+        }
+        ConfigCommand::Path => println!("{}", config_path().display()),
+    }
     Ok(())
 }
 
@@ -405,69 +438,12 @@ fn report_kind(kind: ReportKindArg) -> ReportKind {
     }
 }
 
-static OUTPUT_OVERRIDE: OnceLock<Option<OutputMode>> = OnceLock::new();
-
-pub(super) fn output_mode(jsonl: bool, pretty: bool) -> OutputMode {
-    if let Some(Some(mode)) = OUTPUT_OVERRIDE.get() {
-        *mode
-    } else if jsonl {
-        OutputMode::JsonLines
-    } else if pretty {
-        OutputMode::PrettyJson
-    } else {
-        OutputMode::Json
-    }
-}
-
 fn statement_period_form(period: StatementPeriodArg) -> Option<String> {
     match period {
         StatementPeriodArg::Annual => Some("10-K".to_string()),
         StatementPeriodArg::Quarterly => Some("10-Q".to_string()),
         StatementPeriodArg::All => None,
     }
-}
-
-pub(super) async fn resolve_cik(
-    client: &SecClient,
-    ticker: Option<&str>,
-    cik: Option<u64>,
-) -> Result<u64> {
-    if let Some(cik) = cik {
-        return Ok(cik);
-    }
-    if let Some(ticker) = ticker {
-        return client
-            .cik_for_ticker(ticker)
-            .await
-            .with_context(|| format!("unknown ticker '{}'", ticker));
-    }
-    bail!("provide --ticker or --cik");
-}
-
-async fn resolve_subject(
-    client: &SecClient,
-    ticker: Option<&str>,
-    cik: Option<u64>,
-    investor: Option<&str>,
-    manager: Option<&str>,
-) -> Result<(u64, String)> {
-    if let Some(investor) = investor {
-        return resolve_verified_13f_cik(client, investor).await;
-    }
-    if let Some(manager) = manager {
-        return resolve_verified_13f_manager(client, manager).await;
-    }
-    if let Some(cik) = cik {
-        return Ok((cik, cik.to_string()));
-    }
-    if let Some(ticker) = ticker {
-        let cik = client
-            .cik_for_ticker(ticker)
-            .await
-            .with_context(|| format!("unknown ticker '{}'", ticker))?;
-        return Ok((cik, ticker.to_ascii_uppercase()));
-    }
-    bail!("provide --ticker, --cik, --manager, or --investor");
 }
 
 fn llm_overrides(args: &ResolveArgs) -> Option<LlmConfig> {

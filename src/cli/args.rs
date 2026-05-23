@@ -2,8 +2,9 @@ use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use super::analysis_args::{MetricsArgs, StatementsArgs};
-use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs};
+use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs, ProxyArgs};
 use super::monitoring_args::{DailyArgs, EftsArgs, McpArgs, OutputArg, ServeArgs};
+use super::system_args::{CompletionsArgs, ConfigArgs};
 
 #[derive(Parser, Debug)]
 #[command(name = "sec")]
@@ -102,6 +103,10 @@ pub(crate) enum Command {
     Serve(ServeArgs),
     /// Run a stdio MCP server for agent tools.
     Mcp(McpArgs),
+    /// Generate shell completion scripts.
+    Completions(CompletionsArgs),
+    /// Manage the local sec-cli configuration file.
+    Config(ConfigArgs),
 }
 
 #[derive(Args, Debug)]
@@ -184,24 +189,6 @@ pub(crate) struct TablesArgs {
     pub(crate) limit_rows: usize,
     #[arg(long)]
     pub(crate) include_amends: bool,
-    #[arg(long)]
-    pub(crate) jsonl: bool,
-    #[arg(long)]
-    pub(crate) pretty: bool,
-}
-
-#[derive(Args, Debug)]
-pub(crate) struct ProxyArgs {
-    #[arg(long, conflicts_with = "cik")]
-    pub(crate) ticker: Option<String>,
-    #[arg(long)]
-    pub(crate) cik: Option<u64>,
-    #[arg(long, default_value_t = 1)]
-    pub(crate) latest: usize,
-    #[arg(long)]
-    pub(crate) include_amends: bool,
-    #[arg(long, default_value_t = 12)]
-    pub(crate) limit_rows: usize,
     #[arg(long)]
     pub(crate) jsonl: bool,
     #[arg(long)]
