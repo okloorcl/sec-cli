@@ -1,4 +1,4 @@
-use std::{env, fs, path::PathBuf};
+use std::{env, fmt, fs, path::PathBuf};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ pub enum LlmProvider {
     Anthropic,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+#[derive(Clone, Deserialize, Serialize, Default)]
 pub struct LlmConfig {
     pub provider: Option<LlmProvider>,
     pub base_url: Option<String>,
@@ -18,6 +18,20 @@ pub struct LlmConfig {
     pub api_key: Option<String>,
     pub api_key_env: Option<String>,
     pub max_tokens: Option<u32>,
+}
+
+impl fmt::Debug for LlmConfig {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("LlmConfig")
+            .field("provider", &self.provider)
+            .field("base_url", &self.base_url)
+            .field("model", &self.model)
+            .field("api_key", &self.api_key.as_ref().map(|_| "[redacted]"))
+            .field("api_key_env", &self.api_key_env)
+            .field("max_tokens", &self.max_tokens)
+            .finish()
+    }
 }
 
 impl LlmConfig {
@@ -125,5 +139,17 @@ mod tests {
     fn prefers_xdg_style_config_path() {
         let paths = config_paths();
         assert!(paths.iter().any(|path| path.ends_with("sec-cli/llm.json")));
+    }
+
+    #[test]
+    fn debug_redacts_api_key() {
+        let config = LlmConfig {
+            api_key: Some("secret-key".to_string()),
+            ..Default::default()
+        };
+        let debug = format!("{config:?}");
+
+        assert!(debug.contains("[redacted]"));
+        assert!(!debug.contains("secret-key"));
     }
 }
