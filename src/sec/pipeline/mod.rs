@@ -11,10 +11,9 @@ use super::{
 
 impl SecClient {
     pub async fn parse_form(&self, query: ParseQuery) -> Result<Vec<ParsedRecord>> {
-        let parser = parser_for_form(&query.form)
-            .ok_or_else(|| anyhow!("unsupported parsed form '{}'", query.form))?;
+        let parser_kind = parser_kind_for_form(&query.form)?;
 
-        let mut records: Vec<ParsedRecord> = match parser.kind {
+        let mut records: Vec<ParsedRecord> = match parser_kind {
             ParserKind::Form4 => self
                 .form4_transactions(Form4Query {
                     cik: query.cik,
@@ -76,5 +75,36 @@ impl SecClient {
             records.truncate(limit);
         }
         Ok(records)
+    }
+}
+
+fn parser_kind_for_form(form: &str) -> Result<ParserKind> {
+    parser_for_form(form)
+        .map(|parser| parser.kind)
+        .ok_or_else(|| anyhow!("unsupported parsed form '{}'", form))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolves_parser_kind_for_supported_forms() {
+        assert_eq!(parser_kind_for_form("4").unwrap(), ParserKind::Form4);
+        assert_eq!(parser_kind_for_form("8-K/A").unwrap(), ParserKind::EightK);
+        assert_eq!(
+            parser_kind_for_form("SC 13G").unwrap(),
+            ParserKind::Schedule13
+        );
+        assert_eq!(parser_kind_for_form("DEF 14A").unwrap(), ParserKind::Proxy);
+        assert_eq!(
+            parser_kind_for_form("13F-HR").unwrap(),
+            ParserKind::ThirteenF
+        );
+    }
+
+    #[test]
+    fn rejects_unsupported_forms() {
+        assert!(parser_kind_for_form("S-1").is_err());
     }
 }

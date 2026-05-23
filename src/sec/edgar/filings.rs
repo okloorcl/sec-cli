@@ -120,3 +120,29 @@ fn optional_bool_array(root: &Value, key: &str) -> Vec<Option<bool>> {
         .map(|arr| arr.iter().map(Value::as_bool).collect())
         .unwrap_or_default()
 }
+
+#[cfg(test)]
+mod tests {
+    use chrono::NaiveDate;
+
+    use super::*;
+
+    #[test]
+    fn matches_amended_forms_only_when_requested() {
+        assert!(matches_form("10-K", Some("10-K"), false));
+        assert!(!matches_form("10-K/A", Some("10-K"), false));
+        assert!(matches_form("10-K/A", Some("10-K"), true));
+        assert!(matches_form("sc 13g/a", Some("SC 13G"), true));
+    }
+
+    #[test]
+    fn matches_date_range() {
+        let from = NaiveDate::from_ymd_opt(2026, 1, 1);
+        let to = NaiveDate::from_ymd_opt(2026, 3, 31);
+
+        assert!(matches_date("2026-02-01", from, to));
+        assert!(!matches_date("2025-12-31", from, to));
+        assert!(!matches_date("2026-04-01", from, to));
+        assert!(matches_date("not-a-date", from, to));
+    }
+}

@@ -18,11 +18,7 @@ use super::handlers;
 
 pub(crate) async fn run() -> Result<()> {
     let cli = Cli::parse();
-    let identity = cli
-        .identity
-        .or_else(|| env::var("EDGAR_IDENTITY").ok())
-        .or_else(|| env::var("SEC_IDENTITY").ok())
-        .unwrap_or_else(|| "sec-cli/0.1.0 contact@example.com".to_string());
+    let identity = resolve_identity(cli.identity)?;
 
     let client = SecClient::new(identity, cli.cache_dir)?;
 
@@ -375,6 +371,31 @@ pub(crate) async fn run() -> Result<()> {
     Ok(())
 }
 
+fn resolve_identity(cli_identity: Option<String>) -> Result<String> {
+    resolve_identity_from(
+        cli_identity,
+        env::var("EDGAR_IDENTITY").ok(),
+        env::var("SEC_IDENTITY").ok(),
+    )
+}
+
+fn resolve_identity_from(
+    cli_identity: Option<String>,
+    edgar_identity: Option<String>,
+    sec_identity: Option<String>,
+) -> Result<String> {
+    cli_identity
+        .or(edgar_identity)
+        .or(sec_identity)
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "SEC identity is required. Set SEC_IDENTITY=\"Your Name your.email@example.com\" or pass --identity."
+            )
+        })
+}
+
 fn report_kind(kind: ReportKindArg) -> ReportKind {
     match kind {
         ReportKindArg::Insider => ReportKind::Insider,
@@ -463,4 +484,23 @@ fn llm_overrides(args: &ResolveArgs) -> Option<LlmConfig> {
         api_key_env: args.llm_api_key_env.clone(),
         max_tokens: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cli_identity_takes_precedence() {
+        assert_eq!(
+            resolve_identity(Some("Alice alice@example.com".to_string())).unwrap(),
+            "Alice alice@example.com"
+        );
+    }
+
+    #[test]
+    fn rejects_missing_identity() {
+        let result = resolve_identity_from(None, None, None);
+        assert!(result.is_err());
+    }
 }

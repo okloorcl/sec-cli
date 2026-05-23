@@ -177,3 +177,36 @@ fn known_concept_alias(query: &str, concept: &str) -> bool {
         _ => false,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn matches_known_strict_aliases() {
+        assert!(concept_matches(
+            "revenue",
+            "RevenueFromContractWithCustomerExcludingAssessedTax",
+            None,
+            None
+        ));
+        assert!(concept_matches("netincome", "NetIncomeLoss", None, None));
+        assert!(!concept_matches(
+            "cash",
+            "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+            None,
+            None
+        ));
+    }
+
+    #[test]
+    fn matches_concept_or_label_for_non_strict_queries() {
+        assert!(concept_matches("inventory", "InventoryNet", None, None));
+        assert!(concept_matches(
+            "research",
+            "ResearchAndDevelopmentExpense",
+            Some("Research and development"),
+            None
+        ));
+    }
+}

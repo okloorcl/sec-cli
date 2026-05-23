@@ -249,10 +249,11 @@ cargo install --path .
 During development:
 
 ```bash
-cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 2 --pretty
+SEC_IDENTITY="Your Name your.email@example.com" \
+  cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 2 --pretty
 ```
 
-SEC requests should include a real identity:
+SEC requests must include a real identity:
 
 ```bash
 export SEC_IDENTITY="Your Name your.email@example.com"
@@ -1063,7 +1064,7 @@ Global options:
 
 | Option | Meaning |
 | --- | --- |
-| `--identity <TEXT>` | SEC request identity / user agent. Prefer a real name and email. |
+| `--identity <TEXT>` | SEC request identity / user agent. Required unless `SEC_IDENTITY` or `EDGAR_IDENTITY` is set. |
 | `--cache-dir <PATH>` | Override the local response cache directory. |
 
 Command options:

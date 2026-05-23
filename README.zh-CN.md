@@ -234,10 +234,11 @@ cargo install --path .
 开发时：
 
 ```bash
-cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 2 --pretty
+SEC_IDENTITY="Your Name your.email@example.com" \
+  cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 2 --pretty
 ```
 
-建议设置 SEC identity：
+SEC identity 是必需的，建议设置为真实姓名和邮箱：
 
 ```bash
 export SEC_IDENTITY="Your Name your.email@example.com"
@@ -655,7 +656,7 @@ sec forms --pretty
 
 | 参数 | 含义 |
 | --- | --- |
-| `--identity <TEXT>` | SEC 请求身份 / user agent |
+| `--identity <TEXT>` | SEC 请求身份 / user agent；未设置 `SEC_IDENTITY` 或 `EDGAR_IDENTITY` 时必填 |
 | `--cache-dir <PATH>` | 指定本地缓存目录 |
 
 命令参数：

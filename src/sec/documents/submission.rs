@@ -129,8 +129,24 @@ fn extract_tag<'a>(raw: &'a str, tag: &str) -> Option<&'a str> {
     let open = format!("<{tag}>");
     let close = format!("</{tag}>");
     let start = find_ascii_case_insensitive(raw, &open, 0)? + open.len();
-    let end = find_ascii_case_insensitive(raw, &close, start)?;
-    Some(&raw[start..end])
+    let mut cursor = start;
+    let mut depth = 1usize;
+
+    loop {
+        let next_open = find_ascii_case_insensitive(raw, &open, cursor);
+        let next_close = find_ascii_case_insensitive(raw, &close, cursor)?;
+        if next_open.is_some_and(|pos| pos < next_close) {
+            depth += 1;
+            cursor = next_open? + open.len();
+            continue;
+        }
+
+        depth -= 1;
+        if depth == 0 {
+            return Some(&raw[start..next_close]);
+        }
+        cursor = next_close + close.len();
+    }
 }
 
 fn find_ascii_case_insensitive(haystack: &str, needle: &str, from: usize) -> Option<usize> {
@@ -143,4 +159,27 @@ fn find_ascii_case_insensitive(haystack: &str, needle: &str, from: usize) -> Opt
         .windows(needle.len())
         .position(|window| window.eq_ignore_ascii_case(needle))
         .map(|pos| from + pos)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_documents_case_insensitively() {
+        let docs = parse_documents(
+            "<DOCUMENT><TYPE>10-K\n<SEQUENCE>1\n<FILENAME>a.htm\n<TEXT>Hello</TEXT></DOCUMENT>",
+        );
+
+        assert_eq!(docs.len(), 1);
+        assert_eq!(docs[0].document_type.as_deref(), Some("10-K"));
+        assert_eq!(docs[0].content, "Hello");
+    }
+
+    #[test]
+    fn extract_tag_handles_nested_same_name() {
+        let value = extract_tag("<TEXT>outer <TEXT>inner</TEXT> tail</TEXT>", "TEXT").unwrap();
+
+        assert_eq!(value, "outer <TEXT>inner</TEXT> tail");
+    }
 }

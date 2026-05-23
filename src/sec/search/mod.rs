@@ -151,3 +151,73 @@ fn starts_inside_tag(full_text: &str, start: usize) -> bool {
 fn normalize_ws(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn filing() -> FilingRecord {
+        FilingRecord {
+            accession: "000-test".to_string(),
+            cik: 1,
+            company: "ACME".to_string(),
+            form: "10-K".to_string(),
+            filing_date: "2026-01-01".to_string(),
+            report_date: None,
+            primary_document: Some("acme.htm".to_string()),
+            primary_doc_description: None,
+            is_xbrl: None,
+            is_inline_xbrl: None,
+            source_url: "https://www.sec.gov/index".to_string(),
+            text_url: "https://www.sec.gov/text".to_string(),
+        }
+    }
+
+    #[test]
+    fn finds_exact_matches_with_section_context() {
+        let text = "Item 1A. Risk Factors <b>supply chain risk</b> can be material.";
+        let records = find_matches(
+            &filing(),
+            text,
+            &SearchQuery {
+                query: "supply chain risk".to_string(),
+                context: 20,
+            },
+        );
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].section.as_deref(), Some("Item 1A. Risk Factors"));
+        assert!(records[0].snippet.contains("supply chain risk"));
+        assert!(!records[0].snippet.contains("<b>"));
+    }
+
+    #[test]
+    fn falls_back_to_token_window_matching() {
+        let text = "The company depends on supply partners across many markets and faces operational risk.";
+        let records = find_matches(
+            &filing(),
+            text,
+            &SearchQuery {
+                query: "supply risk".to_string(),
+                context: 30,
+            },
+        );
+
+        assert_eq!(records.len(), 1);
+    }
+
+    #[test]
+    fn strips_partial_tags_from_snippet_boundaries() {
+        let text = "<span>alpha target beta</span>";
+        let records = find_matches(
+            &filing(),
+            text,
+            &SearchQuery {
+                query: "target".to_string(),
+                context: 8,
+            },
+        );
+
+        assert_eq!(records[0].snippet, "alpha target beta");
+    }
+}

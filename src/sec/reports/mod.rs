@@ -232,14 +232,15 @@ fn signed_dollars(value: i128) -> String {
 
 fn grouped(value: u64) -> String {
     let raw = value.to_string();
-    let mut out = String::new();
-    for (idx, ch) in raw.chars().rev().enumerate() {
-        if idx > 0 && idx % 3 == 0 {
+    let first_group = raw.len() % 3;
+    let mut out = String::with_capacity(raw.len() + raw.len() / 3);
+    for (idx, ch) in raw.chars().enumerate() {
+        if idx > 0 && (idx + 3 - first_group) % 3 == 0 {
             out.push(',');
         }
         out.push(ch);
     }
-    out.chars().rev().collect()
+    out
 }
 
 fn compact_float(value: f64) -> String {
@@ -271,4 +272,26 @@ fn bar(value: u64, max_value: u64) -> String {
         "#".repeat(width),
         ".".repeat(12usize.saturating_sub(width))
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn formats_grouped_numbers_and_dollars() {
+        assert_eq!(grouped(0), "0");
+        assert_eq!(grouped(123), "123");
+        assert_eq!(grouped(1234), "1,234");
+        assert_eq!(dollars(1_234_567), "$1,234,567");
+        assert_eq!(signed_dollars(-1_200), "-$1,200");
+        assert_eq!(signed_dollars(1_200), "+$1,200");
+    }
+
+    #[test]
+    fn escapes_markdown_cells_and_builds_bar() {
+        assert_eq!(cell("A|B\nC"), "A\\|B C");
+        assert_eq!(bar(50, 100), "######......");
+        assert_eq!(bar(1, 0), "............");
+    }
 }
