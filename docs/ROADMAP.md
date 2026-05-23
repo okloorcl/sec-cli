@@ -15,6 +15,7 @@ real commands or modules in the repository.
 - [x] 10-K / 10-Q company-report topic table parser.
 - [x] Source-backed financial metrics and secondary analysis from CompanyFacts.
 - [x] Expanded SEC-derived metrics to 50+ profitability, growth, expense-intensity, cash-flow, liquidity, leverage, solvency, efficiency, asset-quality, and capital-return records.
+- [x] Financial-health scores: Piotroski F-Score, Altman Z'' approximation, and Beneish M-Score approximation.
 - [x] Financial trend Markdown report over SEC-derived metrics.
 - [x] Inline XBRL streaming parser.
 - [x] XBRL linkbase parser for presentation, calculation, definition, label, and schema attachments.
@@ -57,17 +58,15 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] Financial-health scores such as Piotroski F-Score, Altman Z-Score, and Beneish M-Score.
 - [ ] Cross-form 10-K / 10-Q financial statement stitching.
 - [ ] Arrow / Parquet export layer.
 - [ ] Optional bulk archive / offline mode.
 
 ## Suggested Implementation Order
 
-1. Financial-health score expansion.
-2. Cross-form statement stitching.
-3. Arrow / Parquet export layer.
-4. Optional bulk archive / offline mode.
+1. Cross-form statement stitching.
+2. Arrow / Parquet export layer.
+3. Optional bulk archive / offline mode.
 
 ## Completion Rule
 

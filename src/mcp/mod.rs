@@ -12,9 +12,9 @@ use crate::sec::{SecClient, find_matches, supported_parsers};
 use args::{
     company_report_query, daily_query, document_query, document_read_query, efts_query,
     eightk_exhibit_query, eightk_query, fact_query, filing_query, foreign_query, form4_query,
-    fund_query, ixbrl_query, metrics_query, parse_query, prospectus_query, proxy_query,
-    report_kind, report_query, schedule13_query, search_inputs, section_query, statement_query,
-    table_query, thirteenf_query,
+    fund_query, health_score_query, ixbrl_query, metrics_query, parse_query, prospectus_query,
+    proxy_query, report_kind, report_query, schedule13_query, search_inputs, section_query,
+    statement_query, table_query, thirteenf_query,
 };
 use protocol::{RpcRequest, error_response, initialize_result, success_response};
 use schema::tools;
@@ -85,6 +85,11 @@ async fn call_tool(client: &SecClient, params: Value) -> Result<Value> {
         "sec_metrics" => json!(
             client
                 .financial_metrics(metrics_query(client, &args).await?)
+                .await?
+        ),
+        "sec_scores" => json!(
+            client
+                .health_scores(health_score_query(client, &args).await?)
                 .await?
         ),
         "sec_ixbrl" => json!(

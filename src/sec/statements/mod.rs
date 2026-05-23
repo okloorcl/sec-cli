@@ -243,6 +243,7 @@ fn balance_lines() -> Vec<StatementLine> {
             "stockholders_equity",
             concepts::STOCKHOLDERS_EQUITY,
         ),
+        line("balance", "retained_earnings", concepts::RETAINED_EARNINGS),
         line(
             "balance",
             "liabilities_and_equity",

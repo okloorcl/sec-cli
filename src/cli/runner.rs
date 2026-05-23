@@ -3,9 +3,9 @@ use clap::{CommandFactory, Parser};
 use clap_complete::generate;
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
-    MetricsQuery, OutputMode, ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery,
-    SecClient, SectionQuery, StatementQuery, ThirteenFQuery, XbrlCalculationQuery,
-    XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
+    HealthScoreQuery, MetricsQuery, OutputMode, ParseQuery, ReportKind, ReportQuery,
+    Schedule13Query, SearchQuery, SecClient, SectionQuery, StatementQuery, ThirteenFQuery,
+    XbrlCalculationQuery, XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
     documents::read::{content_for_terminal, validate_doc_args},
     find_matches,
     llm::{LlmConfig, LlmProvider},
@@ -95,6 +95,19 @@ pub(crate) async fn run() -> Result<()> {
             let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
             let records = client
                 .financial_metrics(MetricsQuery {
+                    cik,
+                    form: statement_period_form(args.period),
+                    unit: args.unit,
+                    latest: args.latest,
+                })
+                .await?;
+            print_records(&records, output)?;
+        }
+        Command::Scores(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let records = client
+                .health_scores(HealthScoreQuery {
                     cik,
                     form: statement_period_form(args.period),
                     unit: args.unit,

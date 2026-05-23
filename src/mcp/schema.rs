@@ -48,6 +48,13 @@ pub fn tools() -> Vec<Value> {
             ),
         ),
         tool(
+            "sec_scores",
+            "Calculate SEC-derived financial-health scores: Piotroski F-Score, Altman Z'' approximation, and Beneish M-Score approximation.",
+            company_schema(
+                json!({"period":{"type":"string"},"unit":{"type":"string"},"latest":{"type":"integer"}}),
+            ),
+        ),
+        tool(
             "sec_ixbrl",
             "Stream Inline XBRL facts from primary filing HTML.",
             company_schema(
@@ -244,6 +251,7 @@ mod tests {
             "sec_filings",
             "sec_daily",
             "sec_efts",
+            "sec_scores",
             "sec_ixbrl",
             "sec_tables",
             "sec_proxy",

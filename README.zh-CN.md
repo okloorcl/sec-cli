@@ -30,6 +30,7 @@ sec efts --query "supply chain risk" --form 10-K --from 2024-01-01 --to 2024-12-
 sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
+sec scores --ticker AAPL --period annual --latest 1 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
@@ -215,7 +216,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | SEC submissions JSON | `filings` | 公司提交过哪些 filing、日期、accession、主文档名 | filing records |
 | SEC daily master index | `daily`、`monitor` | 全市场某日新增 filing feed：CIK、公司、form、提交日期、archive 文件名、accession、来源 URL | daily filing records |
 | SEC EDGAR Full-Text Search / EFTS | `efts`、`full-text`、`global-search` | 全市场全文搜索命中：分数、公司、CIK、form、日期、accession、document URL | EFTS search records |
-| SEC CompanyFacts JSON | `facts`、`statements`、`metrics`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行，以及二次推导的利润率/增长率/回报率/流动性/杠杆 | fact records、financial statement rows、financial metric records、Markdown financial report |
+| SEC CompanyFacts JSON | `facts`、`statements`、`metrics`、`scores`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行、二次推导的利润率/增长率/回报率/流动性/杠杆，以及 Piotroski/Altman/Beneish 健康评分 | fact records、financial statement rows、financial metric records、health score records、Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | filing HTML 内嵌的 `ix:nonFraction` / `ix:nonNumeric`、context、unit、scale、decimals、原始值 | Inline XBRL fact records |
 | XBRL linkbase 附件 | `xbrl-links`、`linkbase`、`xbrl-tree`、`xbrl-calc`、`xbrl-statement` | EX-101.PRE/CAL/DEF/LAB/SCH 关系：presentation arcs、calculation weights、definition arcs、标签、schema elements，以及挂载同一 accession CompanyFacts 数值后的报表行 | XBRL linkbase relationship records、presentation tree rows、calculation checks、rendered XBRL statement rows |
 | Filing HTML tables | `tables` | 主 HTML 文档里的表格行，例如薪酬表、分部表、注册证券表、债务表、合同表 | HTML table records |
@@ -253,6 +254,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | Fact | `facts` | `concept`、`label`、`value`、`unit`、`fy`、`fp`、`filed` | `accession`、`source_url`、`fact_id` |
 | Financial statement row | `statements` | `statement`、`line_order`、`line_item`、`value`、`unit`、`fiscal_year`、`fiscal_period` | `accession`、`source_url`、`fact_id` |
 | Financial metric | `metrics` | `metric`、`category`、`value`、`display_value`、`period_end`、`calculation`、`components` | `source_urls`、component `accession`、component `fact_id` |
+| Financial health score | `scores` | `score_name`、`score`、`max_score`、`rating`、`period_end`、`signals` | `source_urls`、signal `calculation` |
 | Inline XBRL fact | `ixbrl` | `name`、`context_ref`、`unit_ref`、`scale`、`raw_value`、`numeric_value` | `accession`、`document_url`、`source_url` |
 | XBRL linkbase relationship | `xbrl-links` | `linkbase`、`relationship`、`role`、`parent_concept`、`child_concept`、`concept`、`label`、`order`、`weight` | `accession`、`document_url`、`source_url` |
 | XBRL presentation tree row | `xbrl-tree` | `role`、`depth`、`line_order`、`concept`、`label`、`parent_concept`、`path` | `accession`、`document_url`、`source_url` |
@@ -642,6 +644,24 @@ sec metrics --cik 320193 --period annual --latest 1 --pretty
 
 输出字段：`metric`、`category`、`value`、`display_value`、`unit`、`period_end`、`fiscal_year`、`fiscal_period`、`form`、`calculation`、`components`、`source_urls`。
 
+### scores
+
+基于同一套标准化 CompanyFacts 财报行和 `metrics` 指标计算财务健康评分。输出不是一个孤立数字，而是每个评分一条 record，并附带 `signals` 明细，方便 Agent 解释每一分从哪里来。
+
+```bash
+sec scores --ticker AAPL --period annual --latest 1 --pretty
+sec scores --ticker MSFT --period annual --latest 3 --jsonl
+sec scores --cik 320193 --period annual --latest 1 --output table
+```
+
+已实现评分：
+
+- `piotroski_f_score`：9 个二元质量信号，覆盖盈利能力、应计质量、杠杆/流动性、稀释、毛利率和资产周转。
+- `altman_z_score_private`：只使用 SEC 数据的 Altman Z'' 近似版，使用账面权益而非市值。
+- `beneish_m_score`：Beneish M-Score 近似版，`watch` 表示分数高于 `-1.78` 的观察阈值。
+
+输出字段：`score_name`、`score`、`max_score`、`rating`、`period_end`、`calculation`、`signals`、`source_urls`。缺少底层 fact 时会输出 `insufficient_data` 或 null signal value，不会编造输入。
+
 ### ixbrl
 
 直接从 filing 主 HTML 流式解析 Inline XBRL facts。这个命令适合你想看“某一份 10-K/10-Q HTML 里原样嵌入的事实”，而不是 SEC CompanyFacts 已经整理后的公司级事实库。
@@ -992,6 +1012,7 @@ curl "http://127.0.0.1:8716/v1/efts?query=supply%20chain%20risk&form=10-K&from=2
 curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
 curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
+curl "http://127.0.0.1:8716/v1/scores?ticker=AAPL&period=annual&latest=1"
 curl "http://127.0.0.1:8716/v1/company-report?ticker=AAPL&form=10-K&topic=segment"
 curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
 curl "http://127.0.0.1:8716/v1/8k-exhibits?ticker=AAPL&category=earnings_release&latest=5"
@@ -1015,6 +1036,7 @@ curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
 | `/v1/facts` | `sec facts` |
 | `/v1/statements` | `sec statements` |
 | `/v1/metrics` | `sec metrics` |
+| `/v1/scores` | `sec scores` |
 | `/v1/company-report` | `sec company-report` |
 | `/v1/ixbrl` | `sec ixbrl` |
 | `/v1/sections` | `sec section` |
@@ -1050,6 +1072,7 @@ sec mcp
 | `sec_facts` | 等价于 `sec facts` |
 | `sec_statements` | 等价于 `sec statements` |
 | `sec_metrics` | 等价于 `sec metrics` |
+| `sec_scores` | 等价于 `sec scores` |
 | `sec_ixbrl` | 等价于 `sec ixbrl` |
 | `sec_tables` | 等价于 `sec tables` |
 | `sec_company_report` | 等价于 `sec company-report` |
@@ -1106,6 +1129,7 @@ MCP tool 参数示例：
 | `facts` | `--ticker` 或 `--cik`，`--concept` | `--form`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `statements` | `--ticker` 或 `--cik` | `--statement`、`--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `metrics` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
+| `scores` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `company-report` | `--ticker` 或 `--cik` | `--form`、`--topic`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `ixbrl` | `--ticker` 或 `--cik` | `--form`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `xbrl-links` / `linkbase` | `--ticker` 或 `--cik` | `--form`、`--linkbase`、`--role`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |

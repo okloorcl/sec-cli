@@ -30,6 +30,7 @@ sec efts --query "supply chain risk" --form 10-K --from 2024-01-01 --to 2024-12-
 sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
+sec scores --ticker AAPL --period annual --latest 1 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
@@ -222,7 +223,7 @@ Practical rule:
 | SEC submissions JSON | `filings` | Filing list, dates, accession numbers, primary document names | filing records |
 | SEC daily master index | `daily`, `monitor` | All-market daily filing feed: CIK, company, form, filing date, archive filename, accession, source URLs | daily filing records |
 | SEC EDGAR Full-Text Search / EFTS | `efts`, `full-text`, `global-search` | All-market text-search hits with score, company, CIK, form, dates, accession, document URL | EFTS search records |
-| SEC CompanyFacts JSON | `facts`, `statements`, `metrics`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, derived margins/growth/returns/liquidity/leverage | fact records, financial statement rows, financial metric records, Markdown financial report |
+| SEC CompanyFacts JSON | `facts`, `statements`, `metrics`, `scores`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, derived margins/growth/returns/liquidity/leverage, Piotroski/Altman/Beneish health scores | fact records, financial statement rows, financial metric records, health score records, Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
 | XBRL linkbase attachments | `xbrl-links`, `linkbase`, `xbrl-tree`, `xbrl-calc`, `xbrl-statement` | EX-101.PRE/CAL/DEF/LAB/SCH relationships: presentation arcs, calculation weights, definition arcs, labels, schema elements, rendered statement rows with same-accession CompanyFacts values | XBRL linkbase relationship records, presentation tree rows, calculation checks, rendered XBRL statement rows |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
@@ -255,6 +256,7 @@ Output record cheat sheet:
 | Fact | `facts` | `concept`, `label`, `value`, `unit`, `fy`, `fp`, `filed` | `accession`, `source_url`, `fact_id` |
 | Financial statement row | `statements` | `statement`, `line_order`, `line_item`, `value`, `unit`, `fiscal_year`, `fiscal_period` | `accession`, `source_url`, `fact_id` |
 | Financial metric | `metrics` | `metric`, `category`, `value`, `display_value`, `period_end`, `calculation`, `components` | `source_urls`, component `accession`, component `fact_id` |
+| Financial health score | `scores` | `score_name`, `score`, `max_score`, `rating`, `period_end`, `signals` | `source_urls`, signal `calculation` |
 | Inline XBRL fact | `ixbrl` | `name`, `context_ref`, `unit_ref`, `scale`, `raw_value`, `numeric_value` | `accession`, `document_url`, `source_url` |
 | XBRL linkbase relationship | `xbrl-links` | `linkbase`, `relationship`, `role`, `parent_concept`, `child_concept`, `concept`, `label`, `order`, `weight` | `accession`, `document_url`, `source_url` |
 | XBRL presentation tree row | `xbrl-tree` | `role`, `depth`, `line_order`, `concept`, `label`, `parent_concept`, `path` | `accession`, `document_url`, `source_url` |
@@ -732,6 +734,29 @@ facts are available:
 Each metric includes: `metric`, `category`, `value`, `display_value`, `unit`,
 `period_end`, `fiscal_year`, `fiscal_period`, `form`, `calculation`,
 `components`, and `source_urls`.
+
+### scores
+
+Calculate SEC-derived financial-health scores from the same standardized
+CompanyFacts statement rows and metrics. The command emits one record per score
+and keeps the underlying signal list so agents can explain the result.
+
+```bash
+sec scores --ticker AAPL --period annual --latest 1 --pretty
+sec scores --ticker MSFT --period annual --latest 3 --jsonl
+sec scores --cik 320193 --period annual --latest 1 --output table
+```
+
+Implemented scores:
+
+- `piotroski_f_score`: 9 binary quality signals for profitability, accruals, leverage/liquidity, dilution, margin, and turnover.
+- `altman_z_score_private`: Altman Z'' approximation using book equity, designed for SEC-only data without market cap.
+- `beneish_m_score`: Beneish M-Score approximation using SEC-derived ratios; `watch` means the score is above `-1.78`.
+
+Each score includes: `score_name`, `score`, `max_score`, `rating`,
+`period_end`, `calculation`, `signals`, and `source_urls`. Missing components
+produce `insufficient_data` or null signal values instead of silently inventing
+inputs.
 
 ### ixbrl
 
@@ -1526,6 +1551,7 @@ curl "http://127.0.0.1:8716/v1/efts?query=supply%20chain%20risk&form=10-K&from=2
 curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
 curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
+curl "http://127.0.0.1:8716/v1/scores?ticker=AAPL&period=annual&latest=1"
 curl "http://127.0.0.1:8716/v1/company-report?ticker=AAPL&form=10-K&topic=segment"
 curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
 curl "http://127.0.0.1:8716/v1/8k-exhibits?ticker=AAPL&category=earnings_release&latest=5"
@@ -1549,6 +1575,7 @@ Available endpoints:
 | `/v1/facts` | `sec facts` |
 | `/v1/statements` | `sec statements` |
 | `/v1/metrics` | `sec metrics` |
+| `/v1/scores` | `sec scores` |
 | `/v1/company-report` | `sec company-report` |
 | `/v1/ixbrl` | `sec ixbrl` |
 | `/v1/sections` | `sec section` |
@@ -1586,6 +1613,7 @@ Available MCP tools:
 | `sec_facts` | `sec facts` equivalent |
 | `sec_statements` | `sec statements` equivalent |
 | `sec_metrics` | `sec metrics` equivalent |
+| `sec_scores` | `sec scores` equivalent |
 | `sec_ixbrl` | `sec ixbrl` equivalent |
 | `sec_tables` | `sec tables` equivalent |
 | `sec_company_report` | `sec company-report` equivalent |
@@ -1642,6 +1670,7 @@ Command options:
 | `facts` | `--ticker` or `--cik`, `--concept` | `--form`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `statements` | `--ticker` or `--cik` | `--statement`, `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `metrics` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
+| `scores` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `company-report` | `--ticker` or `--cik` | `--form`, `--topic`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `ixbrl` | `--ticker` or `--cik` | `--form`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `xbrl-links` / `linkbase` | `--ticker` or `--cik` | `--form`, `--linkbase`, `--role`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |

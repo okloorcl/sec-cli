@@ -2,7 +2,8 @@ use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use super::analysis_args::{
-    MetricsArgs, StatementsArgs, XbrlCalcArgs, XbrlLinkbaseArgs, XbrlStatementArgs, XbrlTreeArgs,
+    MetricsArgs, ScoresArgs, StatementsArgs, XbrlCalcArgs, XbrlLinkbaseArgs, XbrlStatementArgs,
+    XbrlTreeArgs,
 };
 use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs, ProxyArgs};
 use super::monitoring_args::{DailyArgs, EftsArgs, McpArgs, OutputArg, ServeArgs};
@@ -43,6 +44,8 @@ pub(crate) enum Command {
     Statements(StatementsArgs),
     /// Calculate source-backed financial ratios and growth metrics.
     Metrics(MetricsArgs),
+    /// Calculate SEC-derived financial-health scores.
+    Scores(ScoresArgs),
     /// Stream Inline XBRL facts from primary filing HTML.
     Ixbrl(InlineXbrlArgs),
     /// Parse XBRL linkbase relationships from EX-101 PRE/CAL/DEF/LAB/SCH documents.

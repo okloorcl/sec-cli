@@ -33,13 +33,15 @@ pub use edgar::accession_text_url;
 pub use models::{
     CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery, EftsSearchQuery,
     EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
-    FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery, OutputMode, ParseQuery,
-    ProspectusQuery, ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery,
-    StatementQuery, ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery, XbrlStatementQuery,
-    XbrlTreeQuery,
+    FundDisclosureQuery, HealthScoreQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery,
+    OutputMode, ParseQuery, ProspectusQuery, ProxyQuery, ReportQuery, Schedule13Query, SearchQuery,
+    SectionQuery, StatementQuery, ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery,
+    XbrlStatementQuery, XbrlTreeQuery,
 };
 pub use models::{DailyFilingRecord, EftsSearchRecord};
-pub use models::{FinancialMetricRecord, MetricComponentRecord};
+pub use models::{
+    FinancialMetricRecord, HealthScoreRecord, HealthScoreSignalRecord, MetricComponentRecord,
+};
 pub use output::print_records;
 pub use registry::supported_parsers;
 pub use reports::ReportKind;

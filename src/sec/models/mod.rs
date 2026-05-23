@@ -15,7 +15,10 @@ pub use daily::DailyFilingRecord;
 pub use efts::EftsSearchRecord;
 pub use foreign::{ForeignExcerptRecord, ForeignIssuerRecord};
 pub use funds::{FundDisclosureRecord, FundExcerptRecord, FundHoldingRecord, FundProxyVoteRecord};
-pub use metrics::{FinancialMetricRecord, MetricComponentRecord, MetricsQuery};
+pub use metrics::{
+    FinancialMetricRecord, HealthScoreQuery, HealthScoreRecord, HealthScoreSignalRecord,
+    MetricComponentRecord, MetricsQuery,
+};
 pub use prospectus::{ProspectusExcerptRecord, ProspectusRecord, ProspectusTableRecord};
 pub use proxy::{ProxyProposalRecord, ProxyStatementRecord, ProxyTableRecord};
 pub use queries::{

@@ -39,6 +39,24 @@ pub(crate) struct MetricsArgs {
 }
 
 #[derive(Args, Debug)]
+pub(crate) struct ScoresArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long, value_enum, default_value_t = StatementPeriodArg::Annual)]
+    pub(crate) period: StatementPeriodArg,
+    #[arg(long)]
+    pub(crate) unit: Option<String>,
+    #[arg(long, default_value_t = 1)]
+    pub(crate) latest: usize,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
 pub(crate) struct XbrlLinkbaseArgs {
     #[arg(long, conflicts_with = "cik")]
     pub(crate) ticker: Option<String>,

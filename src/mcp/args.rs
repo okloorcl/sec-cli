@@ -5,9 +5,9 @@ use serde_json::Value;
 use crate::sec::{
     CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery, EftsSearchQuery,
     EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
-    FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery, ParseQuery,
-    ProspectusQuery, ProxyQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery, SecClient,
-    SectionQuery, StatementQuery, ThirteenFQuery,
+    FundDisclosureQuery, HealthScoreQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery,
+    ParseQuery, ProspectusQuery, ProxyQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery,
+    SecClient, SectionQuery, StatementQuery, ThirteenFQuery,
     daily::latest_sec_index_date,
     efts::{parse_forms, require_query},
 };
@@ -72,6 +72,15 @@ pub async fn metrics_query(client: &SecClient, args: &Value) -> Result<MetricsQu
         form: period_form(optional_string(args, "period").as_deref()),
         unit: optional_string(args, "unit"),
         latest: optional_usize(args, "latest").unwrap_or(4),
+    })
+}
+
+pub async fn health_score_query(client: &SecClient, args: &Value) -> Result<HealthScoreQuery> {
+    Ok(HealthScoreQuery {
+        cik: resolve_cik(client, args).await?,
+        form: period_form(optional_string(args, "period").as_deref()),
+        unit: optional_string(args, "unit"),
+        latest: optional_usize(args, "latest").unwrap_or(1),
     })
 }
 

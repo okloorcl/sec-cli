@@ -2,6 +2,8 @@ mod calc;
 mod emit;
 mod extended;
 mod period;
+mod score_support;
+mod scores;
 
 use anyhow::Result;
 use emit::{push_derived_metric, push_fcf, push_growth, push_quotient, push_ratio};

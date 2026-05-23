@@ -165,8 +165,12 @@ pub(crate) const STOCKHOLDERS_EQUITY: &[&str] = &[
     "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest",
     "PartnersCapital",
     "CommonStocksIncludingAdditionalPaidInCapital",
-    "RetainedEarningsAccumulatedDeficit",
     "AccumulatedOtherComprehensiveIncomeLossNetOfTax",
+];
+pub(crate) const RETAINED_EARNINGS: &[&str] = &[
+    "RetainedEarningsAccumulatedDeficit",
+    "RetainedEarnings",
+    "AccumulatedDeficit",
 ];
 pub(crate) const LIABILITIES_AND_EQUITY: &[&str] = &[
     "LiabilitiesAndStockholdersEquity",
@@ -272,6 +276,7 @@ pub(crate) fn aliases_for(query: &str) -> Option<&'static [&'static str]> {
         "equity" | "stockholdersequity" => Some(STOCKHOLDERS_EQUITY),
         "liabilities" | "totalliabilities" => Some(TOTAL_LIABILITIES),
         "currentliabilities" => Some(CURRENT_LIABILITIES),
+        "retainedearnings" | "accumulateddeficit" => Some(RETAINED_EARNINGS),
         "debt" | "longtermdebt" => Some(LONG_TERM_DEBT),
         "currentdebt" | "shorttermdebt" => Some(DEBT_CURRENT),
         "operatingcashflow" | "ocf" => Some(OPERATING_CASH_FLOW),
@@ -317,6 +322,7 @@ fn mapped_concept_count() -> usize {
         OPERATING_LEASE_LIABILITIES,
         TOTAL_LIABILITIES,
         STOCKHOLDERS_EQUITY,
+        RETAINED_EARNINGS,
         LIABILITIES_AND_EQUITY,
         DEPRECIATION_AMORTIZATION,
         STOCK_BASED_COMPENSATION,
