@@ -5,8 +5,9 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::sec::{
-    DocumentQuery, FactQuery, FilingQuery, Form4Query, MetricsQuery, ParseQuery, ReportKind,
-    ReportQuery, SecClient, StatementQuery, ThirteenFQuery, supported_parsers,
+    CompanyReportQuery, DocumentQuery, FactQuery, FilingQuery, Form4Query, MetricsQuery,
+    ParseQuery, ReportKind, ReportQuery, SecClient, StatementQuery, ThirteenFQuery,
+    supported_parsers,
 };
 
 const PROTOCOL_VERSION: &str = "2025-06-18";
@@ -84,6 +85,11 @@ async fn call_tool(client: &SecClient, params: Value) -> Result<Value> {
                 .financial_metrics(metrics_query(client, &args).await?)
                 .await?
         ),
+        "sec_company_report" => json!(
+            client
+                .company_reports(company_report_query(client, &args).await?)
+                .await?
+        ),
         "sec_docs" => json!(
             client
                 .document_records(document_query(client, &args).await?)
@@ -159,6 +165,18 @@ async fn metrics_query(client: &SecClient, args: &Value) -> Result<MetricsQuery>
         form: period_form(optional_string(args, "period").as_deref()),
         unit: optional_string(args, "unit"),
         latest: optional_usize(args, "latest").unwrap_or(4),
+    })
+}
+
+async fn company_report_query(client: &SecClient, args: &Value) -> Result<CompanyReportQuery> {
+    Ok(CompanyReportQuery {
+        cik: resolve_cik(client, args).await?,
+        form: Some(optional_string(args, "form").unwrap_or_else(|| "10-K".to_string())),
+        latest: optional_usize(args, "latest").unwrap_or(1),
+        include_amends: optional_bool(args, "include_amends").unwrap_or(false),
+        topic: optional_string(args, "topic"),
+        limit_tables: optional_usize(args, "limit_tables"),
+        limit_rows: optional_usize(args, "limit_rows"),
     })
 }
 
@@ -267,6 +285,13 @@ fn tools() -> Vec<Value> {
             "Calculate source-backed financial ratios, growth, free cash flow, returns, liquidity, and leverage.",
             company_schema(
                 json!({"period":{"type":"string"},"unit":{"type":"string"},"latest":{"type":"integer"}}),
+            ),
+        ),
+        tool(
+            "sec_company_report",
+            "Parse 10-K/10-Q topic tables such as segment revenue, geography, debt maturities, obligations, leases, taxes, and repurchases.",
+            company_schema(
+                json!({"form":{"type":"string"},"topic":{"type":"string"},"latest":{"type":"integer"},"limit_tables":{"type":"integer"},"limit_rows":{"type":"integer"},"include_amends":{"type":"boolean"}}),
             ),
         ),
         tool(
@@ -409,6 +434,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert!(names.contains(&"sec_forms".to_string()));
+        assert!(names.contains(&"sec_company_report".to_string()));
         assert!(names.contains(&"sec_metrics".to_string()));
         assert!(names.contains(&"sec_report".to_string()));
         assert!(names.contains(&"sec_parse".to_string()));

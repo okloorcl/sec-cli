@@ -28,6 +28,7 @@ sec statements --ticker AAPL --statement income --period annual --latest 4
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
+sec company-report --ticker AAPL --form 10-K --topic segment --pretty
 sec proxy --ticker AAPL --latest 1 --pretty
 sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty
 sec foreign --ticker TSM --form 20-F --latest 1 --pretty
@@ -69,6 +70,7 @@ This is an early MVP. The first implementation focuses on:
 - Calculating source-backed financial metrics such as growth, margins, free cash flow, ROA/ROE, current ratio, and leverage
 - Streaming Inline XBRL facts directly from primary filing HTML
 - Extracting HTML tables from filing primary documents
+- Parsing deeper 10-K/10-Q company-report topic tables such as segment revenue, geography, debt maturities, obligations, leases, taxes, and repurchases
 - Parsing DEF 14A proxy statements for meeting details, voting proposals, directors, auditors, and executive compensation tables
 - Parsing S-1/F-1/424B prospectuses for securities offered, ticker/exchange, price range, proceeds, risks, underwriters, and selected offering tables
 - Parsing 20-F/6-K/40-F foreign issuer disclosures for annual reports, current reports, exchanges, symbols, auditors, event signals, and key excerpts
@@ -110,6 +112,7 @@ These are useful, source-backed questions that work today:
 | Can I get a human-readable financial trend memo? | `sec report --ticker AAPL --kind financial --latest 4` |
 | What Inline XBRL facts are embedded in the filing HTML? | `sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --pretty` |
 | What tables are embedded in a filing? | `sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty` |
+| Which 10-K/10-Q topic tables discuss segments, geography, debt, obligations, leases, taxes, or repurchases? | `sec company-report --ticker AAPL --form 10-K --topic segment --pretty` |
 | What is in the latest proxy statement? | `sec proxy --ticker AAPL --latest 1 --pretty` |
 | What are the key terms in an IPO prospectus? | `sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty` |
 | What did a foreign private issuer disclose in its latest annual/current report? | `sec foreign --ticker TSM --form 20-F --latest 1 --pretty` |
@@ -134,6 +137,7 @@ Company-disclosure commands use `--ticker` or `--cik`:
 - `facts`
 - `statements`
 - `metrics`
+- `company-report`
 - `search`
 - `section`
 - `docs`
@@ -199,6 +203,7 @@ Practical rule:
 | SEC CompanyFacts JSON | `facts`, `statements`, `metrics`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, derived margins/growth/returns/liquidity/leverage | fact records, financial statement rows, financial metric records, Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
+| 10-K/10-Q company report primary document | `company-report`, `parse --form "10-K"` | Classified topic tables: segment revenue, geography, revenue disaggregation, debt maturities, contractual obligations, leases, taxes, share repurchases | company report records |
 | DEF 14A proxy statement primary document | `proxy`, `parse --form "DEF 14A"` | Annual meeting date/site, voting proposals, board recommendations, director nominees, auditor, named executive officers, summary compensation table | proxy statement records |
 | S-1/F-1/424B prospectus primary document | `prospectus`, `parse --form "S-1"` | Securities offered, IPO/prospectus type, ticker/exchange, price range, shares, proceeds, underwriters, auditor, risk/business/proceeds excerpts | prospectus records |
 | 20-F/6-K/40-F foreign issuer primary document | `foreign`, `parse --form "20-F"` | Foreign private issuer annual/current reports, exchanges, symbols, auditors, event signals, risk/business/operating review/controls/financial statements excerpts | foreign issuer records |
@@ -226,6 +231,7 @@ Output record cheat sheet:
 | Financial metric | `metrics` | `metric`, `category`, `value`, `display_value`, `period_end`, `calculation`, `components` | `source_urls`, component `accession`, component `fact_id` |
 | Inline XBRL fact | `ixbrl` | `name`, `context_ref`, `unit_ref`, `scale`, `raw_value`, `numeric_value` | `accession`, `document_url`, `source_url` |
 | HTML table | `tables` | `title_hint`, `row_count`, `column_count`, `headers`, `rows`, `truncated` | `accession`, `document_url`, `source_url` |
+| Company report topic table | `company-report` | `topics[].topic`, `confidence`, `headers`, `rows`, `matched_table_count`, `scanned_table_count` | `accession`, `document_url`, `source_url` |
 | Proxy statement | `proxy`, `parse --form "DEF 14A"` | `meeting_date`, `proposals`, `director_nominees`, `auditor`, `named_executive_officers`, `summary_compensation_table` | `accession`, `document_url`, `source_url` |
 | Prospectus | `prospectus`, `parse --form "S-1"` | `securities_offered`, `proposed_ticker`, `exchange`, `price_range`, `shares_offered`, `underwriters`, `risk_factors` | `accession`, `document_url`, `source_url` |
 | Foreign issuer | `foreign`, `parse --form "20-F"` | `report_type`, `exchange`, `ticker_or_symbol`, `auditor`, `event_signals`, `risk_factors`, `operating_review` | `accession`, `document_url`, `source_url` |
@@ -260,6 +266,7 @@ The code is intentionally split by responsibility:
 - `storage`: local byte cache/store
 - `client`: SEC domain facade, ticker-to-CIK lookup
 - `edgar`: SEC data sources, submissions, facts, archive URLs
+- `company`: deeper 10-K/10-Q topic-table parser
 - `metrics`: source-backed financial ratios and growth analysis
 - `documents`: complete-submission `.txt` splitting and attachment selection
 - `llm`: OpenAI-compatible and Anthropic-compatible model clients
@@ -693,6 +700,24 @@ Each table includes:
 - `rows`
 - `document_url`
 - `source_url`
+
+### company-report
+
+Parse high-value 10-K/10-Q topic tables from the primary company report. This is
+more opinionated than `tables`: it classifies likely segment revenue,
+geographic revenue, revenue disaggregation, debt maturity, contractual
+obligations, lease maturity, tax, and share repurchase tables.
+
+```bash
+sec company-report --ticker AAPL --form 10-K --latest 1 --pretty
+sec company-report --ticker AAPL --form 10-K --topic segment --limit-tables 5 --limit-rows 12 --pretty
+sec company-report --cik 320193 --form 10-Q --topic debt --jsonl
+sec parse --ticker AAPL --form 10-K --limit 5 --pretty
+```
+
+Each record includes `matched_table_count`, `scanned_table_count`, and
+`topics[]` with `topic`, `confidence`, `title_hint`, `headers`, `rows`, and SEC
+source fields.
 
 ### proxy
 
@@ -1305,6 +1330,7 @@ curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"
 curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
 curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
+curl "http://127.0.0.1:8716/v1/company-report?ticker=AAPL&form=10-K&topic=segment"
 curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
 curl "http://127.0.0.1:8716/v1/13f?cik=1067983&latest=1&limit=20"
 curl "http://127.0.0.1:8716/v1/proxy?ticker=AAPL&latest=1"
@@ -1324,6 +1350,7 @@ Available endpoints:
 | `/v1/facts` | `sec facts` |
 | `/v1/statements` | `sec statements` |
 | `/v1/metrics` | `sec metrics` |
+| `/v1/company-report` | `sec company-report` |
 | `/v1/ixbrl` | `sec ixbrl` |
 | `/v1/sections` | `sec section` |
 | `/v1/docs` | `sec docs` |
@@ -1356,6 +1383,7 @@ Available MCP tools:
 | `sec_facts` | `sec facts` equivalent |
 | `sec_statements` | `sec statements` equivalent |
 | `sec_metrics` | `sec metrics` equivalent |
+| `sec_company_report` | `sec company-report` equivalent |
 | `sec_docs` | `sec docs` equivalent |
 | `sec_form4_summary` | `sec form4-summary` equivalent |
 | `sec_13f_diff` | `sec 13f-diff` equivalent for CIK/ticker selectors |
@@ -1392,6 +1420,7 @@ Command options:
 | `facts` | `--ticker` or `--cik`, `--concept` | `--form`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `statements` | `--ticker` or `--cik` | `--statement`, `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `metrics` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
+| `company-report` | `--ticker` or `--cik` | `--form`, `--topic`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `ixbrl` | `--ticker` or `--cik` | `--form`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `tables` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `proxy` | `--ticker` or `--cik` | `--latest`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |

@@ -2,8 +2,8 @@ use serde::Serialize;
 use serde_json::Value;
 
 use super::{
-    foreign::ForeignIssuerRecord, funds::FundDisclosureRecord, prospectus::ProspectusRecord,
-    proxy::ProxyStatementRecord,
+    company::CompanyReportRecord, foreign::ForeignIssuerRecord, funds::FundDisclosureRecord,
+    prospectus::ProspectusRecord, proxy::ProxyStatementRecord,
 };
 
 #[derive(Debug, Serialize, Clone)]
@@ -468,6 +468,7 @@ pub enum ParsedRecord {
     EightKEvent(EightKEventRecord),
     Schedule13(Schedule13Record),
     InlineXbrlFact(InlineXbrlFactRecord),
+    CompanyReport(CompanyReportRecord),
     ProxyStatement(ProxyStatementRecord),
     Prospectus(ProspectusRecord),
     ForeignIssuer(ForeignIssuerRecord),

@@ -81,6 +81,7 @@ pub(crate) async fn run() -> Result<()> {
         }
         Command::Ixbrl(args) => handlers::ixbrl(&client, args).await?,
         Command::Tables(args) => handlers::tables(&client, args).await?,
+        Command::CompanyReport(args) => handlers::company_report(&client, args).await?,
         Command::Proxy(args) => handlers::proxy(&client, args).await?,
         Command::Prospectus(args) => handlers::prospectus(&client, args).await?,
         Command::Foreign(args) => handlers::foreign(&client, args).await?,

@@ -114,6 +114,17 @@ pub struct HtmlTableQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct CompanyReportQuery {
+    pub cik: u64,
+    pub form: Option<String>,
+    pub latest: usize,
+    pub include_amends: bool,
+    pub topic: Option<String>,
+    pub limit_tables: Option<usize>,
+    pub limit_rows: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
 pub struct ProxyQuery {
     pub cik: u64,
     pub latest: usize,

@@ -1,12 +1,12 @@
 use anyhow::Result;
 use sec_cli::sec::{
-    ForeignIssuerQuery, FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, ProspectusQuery,
-    ProxyQuery, SecClient, print_records,
+    CompanyReportQuery, ForeignIssuerQuery, FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery,
+    ProspectusQuery, ProxyQuery, SecClient, print_records,
 };
 
 use super::{
     args::{InlineXbrlArgs, ProxyArgs, TablesArgs},
-    disclosure_args::{ForeignArgs, FundArgs, ProspectusArgs},
+    disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs},
     runner::{output_mode, resolve_cik},
 };
 
@@ -35,6 +35,23 @@ pub(super) async fn tables(client: &SecClient, args: TablesArgs) -> Result<()> {
             form: Some(args.form),
             latest: args.latest,
             include_amends: args.include_amends,
+            limit_tables: Some(args.limit_tables),
+            limit_rows: Some(args.limit_rows),
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn company_report(client: &SecClient, args: CompanyReportArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .company_reports(CompanyReportQuery {
+            cik,
+            form: Some(args.form),
+            latest: args.latest,
+            include_amends: args.include_amends,
+            topic: args.topic,
             limit_tables: Some(args.limit_tables),
             limit_rows: Some(args.limit_rows),
         })

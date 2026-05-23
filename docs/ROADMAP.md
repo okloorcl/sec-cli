@@ -10,6 +10,7 @@ real commands or modules in the repository.
 - [x] SEC submissions JSON filing metadata.
 - [x] SEC CompanyFacts XBRL fact lookup.
 - [x] 10-K / 10-Q financial statements builder.
+- [x] 10-K / 10-Q company-report topic table parser.
 - [x] Source-backed financial metrics and secondary analysis from CompanyFacts.
 - [x] Financial trend Markdown report over SEC-derived metrics.
 - [x] Inline XBRL streaming parser.

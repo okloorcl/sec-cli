@@ -53,6 +53,7 @@ src/sec/storage/                    local cache/store abstraction with TTL-aware
 src/sec/edgar/                      SEC data sources and URL builders
 src/sec/edgar/filings.rs            submissions index -> FilingRecord
 src/sec/edgar/facts.rs              CompanyFacts -> FactRecord
+src/sec/company/                    10-K/10-Q company-report topic table parser
 src/sec/llm/                        OpenAI/Anthropic-compatible model clients
 src/sec/resolve/                    LLM name resolution plus SEC verification
 src/sec/documents/                  submission and attachment/document selection
@@ -85,7 +86,7 @@ Examples:
 
 - `forms/form4.rs`: Forms 3/4/5 ownership XML family can eventually share an ownership parser.
 - `forms/thirteenf.rs`: 13F-HR / amendments / 13F-NT family.
-- Future `forms/company_reports.rs`: deeper 10-K/10-Q section and statement extraction.
+- `company`: deeper 10-K/10-Q topic tables for segments, geography, debt, obligations, leases, taxes, and repurchases.
 - Future `forms/current_report.rs`: 8-K item extraction and exhibit discovery.
 - `prospectus`: S-1 / F-1 / 424B offering and IPO signals.
 - `foreign`: 20-F / 6-K / 40-F foreign issuer annual/current reports.
@@ -156,6 +157,7 @@ The current codebase already has these boundaries in place:
 - `storage`: cache only. It persists bytes by URL-derived keys and supports TTL-aware reads.
 - `client`: EDGAR domain facade. It combines HTTP/storage, owns cached fetch behavior, and exposes operations.
 - `edgar`: source-specific API handling for submissions, facts, and archive URLs.
+- `company`: deeper 10-K/10-Q topic-table classification over primary filing tables.
 - `documents`: SEC SGML container scanning and attachment selection.
 - `llm`: protocol adapters for OpenAI-compatible and Anthropic-compatible models.
 - `resolve`: public-name resolution that turns model candidates into SEC-verified records.

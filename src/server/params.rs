@@ -50,6 +50,18 @@ pub(super) struct MetricsParams {
 }
 
 #[derive(Deserialize)]
+pub(super) struct CompanyReportParams {
+    pub(super) ticker: Option<String>,
+    pub(super) cik: Option<u64>,
+    pub(super) form: Option<String>,
+    pub(super) topic: Option<String>,
+    pub(super) latest: Option<usize>,
+    pub(super) include_amends: Option<bool>,
+    pub(super) limit_tables: Option<usize>,
+    pub(super) limit_rows: Option<usize>,
+}
+
+#[derive(Deserialize)]
 pub(super) struct IxbrlParams {
     pub(super) ticker: Option<String>,
     pub(super) cik: Option<u64>,

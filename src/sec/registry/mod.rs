@@ -3,6 +3,7 @@ use serde::Serialize;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ParserKind {
+    CompanyReport,
     Form4,
     EightK,
     Schedule13,
@@ -22,6 +23,12 @@ pub struct ParserSpec {
 }
 
 const PARSERS: &[ParserSpec] = &[
+    ParserSpec {
+        kind: ParserKind::CompanyReport,
+        canonical_form: "10-K",
+        forms: &["10-K", "10-K/A", "10-Q", "10-Q/A"],
+        record_kind: "company_report",
+    },
     ParserSpec {
         kind: ParserKind::Form4,
         canonical_form: "4",

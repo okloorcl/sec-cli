@@ -3,8 +3,8 @@ use anyhow::{Result, anyhow};
 use super::{
     client::SecClient,
     models::{
-        EightKQuery, ForeignIssuerQuery, Form4Query, FundDisclosureQuery, ParseQuery, ParsedRecord,
-        ProspectusQuery, ProxyQuery, Schedule13Query, ThirteenFQuery,
+        CompanyReportQuery, EightKQuery, ForeignIssuerQuery, Form4Query, FundDisclosureQuery,
+        ParseQuery, ParsedRecord, ProspectusQuery, ProxyQuery, Schedule13Query, ThirteenFQuery,
     },
     registry::{ParserKind, parser_for_form},
 };
@@ -14,6 +14,20 @@ impl SecClient {
         let parser_kind = parser_kind_for_form(&query.form)?;
 
         let mut records: Vec<ParsedRecord> = match parser_kind {
+            ParserKind::CompanyReport => self
+                .company_reports(CompanyReportQuery {
+                    cik: query.cik,
+                    form: Some(query.form.clone()),
+                    latest: query.latest,
+                    include_amends: query.include_amends,
+                    topic: None,
+                    limit_tables: query.limit,
+                    limit_rows: Some(25),
+                })
+                .await?
+                .into_iter()
+                .map(ParsedRecord::CompanyReport)
+                .collect(),
             ParserKind::Form4 => self
                 .form4_transactions(Form4Query {
                     cik: query.cik,
@@ -129,6 +143,10 @@ mod tests {
 
     #[test]
     fn resolves_parser_kind_for_supported_forms() {
+        assert_eq!(
+            parser_kind_for_form("10-K").unwrap(),
+            ParserKind::CompanyReport
+        );
         assert_eq!(parser_kind_for_form("4").unwrap(), ParserKind::Form4);
         assert_eq!(parser_kind_for_form("8-K/A").unwrap(), ParserKind::EightK);
         assert_eq!(
@@ -169,6 +187,6 @@ mod tests {
 
     #[test]
     fn rejects_unsupported_forms() {
-        assert!(parser_kind_for_form("10-K").is_err());
+        assert!(parser_kind_for_form("SD").is_err());
     }
 }

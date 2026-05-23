@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use super::analysis_args::{MetricsArgs, StatementsArgs};
-use super::disclosure_args::{ForeignArgs, FundArgs, ProspectusArgs};
+use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs};
 
 #[derive(Parser, Debug)]
 #[command(name = "sec")]
@@ -34,6 +34,9 @@ pub(crate) enum Command {
     Ixbrl(InlineXbrlArgs),
     /// Extract HTML tables from primary filing documents.
     Tables(TablesArgs),
+    /// Parse 10-K/10-Q company-report topic tables such as segments, geography, debt, and obligations.
+    #[command(name = "company-report", aliases = ["company"])]
+    CompanyReport(CompanyReportArgs),
     /// Parse DEF 14A proxy statement governance and compensation signals.
     Proxy(ProxyArgs),
     /// Parse S-1/F-1/424B registration statements and prospectuses.

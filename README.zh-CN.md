@@ -28,6 +28,7 @@ sec statements --ticker AAPL --statement income --period annual --latest 4
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
+sec company-report --ticker AAPL --form 10-K --topic segment --pretty
 sec proxy --ticker AAPL --latest 1 --pretty
 sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty
 sec foreign --ticker TSM --form 20-F --latest 1 --pretty
@@ -67,6 +68,7 @@ sec mcp
 - 基于 SEC CompanyFacts 计算二次分析指标：增长率、利润率、自由现金流、ROA/ROE、流动比率、杠杆
 - 直接从 filing HTML 流式解析 Inline XBRL facts
 - 从 filing 主 HTML 抽取表格
+- 深度解析 10-K/10-Q 专题表：segment revenue、geography、debt maturity、contract obligations、lease、tax、share repurchases
 - 解析 DEF 14A 股东大会委托书：会议、投票事项、董事候选人、审计师、高管薪酬表
 - 解析 S-1/F-1/424B 招股书和发行说明书：证券类型、ticker/交易所、价格区间、募资用途、风险、承销商、关键表格
 - 解析 20-F/6-K/40-F 外国发行人披露：年度报告、当前报告、交易所/代码、审计师、事件信号、关键章节摘要
@@ -103,6 +105,7 @@ sec mcp
 | 能不能直接生成一份财务趋势 Markdown？ | `sec report --ticker AAPL --kind financial --latest 4` |
 | filing HTML 里嵌入了哪些 Inline XBRL facts？ | `sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --pretty` |
 | filing 里有哪些 HTML 表格？ | `sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty` |
+| 10-K/10-Q 里哪些专题表涉及分部、地域、债务、义务、租赁、税、回购？ | `sec company-report --ticker AAPL --form 10-K --topic segment --pretty` |
 | 最新 proxy statement 里有哪些投票事项和高管薪酬？ | `sec proxy --ticker AAPL --latest 1 --pretty` |
 | IPO 招股书关键条款是什么？ | `sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty` |
 | 外国发行人最新年报/当前报告披露了什么？ | `sec foreign --ticker TSM --form 20-F --latest 1 --pretty` |
@@ -127,6 +130,7 @@ sec mcp
 - `facts`
 - `statements`
 - `metrics`
+- `company-report`
 - `search`
 - `section`
 - `docs`
@@ -191,6 +195,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | SEC CompanyFacts JSON | `facts`、`statements`、`metrics`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行，以及二次推导的利润率/增长率/回报率/流动性/杠杆 | fact records、financial statement rows、financial metric records、Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | filing HTML 内嵌的 `ix:nonFraction` / `ix:nonNumeric`、context、unit、scale、decimals、原始值 | Inline XBRL fact records |
 | Filing HTML tables | `tables` | 主 HTML 文档里的表格行，例如薪酬表、分部表、注册证券表、债务表、合同表 | HTML table records |
+| 10-K/10-Q company report 主文档 | `company-report`、`parse --form "10-K"` | 已分类专题表：分部收入、地域收入、收入拆分、债务到期、合同义务、租赁、税、股票回购 | company report records |
 | DEF 14A proxy statement 主文档 | `proxy`、`parse --form "DEF 14A"` | 股东大会日期/地点、投票事项、董事会建议、董事候选人、审计师、NEO、高管薪酬表 | proxy statement records |
 | S-1/F-1/424B prospectus 主文档 | `prospectus`、`parse --form "S-1"` | 发行证券、IPO/招股书类型、ticker/交易所、价格区间、发行股数、募资用途、承销商、审计师、风险/业务/摊薄摘要 | prospectus records |
 | 20-F/6-K/40-F foreign issuer 主文档 | `foreign`、`parse --form "20-F"` | 外国私营发行人年报/当前报告、交易所、股票代码、审计师、事件信号、风险/业务/经营回顾/内控/财报摘要 | foreign issuer records |
@@ -222,6 +227,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | Financial statement row | `statements` | `statement`、`line_order`、`line_item`、`value`、`unit`、`fiscal_year`、`fiscal_period` | `accession`、`source_url`、`fact_id` |
 | Financial metric | `metrics` | `metric`、`category`、`value`、`display_value`、`period_end`、`calculation`、`components` | `source_urls`、component `accession`、component `fact_id` |
 | Inline XBRL fact | `ixbrl` | `name`、`context_ref`、`unit_ref`、`scale`、`raw_value`、`numeric_value` | `accession`、`document_url`、`source_url` |
+| Company report topic table | `company-report` | `topics[].topic`、`confidence`、`headers`、`rows`、`matched_table_count`、`scanned_table_count` | `accession`、`document_url`、`source_url` |
 | HTML table | `tables` | `title_hint`、`row_count`、`column_count`、`headers`、`rows`、`truncated` | `accession`、`document_url`、`source_url` |
 | Proxy statement | `proxy`、`parse --form "DEF 14A"` | `meeting_date`、`proposals`、`director_nominees`、`auditor`、`named_executive_officers`、`summary_compensation_table` | `accession`、`document_url`、`source_url` |
 | Prospectus | `prospectus`、`parse --form "S-1"` | `securities_offered`、`proposed_ticker`、`exchange`、`price_range`、`shares_offered`、`underwriters`、`risk_factors` | `accession`、`document_url`、`source_url` |
@@ -249,6 +255,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | `http` | SEC HTTP 请求 |
 | `storage` | 本地缓存 |
 | `edgar` | SEC submissions、facts、archive URL |
+| `company` | 10-K/10-Q 专题表深度解析 |
 | `metrics` | 基于 SEC facts 的财务指标和二次分析 |
 | `documents` | complete submission 拆分、document 选择、读取 |
 | `llm` | OpenAI-compatible / Anthropic-compatible 模型客户端 |
@@ -580,6 +587,19 @@ sec tables --cik 320193 --form 10-Q --latest 1 --limit-tables 10 --pretty
 
 输出字段：`table_index`、`title_hint`、`row_count`、`column_count`、`returned_rows`、`truncated`、`headers`、`rows`、`document_url`、`source_url`。
 
+### company-report
+
+深度解析 10-K/10-Q 主文档里的高价值专题表。它比 `tables` 更有判断力：会把可能的分部收入、地域收入、收入拆分、债务到期、合同义务、租赁到期、税、股票回购表分类出来。
+
+```bash
+sec company-report --ticker AAPL --form 10-K --latest 1 --pretty
+sec company-report --ticker AAPL --form 10-K --topic segment --limit-tables 5 --limit-rows 12 --pretty
+sec company-report --cik 320193 --form 10-Q --topic debt --jsonl
+sec parse --ticker AAPL --form 10-K --limit 5 --pretty
+```
+
+输出字段：`matched_table_count`、`scanned_table_count`、`topics[].topic`、`topics[].confidence`、`title_hint`、`headers`、`rows`、`document_url`、`source_url`。
+
 ### proxy
 
 解析 DEF 14A proxy statement，也就是年度股东大会委托书。它回答的是：什么时候开股东大会、要投哪些议案、董事会建议怎么投、董事候选人是谁、审计师是谁、NEO 是谁、高管薪酬表是什么。
@@ -823,6 +843,7 @@ curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"
 curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
 curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
+curl "http://127.0.0.1:8716/v1/company-report?ticker=AAPL&form=10-K&topic=segment"
 curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
 curl "http://127.0.0.1:8716/v1/13f?cik=1067983&latest=1&limit=20"
 curl "http://127.0.0.1:8716/v1/proxy?ticker=AAPL&latest=1"
@@ -842,6 +863,7 @@ curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
 | `/v1/facts` | `sec facts` |
 | `/v1/statements` | `sec statements` |
 | `/v1/metrics` | `sec metrics` |
+| `/v1/company-report` | `sec company-report` |
 | `/v1/ixbrl` | `sec ixbrl` |
 | `/v1/sections` | `sec section` |
 | `/v1/docs` | `sec docs` |
@@ -872,6 +894,7 @@ SEC_IDENTITY="Your Name your.email@example.com" sec mcp
 | `sec_facts` | 等价于 `sec facts` |
 | `sec_statements` | 等价于 `sec statements` |
 | `sec_metrics` | 等价于 `sec metrics` |
+| `sec_company_report` | 等价于 `sec company-report` |
 | `sec_docs` | 等价于 `sec docs` |
 | `sec_form4_summary` | 等价于 `sec form4-summary` |
 | `sec_13f_diff` | 等价于 CIK/ticker 选择器下的 `sec 13f-diff` |
@@ -908,6 +931,7 @@ MCP tool 参数示例：
 | `facts` | `--ticker` 或 `--cik`，`--concept` | `--form`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `statements` | `--ticker` 或 `--cik` | `--statement`、`--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `metrics` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
+| `company-report` | `--ticker` 或 `--cik` | `--form`、`--topic`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `ixbrl` | `--ticker` 或 `--cik` | `--form`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `tables` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `proxy` | `--ticker` 或 `--cik` | `--latest`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
