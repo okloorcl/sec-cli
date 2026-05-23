@@ -8,6 +8,7 @@ use crate::sec::{
     documents::{DocumentSet, SubmissionDocument, read::plain_text},
     edgar::accession_document_url,
     models::{EightKEventRecord, EightKQuery, FilingQuery, FilingRecord},
+    utils::{nonempty, truncate_utf8},
 };
 
 impl SecClient {
@@ -195,25 +196,6 @@ fn extract_inline_title(text: &str, start: usize) -> String {
         .unwrap_or(rest.len());
     let line_end = rest.find(['\n', '\r']).unwrap_or(rest.len());
     clean_heading_title(&rest[..next_item.min(line_end)])
-}
-
-fn truncate_utf8(value: &str, limit_bytes: Option<usize>) -> (String, bool) {
-    let Some(limit) = limit_bytes else {
-        return (value.to_string(), false);
-    };
-    if value.len() <= limit {
-        return (value.to_string(), false);
-    }
-    let mut end = limit.min(value.len());
-    while !value.is_char_boundary(end) {
-        end -= 1;
-    }
-    (value[..end].to_string(), true)
-}
-
-fn nonempty(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    (!trimmed.is_empty()).then(|| trimmed.to_string())
 }
 
 fn is_known_8k_item(item: &str) -> bool {

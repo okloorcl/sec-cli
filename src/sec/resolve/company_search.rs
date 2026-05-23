@@ -1,6 +1,10 @@
 use anyhow::Result;
 
-use crate::sec::{SecClient, parsers::forms::XmlEvent, parsers::forms::read_xml};
+use crate::sec::{
+    SecClient,
+    parsers::{forms::XmlEvent, forms::read_xml, path_ends_with},
+    utils::is_legal_suffix,
+};
 
 pub async fn find_13f_manager_cik(client: &SecClient, name: &str) -> Result<Option<u64>> {
     for query in search_variants(name) {
@@ -42,52 +46,24 @@ fn compact_ampersand(name: &str) -> String {
 }
 
 fn strip_legal_suffixes(name: &str) -> String {
-    let stop_words = [
-        "inc",
-        "incorporated",
-        "corp",
-        "corporation",
-        "co",
-        "company",
-        "llc",
-        "ltd",
-        "limited",
-        "lp",
-        "l.p",
-        "group",
-    ];
     name.split(|ch: char| ch == ',' || ch == '.')
         .flat_map(|part| part.split_whitespace())
         .filter(|part| {
             let normalized = part
                 .trim_matches(|ch: char| !ch.is_ascii_alphanumeric() && ch != '&')
                 .to_ascii_lowercase();
-            !normalized.is_empty() && !stop_words.contains(&normalized.as_str())
+            !normalized.is_empty() && !is_legal_suffix(&normalized)
         })
         .collect::<Vec<_>>()
         .join(" ")
 }
 
 fn simplify_company_name(name: &str) -> String {
-    let stop_words = [
-        "inc",
-        "incorporated",
-        "corp",
-        "corporation",
-        "co",
-        "company",
-        "llc",
-        "ltd",
-        "limited",
-        "lp",
-        "l.p",
-        "group",
-    ];
     name.replace('&', " ")
         .split(|ch: char| !ch.is_ascii_alphanumeric())
         .filter(|part| {
             let lowered = part.to_ascii_lowercase();
-            !part.is_empty() && !stop_words.contains(&lowered.as_str())
+            !part.is_empty() && !is_legal_suffix(&lowered)
         })
         .collect::<Vec<_>>()
         .join(" ")
@@ -126,16 +102,6 @@ fn form_encode(value: &str) -> String {
         }
     }
     encoded
-}
-
-fn path_ends_with(path: &[String], suffix: &[&str]) -> bool {
-    if path.len() < suffix.len() {
-        return false;
-    }
-    path[path.len() - suffix.len()..]
-        .iter()
-        .zip(suffix)
-        .all(|(left, right)| left == right)
 }
 
 #[cfg(test)]

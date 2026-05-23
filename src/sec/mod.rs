@@ -17,6 +17,7 @@ pub mod sections;
 pub mod statements;
 pub mod storage;
 pub mod tables;
+pub(crate) mod utils;
 
 pub use client::SecClient;
 pub use edgar::accession_text_url;

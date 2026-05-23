@@ -5,6 +5,7 @@ use serde_json::Value;
 use crate::sec::{
     client::SecClient,
     models::{FilingQuery, FilingRecord},
+    utils::nonempty,
 };
 
 use super::urls::{accession_index_url, accession_text_url, submissions_url};
@@ -118,13 +119,4 @@ fn optional_bool_array(root: &Value, key: &str) -> Vec<Option<bool>> {
         .and_then(Value::as_array)
         .map(|arr| arr.iter().map(Value::as_bool).collect())
         .unwrap_or_default()
-}
-
-fn nonempty(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
-    }
 }

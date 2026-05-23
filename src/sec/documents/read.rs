@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use anyhow::{Context, Result, bail};
 use regex::Regex;
 
@@ -5,6 +7,7 @@ use crate::sec::{
     client::SecClient,
     edgar::accession_document_url,
     models::{DocumentContentRecord, DocumentReadQuery, FilingQuery, FilingRecord},
+    utils::truncate_utf8,
 };
 
 use super::{DocumentSet, SubmissionDocument};
@@ -34,12 +37,14 @@ impl SecClient {
 }
 
 pub fn plain_text(content: &str) -> String {
-    let without_scripts = Regex::new("(?is)<(script|style)[^>]*>.*?</(script|style)>")
-        .expect("valid regex")
-        .replace_all(content, " ");
-    let without_tags = Regex::new("(?is)<[^>]+>")
-        .expect("valid regex")
-        .replace_all(&without_scripts, " ");
+    static SCRIPT_RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new("(?is)<(script|style)[^>]*>.*?</(script|style)>").expect("valid regex")
+    });
+    static TAG_RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new("(?is)<[^>]+>").expect("valid regex"));
+
+    let without_scripts = SCRIPT_RE.replace_all(content, " ");
+    let without_tags = TAG_RE.replace_all(&without_scripts, " ");
     let decoded = without_tags
         .replace("&nbsp;", " ")
         .replace("&amp;", "&")
@@ -53,8 +58,10 @@ pub fn plain_text(content: &str) -> String {
 }
 
 fn decode_numeric_entities(value: &str) -> String {
-    Regex::new(r"&#(x[0-9a-fA-F]+|\d+);")
-        .expect("valid regex")
+    static NUMERIC_ENTITY_RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"&#(x[0-9a-fA-F]+|\d+);").expect("valid regex"));
+
+    NUMERIC_ENTITY_RE
         .replace_all(value, |caps: &regex::Captures| {
             let raw = &caps[1];
             let parsed = if let Some(hex) = raw.strip_prefix('x') {
@@ -124,7 +131,7 @@ fn content_record(
     limit_bytes: Option<usize>,
 ) -> DocumentContentRecord {
     let byte_length = doc.content.len();
-    let (content, truncated) = truncate_content(&doc.content, limit_bytes);
+    let (content, truncated) = truncate_utf8(&doc.content, limit_bytes);
     let returned_bytes = content.len();
 
     DocumentContentRecord {
@@ -151,24 +158,6 @@ fn content_record(
     }
 }
 
-fn truncate_content(content: &str, limit_bytes: Option<usize>) -> (String, bool) {
-    let Some(limit) = limit_bytes else {
-        return (content.to_string(), false);
-    };
-    if content.len() <= limit {
-        return (content.to_string(), false);
-    }
-    if limit == 0 {
-        return (String::new(), true);
-    }
-
-    let mut end = limit.min(content.len());
-    while !content.is_char_boundary(end) {
-        end -= 1;
-    }
-    (content[..end].to_string(), true)
-}
-
 pub fn content_for_terminal(
     record: &DocumentContentRecord,
     text_mode: bool,
@@ -179,7 +168,7 @@ pub fn content_for_terminal(
     } else {
         record.content.clone()
     };
-    truncate_content(&content, limit_bytes).0
+    truncate_utf8(&content, limit_bytes).0
 }
 
 pub fn validate_doc_args(filename: &Option<String>, sequence: &Option<String>) -> Result<()> {
@@ -195,7 +184,7 @@ mod tests {
 
     #[test]
     fn truncates_on_utf8_boundary() {
-        let (content, truncated) = truncate_content("AAPL 苹果", Some(6));
+        let (content, truncated) = truncate_utf8("AAPL 苹果", Some(6));
 
         assert!(truncated);
         assert_eq!(content, "AAPL ");

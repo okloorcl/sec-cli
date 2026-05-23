@@ -6,6 +6,7 @@ use crate::sec::{
     documents::{DocumentSet, SubmissionDocument, read::plain_text},
     edgar::accession_document_url,
     models::{FilingQuery, FilingRecord, SectionQuery, SectionRecord},
+    utils::truncate_utf8,
 };
 
 impl SecClient {
@@ -251,21 +252,6 @@ fn flexible_words(value: &str) -> String {
         .map(regex::escape)
         .collect::<Vec<_>>()
         .join(r"\s+")
-}
-
-fn truncate_utf8(content: &str, limit_bytes: Option<usize>) -> (String, bool) {
-    let Some(limit) = limit_bytes else {
-        return (content.to_string(), false);
-    };
-    if content.len() <= limit {
-        return (content.to_string(), false);
-    }
-
-    let mut end = limit.min(content.len());
-    while !content.is_char_boundary(end) {
-        end -= 1;
-    }
-    (content[..end].to_string(), true)
 }
 
 #[cfg(test)]

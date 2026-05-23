@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 
-use crate::sec::{client::SecClient, models::FilingRecord};
+use crate::sec::{client::SecClient, models::FilingRecord, utils::nonempty};
 
 #[derive(Debug, Clone)]
 pub struct SubmissionDocument {
@@ -133,13 +133,4 @@ fn extract_tag<'a>(raw: &'a str, tag: &str) -> Option<&'a str> {
     let start = lower.find(&open)? + open.len();
     let end = lower[start..].find(&close)? + start;
     Some(&raw[start..end])
-}
-
-fn nonempty(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
-    }
 }

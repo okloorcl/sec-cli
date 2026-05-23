@@ -15,6 +15,7 @@ use crate::sec::{
     client::SecClient,
     llm::{LlmClient, LlmConfig},
     models::{FilingQuery, ResolveCandidateRecord, ResolveValidationRecord},
+    utils::is_legal_suffix,
 };
 
 #[derive(Debug, Clone)]
@@ -310,25 +311,10 @@ fn company_matches_candidate(
 }
 
 fn comparable_name(name: &str) -> String {
-    let stop_words = [
-        "inc",
-        "incorporated",
-        "corp",
-        "corporation",
-        "co",
-        "company",
-        "llc",
-        "ltd",
-        "limited",
-        "lp",
-        "l.p",
-        "group",
-        "del",
-    ];
     name.replace('&', " ")
         .split(|ch: char| !ch.is_ascii_alphanumeric())
         .map(|part| part.to_ascii_lowercase())
-        .filter(|part| !part.is_empty() && !stop_words.contains(&part.as_str()))
+        .filter(|part| !part.is_empty() && !is_legal_suffix(part))
         .collect::<Vec<_>>()
         .join(" ")
 }
