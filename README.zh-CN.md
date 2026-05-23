@@ -20,6 +20,7 @@
 ```bash
 sec filings --ticker AAPL --form 10-K
 sec facts --ticker AAPL --concept revenue
+sec statements --ticker AAPL --statement income --period annual --latest 4
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
@@ -47,6 +48,7 @@ sec forms --pretty
 
 - 查询 company filings
 - 查询 SEC CompanyFacts
+- 从 CompanyFacts 组装标准化 10-K/10-Q 三大表：利润表、资产负债表、现金流量表
 - 搜索 filing 原文并返回 snippet
 - 抽取 10-K/10-Q 常用 section：Business、Risk Factors、MD&A 等
 - 生成 Markdown 专业汇报：insider、portfolio、risk
@@ -71,6 +73,7 @@ sec forms --pretty
 | 哪些 owner 提交了 Form 4，净买卖是多少？ | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
 | 公司最近提交了哪些 8-K 事件？ | `sec 8k --ticker AAPL --latest 5 --pretty` |
 | 公司有没有 earnings 相关 8-K？ | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
+| 最新标准化财报三大表是什么？ | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
 | Berkshire 最新 13F 持仓是什么？ | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | 最近两期 13F 哪些仓位变化最大？ | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
 | 我只知道投资人名字，不知道 CIK？ | `sec resolve --query 段永平 --pretty`，然后 `sec 13f-diff --investor 段永平 --pretty` |
@@ -86,6 +89,7 @@ sec forms --pretty
 
 - `filings`
 - `facts`
+- `statements`
 - `search`
 - `section`
 - `docs`
@@ -143,7 +147,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | 数据源 | 对应命令 | 里面有什么 | 输出表 / record |
 | --- | --- | --- | --- |
 | SEC submissions JSON | `filings` | 公司提交过哪些 filing、日期、accession、主文档名 | filing records |
-| SEC CompanyFacts JSON | `facts` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度 | fact records |
+| SEC CompanyFacts JSON | `facts`、`statements` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行 | fact records、financial statement rows |
 | SEC complete submission text / archive documents | `search`、`section`、`docs`、`doc` | 原始 filing 文本、HTML/XML 附件、exhibit、可引用片段 | snippet、section、document records |
 | Form 3/4/5 XML ownership report | `form4`、`form4-summary`、`report --kind insider` | 内部人、职位、交易代码、股数、价格、金额、脚注、签名 | transaction records、ownership report records |
 | Form 8-K primary document | `8k` | 当前报告事件 item，例如 2.02 业绩、5.02 高管变化、8.01 其他事件、9.01 附件 | 8-K event records |
@@ -167,6 +171,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | --- | --- | --- | --- |
 | Filing | `filings` | `company`、`form`、`filing_date`、`report_date`、`primary_document` | `accession`、`source_url`、`text_url` |
 | Fact | `facts` | `concept`、`label`、`value`、`unit`、`fy`、`fp`、`filed` | `accession`、`source_url`、`fact_id` |
+| Financial statement row | `statements` | `statement`、`line_order`、`line_item`、`value`、`unit`、`fiscal_year`、`fiscal_period` | `accession`、`source_url`、`fact_id` |
 | Search snippet | `search` | `query`、`snippet`、`offset`、`form`、`filing_date` | `accession`、`source_url`、`document`、`section` |
 | Section | `section` | `item`、`title`、`content`、`truncated` | `accession`、`document_url`、`source_url` |
 | Document | `docs`、`doc` | `filename`、`document_type`、`description`、`content_type`、`content` | `accession`、`document_url`、`source_url` |
@@ -333,6 +338,8 @@ cargo check
 
 cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 1 --pretty
 cargo run --bin sec -- facts --ticker AAPL --concept revenue --form 10-K --latest 3 --pretty
+cargo run --bin sec -- statements --ticker AAPL --statement income --period annual --latest 2 --pretty
+cargo run --bin sec -- statements --ticker AAPL --statement cashflow --period quarterly --latest 4 --jsonl
 cargo run --bin sec -- form4-summary --ticker AAPL --latest 2 --pretty
 cargo run --bin sec -- 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 
@@ -385,6 +392,32 @@ sec facts --cik 320193 --concept us-gaap:RevenueFromContractWithCustomerExcludin
 ```
 
 输出字段：`concept`、`taxonomy`、`label`、`description`、`value`、`unit`、`fy`、`fp`、`form`、`filed`、`start`、`end`、`frame`、`accession`、`source_url`、`fact_id`。
+
+### statements
+
+从 SEC CompanyFacts 组装标准化 10-K/10-Q 财报三大表。输出是长表结构，不是排版后的 Excel：每一行代表一个报表项目、一个期间、一个 XBRL concept、一个单位和一个来源 filing。
+
+```bash
+sec statements --ticker AAPL --statement income --period annual --latest 4 --pretty
+sec statements --ticker AAPL --statement balance --period annual --latest 2 --pretty
+sec statements --ticker AAPL --statement cashflow --period quarterly --latest 4 --jsonl
+sec statements --cik 320193 --statement all --period annual --latest 1 --pretty
+```
+
+`--statement`：
+
+- `income`：营收、收入成本、毛利、营业利润、净利润、EPS、股数
+- `balance`：现金、流动资产、总资产、负债、股东权益
+- `cashflow`：经营现金流、资本开支、投资现金流、分红、回购、融资现金流
+- `all`：一次输出利润表、资产负债表、现金流量表
+
+`--period`：
+
+- `annual`：只看 10-K
+- `quarterly`：只看 10-Q
+- `all`：不过滤 filing form
+
+输出字段：`cik`、`company`、`statement`、`line_order`、`line_item`、`concept`、`taxonomy`、`label`、`value`、`numeric_value`、`unit`、`fiscal_year`、`fiscal_period`、`form`、`filed`、`start`、`end`、`frame`、`accession`、`source_url`、`fact_id`。
 
 ### search
 
@@ -555,6 +588,7 @@ sec forms --pretty
 | --- | --- | --- |
 | `filings` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--from`、`--to`、`--include-amends`、`--jsonl`、`--pretty` |
 | `facts` | `--ticker` 或 `--cik`，`--concept` | `--form`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
+| `statements` | `--ticker` 或 `--cik` | `--statement`、`--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `search` | `--ticker` 或 `--cik`，`--query` | `--form`、`--latest`、`--context`、`--include-amends`、`--jsonl`、`--pretty` |
 | `section` | `--ticker` 或 `--cik`，`--item` | `--form`、`--latest`、`--accession`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
 | `report` | `--ticker`、`--cik`、`--manager` 或 `--investor`，`--kind` | `--latest`、`--limit`、`--limit-bytes`、`--include-amends` |

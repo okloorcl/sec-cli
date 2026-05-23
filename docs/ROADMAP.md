@@ -9,6 +9,7 @@ real commands or modules in the repository.
 - [x] SEC ticker to CIK mapping.
 - [x] SEC submissions JSON filing metadata.
 - [x] SEC CompanyFacts XBRL fact lookup.
+- [x] 10-K / 10-Q financial statements builder.
 - [x] SEC complete submission document listing and document reading.
 - [x] SEC filing text search with source snippets.
 - [x] 10-K / 10-Q section extraction for common items.
@@ -25,7 +26,6 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] 10-K / 10-Q financial statements builder.
 - [ ] Inline XBRL streaming parser.
 - [ ] HTML table extraction.
 - [ ] Schedule 13D / 13G parser.
@@ -38,15 +38,14 @@ real commands or modules in the repository.
 
 ## Suggested Implementation Order
 
-1. 10-K / 10-Q financial statements builder.
-2. Schedule 13D / 13G parser.
-3. Inline XBRL streaming parser.
-4. HTML table extraction.
-5. DEF 14A proxy statement parser.
-6. S-1 / 424B parser.
-7. 20-F / 6-K / 40-F parser.
-8. N-PORT / N-CSR / N-CEN parser.
-9. Local HTTP API and MCP adapter.
+1. Schedule 13D / 13G parser.
+2. Inline XBRL streaming parser.
+3. HTML table extraction.
+4. DEF 14A proxy statement parser.
+5. S-1 / 424B parser.
+6. 20-F / 6-K / 40-F parser.
+7. N-PORT / N-CSR / N-CEN parser.
+8. Local HTTP API and MCP adapter.
 
 ## Completion Rule
 

@@ -5,15 +5,15 @@ use clap::Parser;
 use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query, OutputMode,
-    ParseQuery, ReportKind, ReportQuery, SearchQuery, SecClient, SectionQuery, ThirteenFQuery,
-    accession_text_url, find_matches,
+    ParseQuery, ReportKind, ReportQuery, SearchQuery, SecClient, SectionQuery, StatementQuery,
+    ThirteenFQuery, accession_text_url, find_matches,
     llm::{LlmConfig, LlmProvider},
     print_records,
     resolve::{ResolveInput, resolve_verified_13f_cik, resolve_verified_13f_manager},
     supported_parsers,
 };
 
-use super::args::{Cli, Command, LlmProviderArg, ReportKindArg, ResolveArgs};
+use super::args::{Cli, Command, LlmProviderArg, ReportKindArg, ResolveArgs, StatementPeriodArg};
 
 pub(crate) async fn run() -> Result<()> {
     let cli = Cli::parse();
@@ -54,6 +54,20 @@ pub(crate) async fn run() -> Result<()> {
                 })
                 .await?;
             print_records(&facts, output)?;
+        }
+        Command::Statements(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let records = client
+                .financial_statements(StatementQuery {
+                    cik,
+                    statement: args.statement,
+                    form: statement_period_form(args.period),
+                    unit: args.unit,
+                    latest: args.latest,
+                })
+                .await?;
+            print_records(&records, output)?;
         }
         Command::Search(args) => {
             let output = output_mode(args.jsonl, args.pretty);
@@ -358,6 +372,14 @@ fn output_mode(jsonl: bool, pretty: bool) -> OutputMode {
         OutputMode::PrettyJson
     } else {
         OutputMode::Json
+    }
+}
+
+fn statement_period_form(period: StatementPeriodArg) -> Option<String> {
+    match period {
+        StatementPeriodArg::Annual => Some("10-K".to_string()),
+        StatementPeriodArg::Quarterly => Some("10-Q".to_string()),
+        StatementPeriodArg::All => None,
     }
 }
 

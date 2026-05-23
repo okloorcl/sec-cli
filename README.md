@@ -20,6 +20,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 ```bash
 sec filings --ticker AAPL --form 10-K
 sec facts --ticker AAPL --concept revenue
+sec statements --ticker AAPL --statement income --period annual --latest 4
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
@@ -49,6 +50,7 @@ This is an early MVP. The first implementation focuses on:
 
 - Finding company filings from SEC submissions data
 - Querying SEC CompanyFacts for source-backed XBRL facts
+- Building standardized 10-K/10-Q income statement, balance sheet, and cash flow rows from CompanyFacts
 - Searching filing submission text with snippets
 - Extracting common 10-K/10-Q sections such as business, risk factors, and MD&A
 - Generating source-backed Markdown reports for insider activity, 13F portfolios, and risk review
@@ -78,6 +80,7 @@ These are useful, source-backed questions that work today:
 | Which executives/directors filed Form 4s and what was net activity? | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
 | Which 8-K events did a company recently report? | `sec 8k --ticker AAPL --latest 5 --pretty` |
 | Did a company file earnings-related 8-K events? | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
+| What are the latest standardized financial statement rows? | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
 | What is Berkshire Hathaway's latest 13F portfolio? | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | What changed between the latest two 13F filings? | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
 | What if I know the investor name but not the CIK? | `sec resolve --query 段永平 --pretty`, then `sec 13f-diff --investor 段永平 --pretty` |
@@ -93,6 +96,7 @@ Company-disclosure commands use `--ticker` or `--cik`:
 
 - `filings`
 - `facts`
+- `statements`
 - `search`
 - `section`
 - `docs`
@@ -151,7 +155,7 @@ Practical rule:
 | Data/source | Commands | What it contains | Main output table |
 | --- | --- | --- | --- |
 | SEC submissions JSON | `filings` | Filing list, dates, accession numbers, primary document names | filing records |
-| SEC CompanyFacts JSON | `facts` | XBRL facts such as revenue, net income, assets, units, periods | fact records |
+| SEC CompanyFacts JSON | `facts`, `statements` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines | fact records, financial statement rows |
 | SEC complete submission text and archive documents | `search`, `section`, `docs`, `doc` | Original filing text, HTML/XML attachments, exhibits, source snippets | snippet, section, document records |
 | Form 3/4/5 XML ownership reports | `form4`, `form4-summary`, `report --kind insider` | Insider owners, roles, transaction codes, shares, prices, footnotes, signatures | transaction and ownership-report records |
 | Form 8-K primary document | `8k` | Current-report event items such as 2.02 earnings, 5.02 management changes, 8.01 other events, 9.01 exhibits | 8-K event records |
@@ -170,6 +174,7 @@ Output record cheat sheet:
 | --- | --- | --- | --- |
 | Filing | `filings` | `company`, `form`, `filing_date`, `report_date`, `primary_document` | `accession`, `source_url`, `text_url` |
 | Fact | `facts` | `concept`, `label`, `value`, `unit`, `fy`, `fp`, `filed` | `accession`, `source_url`, `fact_id` |
+| Financial statement row | `statements` | `statement`, `line_order`, `line_item`, `value`, `unit`, `fiscal_year`, `fiscal_period` | `accession`, `source_url`, `fact_id` |
 | Search snippet | `search` | `query`, `snippet`, `offset`, `form`, `filing_date` | `accession`, `source_url`, `document`, `section` |
 | Section | `section` | `item`, `title`, `content`, `truncated` | `accession`, `document_url`, `source_url` |
 | Document | `docs`, `doc` | `filename`, `document_type`, `description`, `content_type`, `content` | `accession`, `document_url`, `source_url` |
@@ -356,6 +361,8 @@ cargo check
 
 cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 1 --pretty
 cargo run --bin sec -- facts --ticker AAPL --concept revenue --form 10-K --latest 3 --pretty
+cargo run --bin sec -- statements --ticker AAPL --statement income --period annual --latest 2 --pretty
+cargo run --bin sec -- statements --ticker AAPL --statement cashflow --period quarterly --latest 4 --jsonl
 cargo run --bin sec -- form4-summary --ticker AAPL --latest 2 --pretty
 cargo run --bin sec -- 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 
@@ -432,6 +439,56 @@ Each fact includes:
 - `filed`
 - `start`
 - `end`
+- `accession`
+- `source_url`
+- `fact_id`
+
+### statements
+
+Build standardized 10-K/10-Q financial statement rows from SEC CompanyFacts.
+This is a normalized long table, not a rendered spreadsheet: every row is one
+statement line, period, concept, unit, and source filing.
+
+```bash
+sec statements --ticker AAPL --statement income --period annual --latest 4 --pretty
+sec statements --ticker AAPL --statement balance --period annual --latest 2 --pretty
+sec statements --ticker AAPL --statement cashflow --period quarterly --latest 4 --jsonl
+sec statements --cik 320193 --statement all --period annual --latest 1 --pretty
+```
+
+`--statement` accepts:
+
+- `income`: revenue, cost of revenue, gross profit, operating income, net income, EPS, shares
+- `balance`: cash, current assets, total assets, liabilities, equity
+- `cashflow`: operating cash flow, capex, investing cash flow, dividends, repurchases, financing cash flow
+- `all`: income, balance, and cashflow together
+
+`--period` accepts:
+
+- `annual`: 10-K facts
+- `quarterly`: 10-Q facts
+- `all`: any available filing form
+
+Each row includes:
+
+- `cik`
+- `company`
+- `statement`
+- `line_order`
+- `line_item`
+- `concept`
+- `taxonomy`
+- `label`
+- `value`
+- `numeric_value`
+- `unit`
+- `fiscal_year`
+- `fiscal_period`
+- `form`
+- `filed`
+- `start`
+- `end`
+- `frame`
 - `accession`
 - `source_url`
 - `fact_id`
@@ -860,6 +917,7 @@ Command options:
 | --- | --- | --- |
 | `filings` | `--ticker` or `--cik` | `--form`, `--latest`, `--from`, `--to`, `--include-amends`, `--jsonl`, `--pretty` |
 | `facts` | `--ticker` or `--cik`, `--concept` | `--form`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
+| `statements` | `--ticker` or `--cik` | `--statement`, `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `search` | `--ticker` or `--cik`, `--query` | `--form`, `--latest`, `--context`, `--include-amends`, `--jsonl`, `--pretty` |
 | `section` | `--ticker` or `--cik`, `--item` | `--form`, `--latest`, `--accession`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
 | `report` | `--ticker`, `--cik`, `--manager`, or `--investor`; `--kind` | `--latest`, `--limit`, `--limit-bytes`, `--include-amends` |

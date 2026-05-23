@@ -12,13 +12,14 @@ pub mod reports;
 pub mod resolve;
 pub mod search;
 pub mod sections;
+pub mod statements;
 pub mod storage;
 
 pub use client::SecClient;
 pub use edgar::accession_text_url;
 pub use models::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query, OutputMode,
-    ParseQuery, ReportQuery, SearchQuery, SectionQuery, ThirteenFQuery,
+    ParseQuery, ReportQuery, SearchQuery, SectionQuery, StatementQuery, ThirteenFQuery,
 };
 pub use output::print_records;
 pub use registry::supported_parsers;

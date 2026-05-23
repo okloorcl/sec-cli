@@ -255,6 +255,31 @@ pub struct EightKEventRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct FinancialStatementRecord {
+    pub cik: u64,
+    pub company: Option<String>,
+    pub statement: String,
+    pub line_order: usize,
+    pub line_item: String,
+    pub concept: String,
+    pub taxonomy: String,
+    pub label: Option<String>,
+    pub value: Value,
+    pub numeric_value: Option<f64>,
+    pub unit: String,
+    pub fiscal_year: Option<i64>,
+    pub fiscal_period: Option<String>,
+    pub form: Option<String>,
+    pub filed: Option<String>,
+    pub start: Option<String>,
+    pub end: Option<String>,
+    pub frame: Option<String>,
+    pub accession: Option<String>,
+    pub source_url: Option<String>,
+    pub fact_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ThirteenFHoldingRecord {
     pub accession: String,
     pub cik: u64,

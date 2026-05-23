@@ -85,6 +85,15 @@ pub struct EightKQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct StatementQuery {
+    pub cik: u64,
+    pub statement: String,
+    pub form: Option<String>,
+    pub unit: Option<String>,
+    pub latest: usize,
+}
+
+#[derive(Debug, Clone)]
 pub struct ThirteenFQuery {
     pub cik: u64,
     pub latest: usize,
