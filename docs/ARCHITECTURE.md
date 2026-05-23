@@ -115,9 +115,9 @@ Primary SEC sources:
 - Financial metrics are derived locally from CompanyFacts statement rows; no paid market-data API is used.
 - `Archives/edgar/data/.../*.txt`: complete submission text with all documents.
 - Filing index pages and archive attachments: primary documents, exhibits, XBRL files.
-- Future daily index feeds: high-volume discovery and monitoring.
+- Daily index feeds: high-volume discovery and monitoring.
+- EFTS/full-text search: global text search.
 - Future bulk archives: companyfacts/submissions zip for offline mode.
-- Future EFTS/full-text search: global text search.
 
 Optional model sources:
 
