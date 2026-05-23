@@ -981,6 +981,7 @@ MCP tool 参数示例：
 | --- | --- |
 | `--identity <TEXT>` | SEC 请求身份 / user agent；未设置 `SEC_IDENTITY` 或 `EDGAR_IDENTITY` 时必填 |
 | `--cache-dir <PATH>` | 指定本地缓存目录 |
+| `--output <MODE>` | 全局覆盖结构化输出：`json`、`pretty`、`jsonl`、`csv`、`table` |
 
 命令参数：
 
@@ -1020,9 +1021,18 @@ MCP tool 参数示例：
 - 默认：紧凑 JSON
 - `--pretty`：格式化 JSON
 - `--jsonl`：一行一个 JSON record
+- `--output csv`：CSV，可直接导入 Excel / Sheets
+- `--output table`：终端表格，适合人工快速扫读
 - `sec report`：Markdown 汇报
 - `sec doc --raw`：原始 document 内容
 - `sec doc --text`：简化纯文本
+
+示例：
+
+```bash
+sec --output csv filings --ticker AAPL --form 10-K --latest 3
+sec --output table filings --ticker AAPL --form 10-K --latest 3
+```
 
 ## Agent 工作流
 

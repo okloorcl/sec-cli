@@ -1,5 +1,6 @@
 use chrono::NaiveDate;
-use clap::Args;
+use clap::{Args, ValueEnum};
+use sec_cli::sec::OutputMode;
 
 #[derive(Args, Debug)]
 pub(crate) struct DailyArgs {
@@ -42,6 +43,27 @@ pub(crate) struct EftsArgs {
     pub(crate) jsonl: bool,
     #[arg(long)]
     pub(crate) pretty: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub(crate) enum OutputArg {
+    Json,
+    Pretty,
+    Jsonl,
+    Csv,
+    Table,
+}
+
+impl From<OutputArg> for OutputMode {
+    fn from(output: OutputArg) -> Self {
+        match output {
+            OutputArg::Json => OutputMode::Json,
+            OutputArg::Pretty => OutputMode::PrettyJson,
+            OutputArg::Jsonl => OutputMode::JsonLines,
+            OutputArg::Csv => OutputMode::Csv,
+            OutputArg::Table => OutputMode::Table,
+        }
+    }
 }
 
 #[derive(Args, Debug)]

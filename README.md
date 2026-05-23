@@ -1489,6 +1489,7 @@ Global options:
 | --- | --- |
 | `--identity <TEXT>` | SEC request identity / user agent. Required unless `SEC_IDENTITY` or `EDGAR_IDENTITY` is set. |
 | `--cache-dir <PATH>` | Override the local response cache directory. |
+| `--output <MODE>` | Override structured output globally: `json`, `pretty`, `jsonl`, `csv`, or `table`. |
 
 Command options:
 
@@ -1546,6 +1547,22 @@ JSONL:
 ```bash
 sec facts --ticker AAPL --concept revenue --jsonl
 ```
+
+CSV:
+
+```bash
+sec --output csv filings --ticker AAPL --form 10-K --latest 3
+```
+
+Terminal table:
+
+```bash
+sec --output table filings --ticker AAPL --form 10-K --latest 3
+```
+
+`--output` is global and can be used with any structured command. `sec report`
+still prints Markdown, while `sec doc --raw` and `sec doc --text` keep printing
+document content.
 
 ## Agent Workflows
 

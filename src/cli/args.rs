@@ -3,7 +3,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use super::analysis_args::{MetricsArgs, StatementsArgs};
 use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs};
-use super::monitoring_args::{DailyArgs, EftsArgs, McpArgs, ServeArgs};
+use super::monitoring_args::{DailyArgs, EftsArgs, McpArgs, OutputArg, ServeArgs};
 
 #[derive(Parser, Debug)]
 #[command(name = "sec")]
@@ -16,6 +16,9 @@ pub(crate) struct Cli {
 
     #[arg(long, global = true)]
     pub(crate) cache_dir: Option<std::path::PathBuf>,
+
+    #[arg(long, global = true, value_enum)]
+    pub(crate) output: Option<OutputArg>,
 
     #[command(subcommand)]
     pub(crate) command: Command,

@@ -220,4 +220,6 @@ pub enum OutputMode {
     Json,
     PrettyJson,
     JsonLines,
+    Csv,
+    Table,
 }

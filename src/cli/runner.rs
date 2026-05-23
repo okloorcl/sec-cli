@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use sec_cli::sec::{
@@ -19,6 +21,7 @@ use super::identity::resolve_identity;
 
 pub(crate) async fn run() -> Result<()> {
     let cli = Cli::parse();
+    let _ = OUTPUT_OVERRIDE.set(cli.output.map(OutputMode::from));
     let identity = resolve_identity(cli.identity)?;
 
     let client = SecClient::new(identity, cli.cache_dir)?;
@@ -402,8 +405,12 @@ fn report_kind(kind: ReportKindArg) -> ReportKind {
     }
 }
 
+static OUTPUT_OVERRIDE: OnceLock<Option<OutputMode>> = OnceLock::new();
+
 pub(super) fn output_mode(jsonl: bool, pretty: bool) -> OutputMode {
-    if jsonl {
+    if let Some(Some(mode)) = OUTPUT_OVERRIDE.get() {
+        *mode
+    } else if jsonl {
         OutputMode::JsonLines
     } else if pretty {
         OutputMode::PrettyJson
