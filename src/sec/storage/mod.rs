@@ -7,6 +7,12 @@ use std::{
 use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 
+pub trait CacheStore: Send + Sync {
+    fn read_url(&self, url: &str, ext: &str, ttl: Option<Duration>) -> Result<Option<Vec<u8>>>;
+    fn write_url(&self, url: &str, ext: &str, bytes: &[u8]) -> Result<()>;
+    fn root(&self) -> &Path;
+}
+
 #[derive(Debug, Clone)]
 pub struct FileStore {
     root: PathBuf,
@@ -20,7 +26,16 @@ impl FileStore {
         Ok(Self { root })
     }
 
-    pub fn read_url(&self, url: &str, ext: &str, ttl: Option<Duration>) -> Result<Option<Vec<u8>>> {
+    fn url_path(&self, url: &str, ext: &str) -> PathBuf {
+        let mut hasher = Sha256::new();
+        hasher.update(url.as_bytes());
+        let digest = hasher.finalize();
+        self.root.join(format!("{digest:x}.{ext}"))
+    }
+}
+
+impl CacheStore for FileStore {
+    fn read_url(&self, url: &str, ext: &str, ttl: Option<Duration>) -> Result<Option<Vec<u8>>> {
         let path = self.url_path(url, ext);
         if !path.exists() {
             return Ok(None);
@@ -33,19 +48,12 @@ impl FileStore {
             .with_context(|| format!("failed to read cache file {}", path.display()))
     }
 
-    pub fn write_url(&self, url: &str, ext: &str, bytes: &[u8]) -> Result<()> {
+    fn write_url(&self, url: &str, ext: &str, bytes: &[u8]) -> Result<()> {
         atomic_write(&self.url_path(url, ext), bytes)
     }
 
-    pub fn root(&self) -> &Path {
+    fn root(&self) -> &Path {
         &self.root
-    }
-
-    fn url_path(&self, url: &str, ext: &str) -> PathBuf {
-        let mut hasher = Sha256::new();
-        hasher.update(url.as_bytes());
-        let digest = hasher.finalize();
-        self.root.join(format!("{digest:x}.{ext}"))
     }
 }
 

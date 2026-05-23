@@ -4,12 +4,16 @@ use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, de::DeserializeOwned};
 use tokio::sync::Mutex;
 
-use super::{edgar::company_tickers_url, http::EdgarTransport, storage::FileStore};
+use super::{
+    edgar::company_tickers_url,
+    http::EdgarTransport,
+    storage::{CacheStore, FileStore},
+};
 
 #[derive(Clone)]
 pub struct SecClient {
     transport: EdgarTransport,
-    store: FileStore,
+    store: Arc<dyn CacheStore>,
     ticker_cache: Arc<Mutex<Option<Arc<HashMap<String, TickerRecord>>>>>,
 }
 
@@ -25,7 +29,16 @@ impl SecClient {
     pub fn new(identity: String, cache_dir: Option<PathBuf>) -> Result<Self> {
         Ok(Self {
             transport: EdgarTransport::new(identity)?,
-            store: FileStore::new(cache_dir)?,
+            store: Arc::new(FileStore::new(cache_dir)?),
+            ticker_cache: Arc::new(Mutex::new(None)),
+        })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_store(identity: String, store: Arc<dyn CacheStore>) -> Result<Self> {
+        Ok(Self {
+            transport: EdgarTransport::new(identity)?,
+            store,
             ticker_cache: Arc::new(Mutex::new(None)),
         })
     }
@@ -92,5 +105,49 @@ fn cache_ttl(url: &str) -> Option<Duration> {
         Some(Duration::from_secs(60 * 60))
     } else {
         Some(Duration::from_secs(6 * 60 * 60))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        path::{Path, PathBuf},
+        sync::{Arc, Mutex},
+    };
+
+    use super::*;
+
+    #[derive(Default)]
+    struct MemoryStore {
+        root: PathBuf,
+        writes: Mutex<Vec<String>>,
+    }
+
+    impl CacheStore for MemoryStore {
+        fn read_url(
+            &self,
+            _url: &str,
+            _ext: &str,
+            _ttl: Option<Duration>,
+        ) -> Result<Option<Vec<u8>>> {
+            Ok(None)
+        }
+
+        fn write_url(&self, url: &str, _ext: &str, _bytes: &[u8]) -> Result<()> {
+            self.writes.lock().unwrap().push(url.to_string());
+            Ok(())
+        }
+
+        fn root(&self) -> &Path {
+            &self.root
+        }
+    }
+
+    #[test]
+    fn client_accepts_injected_cache_store() {
+        let store = Arc::new(MemoryStore::default());
+        let client = SecClient::with_store("sec-cli test test@example.com".to_string(), store)
+            .expect("client");
+        assert_eq!(client.cache_dir(), Path::new(""));
     }
 }
