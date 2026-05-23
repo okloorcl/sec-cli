@@ -34,6 +34,7 @@ sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExc
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
 sec xbrl-calc --ticker AAPL --form 10-K --role OPERATIONS --limit 20 --pretty
+sec xbrl-statement --ticker AAPL --form 10-K --role OPERATIONS --values-only --limit 30 --pretty
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
 sec company-report --ticker AAPL --form 10-K --topic segment --pretty
 sec proxy --ticker AAPL --latest 1 --pretty
@@ -223,7 +224,7 @@ Practical rule:
 | SEC EDGAR Full-Text Search / EFTS | `efts`, `full-text`, `global-search` | All-market text-search hits with score, company, CIK, form, dates, accession, document URL | EFTS search records |
 | SEC CompanyFacts JSON | `facts`, `statements`, `metrics`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, derived margins/growth/returns/liquidity/leverage | fact records, financial statement rows, financial metric records, Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
-| XBRL linkbase attachments | `xbrl-links`, `linkbase` | EX-101.PRE/CAL/DEF/LAB/SCH relationships: presentation arcs, calculation weights, definition arcs, labels, schema elements | XBRL linkbase relationship records |
+| XBRL linkbase attachments | `xbrl-links`, `linkbase`, `xbrl-tree`, `xbrl-calc`, `xbrl-statement` | EX-101.PRE/CAL/DEF/LAB/SCH relationships: presentation arcs, calculation weights, definition arcs, labels, schema elements, rendered statement rows with same-accession CompanyFacts values | XBRL linkbase relationship records, presentation tree rows, calculation checks, rendered XBRL statement rows |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
 | 10-K/10-Q company report primary document | `company-report`, `parse --form "10-K"` | Classified topic tables: segment revenue, geography, revenue disaggregation, debt maturities, contractual obligations, leases, taxes, share repurchases | company report records |
 | DEF 14A proxy statement primary document | `proxy`, `parse --form "DEF 14A"` | Annual meeting date/site, voting proposals, board recommendations, director nominees, auditor, named executive officers, summary compensation table | proxy statement records |
@@ -258,6 +259,7 @@ Output record cheat sheet:
 | XBRL linkbase relationship | `xbrl-links` | `linkbase`, `relationship`, `role`, `parent_concept`, `child_concept`, `concept`, `label`, `order`, `weight` | `accession`, `document_url`, `source_url` |
 | XBRL presentation tree row | `xbrl-tree` | `role`, `depth`, `line_order`, `concept`, `label`, `parent_concept`, `path` | `accession`, `document_url`, `source_url` |
 | XBRL calculation check | `xbrl-calc` | `parent_concept`, `parent_value`, `calculated_value`, `difference`, `status`, `matched_children` | `accession`, `document_url`, `source_url` |
+| Rendered XBRL statement row | `xbrl-statement`, `statement-render` | `role`, `depth`, `line_order`, `concept`, `label`, `value`, `numeric_value`, `calculation_status`, `path` | `accession`, `fact_id`, `document_url`, `source_url` |
 | HTML table | `tables` | `title_hint`, `row_count`, `column_count`, `headers`, `rows`, `truncated` | `accession`, `document_url`, `source_url` |
 | Company report topic table | `company-report` | `topics[].topic`, `confidence`, `headers`, `rows`, `matched_table_count`, `scanned_table_count` | `accession`, `document_url`, `source_url` |
 | Proxy statement | `proxy`, `parse --form "DEF 14A"` | `meeting_date`, `proposals`, `director_nominees`, `auditor`, `named_executive_officers`, `summary_compensation_table` | `accession`, `document_url`, `source_url` |
@@ -520,6 +522,7 @@ cargo run --bin sec -- ixbrl --ticker AAPL --form 10-K --concept RevenueFromCont
 cargo run --bin sec -- xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 10 --pretty
 cargo run --bin sec -- xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 15 --pretty
 cargo run --bin sec -- xbrl-calc --ticker AAPL --form 10-K --role OPERATIONS --limit 10 --pretty
+cargo run --bin sec -- xbrl-statement --ticker AAPL --form 10-K --role OPERATIONS --values-only --limit 10 --pretty
 cargo run --bin sec -- tables --ticker AAPL --form 10-K --latest 1 --limit-tables 3 --limit-rows 5 --pretty
 cargo run --bin sec -- foreign --ticker TSM --form 20-F --latest 1 --limit-bytes 800 --pretty
 cargo run --bin sec -- fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 5 --pretty
@@ -785,8 +788,8 @@ Each relationship includes: `linkbase`, `relationship`, `role`, `arcrole`,
 
 Render filing-specific XBRL presentation arcs into preorder tree rows. This is
 the human- and agent-friendly view of `EX-101.PRE`: each row has a `depth`,
-`line_order`, `path`, parent concept, role URI, and source document URL. It is
-the next layer above raw `xbrl-links` and the base for future statement values.
+`line_order`, `path`, parent concept, role URI, and source document URL. Use
+`xbrl-statement` when you also want same-filing fact values.
 
 ```bash
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
@@ -817,6 +820,32 @@ sec calculation-checks --cik 320193 --form 10-Q --unit USD --limit 50 --jsonl
 Each check includes: `parent_concept`, `parent_value`, `calculated_value`,
 `difference`, `relative_difference`, `status`, `children_count`,
 `matched_children`, `missing_children`, `document_url`, and `source_url`.
+
+### xbrl-statement
+
+Render filing-specific presentation-tree rows with same-accession CompanyFacts
+values and calculation-check status. This is the closest CLI view to a true
+SEC-native financial statement: `EX-101.PRE` controls row order and hierarchy,
+CompanyFacts supplies values, CompanyFacts labels fill missing extension labels,
+and `EX-101.CAL` adds `calculation_status` for totals.
+
+```bash
+sec xbrl-statement --ticker AAPL --form 10-K --role OPERATIONS --values-only --limit 30 --pretty
+sec xbrl-statement --ticker AAPL --form 10-K --role BALANCE --unit USD --limit 50 --pretty
+sec statement-render --cik 320193 --form 10-Q --concept NetIncomeLoss --jsonl
+```
+
+Useful flags:
+
+- `--role`: filters role URIs by substring, such as `OPERATIONS`, `BALANCE`, or `CASH`.
+- `--values-only`: hides abstract/heading rows and returns only rows with matched facts.
+- `--unit`: selects the CompanyFacts unit, usually `USD` or `shares`.
+- `--tolerance`: controls calculation-check tolerance for total rows.
+
+Each row includes: `role`, `depth`, `line_order`, `concept`, `label`, `value`,
+`numeric_value`, `unit`, `fact_id`, `calculation_status`,
+`calculation_difference`, `calculation_relative_difference`, `path`,
+`document_url`, and `source_url`.
 
 ### tables
 
@@ -1613,6 +1642,7 @@ Command options:
 | `xbrl-links` / `linkbase` | `--ticker` or `--cik` | `--form`, `--linkbase`, `--role`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `xbrl-tree` / `presentation-tree` | `--ticker` or `--cik` | `--form`, `--role`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `xbrl-calc` / `calculation-checks` | `--ticker` or `--cik` | `--form`, `--role`, `--concept`, `--unit`, `--tolerance`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `xbrl-statement` / `statement-render` | `--ticker` or `--cik` | `--form`, `--role`, `--concept`, `--unit`, `--tolerance`, `--values-only`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `tables` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `proxy` | `--ticker` or `--cik` | `--latest`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `prospectus` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-bytes`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |

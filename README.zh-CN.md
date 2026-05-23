@@ -34,6 +34,7 @@ sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExc
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
 sec xbrl-calc --ticker AAPL --form 10-K --role OPERATIONS --limit 20 --pretty
+sec xbrl-statement --ticker AAPL --form 10-K --role OPERATIONS --values-only --limit 30 --pretty
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
 sec company-report --ticker AAPL --form 10-K --topic segment --pretty
 sec proxy --ticker AAPL --latest 1 --pretty
@@ -216,7 +217,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | SEC EDGAR Full-Text Search / EFTS | `efts`、`full-text`、`global-search` | 全市场全文搜索命中：分数、公司、CIK、form、日期、accession、document URL | EFTS search records |
 | SEC CompanyFacts JSON | `facts`、`statements`、`metrics`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行，以及二次推导的利润率/增长率/回报率/流动性/杠杆 | fact records、financial statement rows、financial metric records、Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | filing HTML 内嵌的 `ix:nonFraction` / `ix:nonNumeric`、context、unit、scale、decimals、原始值 | Inline XBRL fact records |
-| XBRL linkbase 附件 | `xbrl-links`、`linkbase` | EX-101.PRE/CAL/DEF/LAB/SCH 关系：presentation arcs、calculation weights、definition arcs、标签、schema elements | XBRL linkbase relationship records |
+| XBRL linkbase 附件 | `xbrl-links`、`linkbase`、`xbrl-tree`、`xbrl-calc`、`xbrl-statement` | EX-101.PRE/CAL/DEF/LAB/SCH 关系：presentation arcs、calculation weights、definition arcs、标签、schema elements，以及挂载同一 accession CompanyFacts 数值后的报表行 | XBRL linkbase relationship records、presentation tree rows、calculation checks、rendered XBRL statement rows |
 | Filing HTML tables | `tables` | 主 HTML 文档里的表格行，例如薪酬表、分部表、注册证券表、债务表、合同表 | HTML table records |
 | 10-K/10-Q company report 主文档 | `company-report`、`parse --form "10-K"` | 已分类专题表：分部收入、地域收入、收入拆分、债务到期、合同义务、租赁、税、股票回购 | company report records |
 | DEF 14A proxy statement 主文档 | `proxy`、`parse --form "DEF 14A"` | 股东大会日期/地点、投票事项、董事会建议、董事候选人、审计师、NEO、高管薪酬表 | proxy statement records |
@@ -256,6 +257,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | XBRL linkbase relationship | `xbrl-links` | `linkbase`、`relationship`、`role`、`parent_concept`、`child_concept`、`concept`、`label`、`order`、`weight` | `accession`、`document_url`、`source_url` |
 | XBRL presentation tree row | `xbrl-tree` | `role`、`depth`、`line_order`、`concept`、`label`、`parent_concept`、`path` | `accession`、`document_url`、`source_url` |
 | XBRL calculation check | `xbrl-calc` | `parent_concept`、`parent_value`、`calculated_value`、`difference`、`status`、`matched_children` | `accession`、`document_url`、`source_url` |
+| Rendered XBRL statement row | `xbrl-statement`、`statement-render` | `role`、`depth`、`line_order`、`concept`、`label`、`value`、`numeric_value`、`calculation_status`、`path` | `accession`、`fact_id`、`document_url`、`source_url` |
 | Company report topic table | `company-report` | `topics[].topic`、`confidence`、`headers`、`rows`、`matched_table_count`、`scanned_table_count` | `accession`、`document_url`、`source_url` |
 | HTML table | `tables` | `title_hint`、`row_count`、`column_count`、`headers`、`rows`、`truncated` | `accession`、`document_url`、`source_url` |
 | Proxy statement | `proxy`、`parse --form "DEF 14A"` | `meeting_date`、`proposals`、`director_nominees`、`auditor`、`named_executive_officers`、`summary_compensation_table` | `accession`、`document_url`、`source_url` |
@@ -498,6 +500,7 @@ cargo run --bin sec -- ixbrl --ticker AAPL --form 10-K --concept RevenueFromCont
 cargo run --bin sec -- xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 10 --pretty
 cargo run --bin sec -- xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 15 --pretty
 cargo run --bin sec -- xbrl-calc --ticker AAPL --form 10-K --role OPERATIONS --limit 10 --pretty
+cargo run --bin sec -- xbrl-statement --ticker AAPL --form 10-K --role OPERATIONS --values-only --limit 10 --pretty
 cargo run --bin sec -- tables --ticker AAPL --form 10-K --latest 1 --limit-tables 3 --limit-rows 5 --pretty
 cargo run --bin sec -- foreign --ticker TSM --form 20-F --latest 1 --limit-bytes 800 --pretty
 cargo run --bin sec -- fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 5 --pretty
@@ -667,7 +670,7 @@ sec linkbase --cik 320193 --form 10-Q --linkbase label --concept Revenue --jsonl
 
 ### xbrl-tree
 
-把 filing 专属的 XBRL presentation arcs 渲染成先序树形行。它是 `EX-101.PRE` 的更友好视图：每行都有 `depth`、`line_order`、`path`、parent concept、role URI 和来源 document URL，是未来继续挂载 fact value 做完整报表渲染的上一层。
+把 filing 专属的 XBRL presentation arcs 渲染成先序树形行。它是 `EX-101.PRE` 的更友好视图：每行都有 `depth`、`line_order`、`path`、parent concept、role URI 和来源 document URL。如果你想同时看到同一 filing 的 fact 数值，用 `xbrl-statement`。
 
 ```bash
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
@@ -690,6 +693,25 @@ sec calculation-checks --cik 320193 --form 10-Q --unit USD --limit 50 --jsonl
 ```
 
 输出字段：`parent_concept`、`parent_value`、`calculated_value`、`difference`、`relative_difference`、`status`、`children_count`、`matched_children`、`missing_children`、`document_url`、`source_url`。
+
+### xbrl-statement
+
+把 filing 专属 presentation tree、同一 accession 的 CompanyFacts 数值、calculation 校验状态合成一张真正接近 SEC 原生财报的行级表：`EX-101.PRE` 决定层级和顺序，CompanyFacts 提供数值，CompanyFacts label 补齐 extension label 缺失，`EX-101.CAL` 给总计行补 `calculation_status`。
+
+```bash
+sec xbrl-statement --ticker AAPL --form 10-K --role OPERATIONS --values-only --limit 30 --pretty
+sec xbrl-statement --ticker AAPL --form 10-K --role BALANCE --unit USD --limit 50 --pretty
+sec statement-render --cik 320193 --form 10-Q --concept NetIncomeLoss --jsonl
+```
+
+常用参数：
+
+- `--role`：按 role URI 子串过滤，例如 `OPERATIONS`、`BALANCE`、`CASH`。
+- `--values-only`：只返回匹配到 fact value 的行，隐藏 abstract/heading 行。
+- `--unit`：选择 CompanyFacts 单位，常见是 `USD` 或 `shares`。
+- `--tolerance`：控制 calculation 校验的容差。
+
+输出字段：`role`、`depth`、`line_order`、`concept`、`label`、`value`、`numeric_value`、`unit`、`fact_id`、`calculation_status`、`calculation_difference`、`calculation_relative_difference`、`path`、`document_url`、`source_url`。
 
 ### tables
 
@@ -1087,6 +1109,7 @@ MCP tool 参数示例：
 | `xbrl-links` / `linkbase` | `--ticker` 或 `--cik` | `--form`、`--linkbase`、`--role`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `xbrl-tree` / `presentation-tree` | `--ticker` 或 `--cik` | `--form`、`--role`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `xbrl-calc` / `calculation-checks` | `--ticker` 或 `--cik` | `--form`、`--role`、`--concept`、`--unit`、`--tolerance`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
+| `xbrl-statement` / `statement-render` | `--ticker` 或 `--cik` | `--form`、`--role`、`--concept`、`--unit`、`--tolerance`、`--values-only`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `tables` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `proxy` | `--ticker` 或 `--cik` | `--latest`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `prospectus` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-bytes`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |

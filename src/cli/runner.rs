@@ -5,7 +5,7 @@ use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
     MetricsQuery, OutputMode, ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery,
     SecClient, SectionQuery, StatementQuery, ThirteenFQuery, XbrlCalculationQuery,
-    XbrlLinkbaseQuery, XbrlTreeQuery,
+    XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
     documents::read::{content_for_terminal, validate_doc_args},
     find_matches,
     llm::{LlmConfig, LlmProvider},
@@ -149,6 +149,25 @@ pub(crate) async fn run() -> Result<()> {
                     concept: args.concept,
                     unit: Some(args.unit),
                     tolerance: args.tolerance,
+                    limit: Some(args.limit),
+                })
+                .await?;
+            print_records(&records, output)?;
+        }
+        Command::XbrlStatement(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let records = client
+                .xbrl_statement(XbrlStatementQuery {
+                    cik,
+                    form: Some(args.form),
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                    role: args.role,
+                    concept: args.concept,
+                    unit: Some(args.unit),
+                    tolerance: args.tolerance,
+                    values_only: args.values_only,
                     limit: Some(args.limit),
                 })
                 .await?;

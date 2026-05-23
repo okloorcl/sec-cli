@@ -19,6 +19,7 @@ real commands or modules in the repository.
 - [x] XBRL linkbase parser for presentation, calculation, definition, label, and schema attachments.
 - [x] Filing-specific XBRL presentation tree renderer with depth, path, and role filters.
 - [x] XBRL calculation-linkbase checks against same-accession CompanyFacts values.
+- [x] XBRL statement renderer that combines presentation tree rows, same-accession CompanyFacts values, CompanyFacts label fallback, and calculation-check status.
 - [x] HTML table extraction.
 - [x] SEC complete submission document listing and document reading.
 - [x] SEC filing text search with source snippets.
@@ -55,9 +56,6 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] Presentation-tree financial statement rendering with filing fact values.
-- [ ] Standard taxonomy label fallback for US-GAAP/DEI/SRT concepts not defined in filing extension labels.
-- [ ] Calculation-linkbase validation integrated into rendered statement values.
 - [ ] Expanded standard concept mapping toward 100+ financial statement concepts.
 - [ ] Financial metrics expansion toward 50+ ratios and financial-health scores.
 - [ ] Cross-form 10-K / 10-Q financial statement stitching.
@@ -66,13 +64,11 @@ real commands or modules in the repository.
 
 ## Suggested Implementation Order
 
-1. Presentation-tree statement renderer over `xbrl-links` output.
-2. Calculation-linkbase validation.
-3. Expanded standard concept mapping.
-4. Metrics and financial-health score expansion.
-5. Cross-form statement stitching.
-6. Arrow / Parquet export layer.
-7. Optional bulk archive / offline mode.
+1. Expanded standard concept mapping.
+2. Metrics and financial-health score expansion.
+3. Cross-form statement stitching.
+4. Arrow / Parquet export layer.
+5. Optional bulk archive / offline mode.
 
 ## Completion Rule
 

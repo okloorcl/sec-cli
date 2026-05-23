@@ -10,6 +10,7 @@ use crate::sec::{
     parsers::xml::{XmlAttribute, XmlEventWithAttrs, parse_f64, read_xml_with_attrs},
 };
 
+pub mod statement;
 pub mod tree;
 pub mod validation;
 

@@ -2,7 +2,7 @@ use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use super::analysis_args::{
-    MetricsArgs, StatementsArgs, XbrlCalcArgs, XbrlLinkbaseArgs, XbrlTreeArgs,
+    MetricsArgs, StatementsArgs, XbrlCalcArgs, XbrlLinkbaseArgs, XbrlStatementArgs, XbrlTreeArgs,
 };
 use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs, ProxyArgs};
 use super::monitoring_args::{DailyArgs, EftsArgs, McpArgs, OutputArg, ServeArgs};
@@ -54,6 +54,9 @@ pub(crate) enum Command {
     /// Validate XBRL calculation linkbase parent totals against CompanyFacts values.
     #[command(name = "xbrl-calc", aliases = ["calculation-checks"])]
     XbrlCalc(XbrlCalcArgs),
+    /// Render XBRL presentation rows with same-filing fact values and calculation status.
+    #[command(name = "xbrl-statement", aliases = ["statement-render", "xbrl-render"])]
+    XbrlStatement(XbrlStatementArgs),
     /// Extract HTML tables from primary filing documents.
     Tables(TablesArgs),
     /// Parse 10-K/10-Q company-report topic tables such as segments, geography, debt, and obligations.

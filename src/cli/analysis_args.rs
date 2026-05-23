@@ -116,6 +116,36 @@ pub(crate) struct XbrlCalcArgs {
     pub(crate) pretty: bool,
 }
 
+#[derive(Args, Debug)]
+pub(crate) struct XbrlStatementArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long, default_value = "10-K")]
+    pub(crate) form: String,
+    #[arg(long)]
+    pub(crate) role: Option<String>,
+    #[arg(long)]
+    pub(crate) concept: Option<String>,
+    #[arg(long, default_value = "USD")]
+    pub(crate) unit: String,
+    #[arg(long, default_value_t = 1)]
+    pub(crate) latest: usize,
+    #[arg(long)]
+    pub(crate) include_amends: bool,
+    #[arg(long, default_value_t = 1.0)]
+    pub(crate) tolerance: f64,
+    #[arg(long)]
+    pub(crate) values_only: bool,
+    #[arg(long, default_value_t = 200)]
+    pub(crate) limit: usize,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
 #[derive(Clone, Debug, ValueEnum)]
 pub(crate) enum StatementPeriodArg {
     Annual,

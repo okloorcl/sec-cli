@@ -35,7 +35,8 @@ pub use models::{
     EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
     FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery, OutputMode, ParseQuery,
     ProspectusQuery, ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery,
-    StatementQuery, ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery, XbrlTreeQuery,
+    StatementQuery, ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery, XbrlStatementQuery,
+    XbrlTreeQuery,
 };
 pub use models::{DailyFilingRecord, EftsSearchRecord};
 pub use models::{FinancialMetricRecord, MetricComponentRecord};

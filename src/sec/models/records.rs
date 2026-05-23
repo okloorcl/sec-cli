@@ -445,6 +445,33 @@ pub struct XbrlCalculationCheckRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct XbrlStatementRecord {
+    pub accession: String,
+    pub cik: u64,
+    pub company: String,
+    pub form: String,
+    pub filing_date: String,
+    pub report_date: Option<String>,
+    pub role: String,
+    pub depth: usize,
+    pub line_order: usize,
+    pub concept: String,
+    pub label: Option<String>,
+    pub parent_concept: Option<String>,
+    pub value: Option<serde_json::Value>,
+    pub numeric_value: Option<f64>,
+    pub unit: Option<String>,
+    pub fact_id: Option<String>,
+    pub calculation_status: Option<String>,
+    pub calculation_difference: Option<f64>,
+    pub calculation_relative_difference: Option<f64>,
+    pub path: String,
+    pub document: Option<String>,
+    pub document_url: Option<String>,
+    pub source_url: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ThirteenFHoldingRecord {
     pub accession: String,
     pub cik: u64,

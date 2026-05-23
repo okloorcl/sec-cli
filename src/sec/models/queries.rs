@@ -178,6 +178,20 @@ pub struct XbrlCalculationQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct XbrlStatementQuery {
+    pub cik: u64,
+    pub form: Option<String>,
+    pub latest: usize,
+    pub include_amends: bool,
+    pub role: Option<String>,
+    pub concept: Option<String>,
+    pub unit: Option<String>,
+    pub tolerance: f64,
+    pub values_only: bool,
+    pub limit: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
 pub struct CompanyReportQuery {
     pub cik: u64,
     pub form: Option<String>,
