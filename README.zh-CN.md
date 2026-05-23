@@ -45,6 +45,7 @@ sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000
 sec form4 --ticker AAPL --latest 3
 sec form4-summary --ticker AAPL --latest 3
 sec 8k --ticker AAPL --item 2.02 --latest 5
+sec 8k-exhibits --ticker AAPL --category earnings_release --latest 5 --pretty
 sec 13d --ticker TSLA --form 13g --latest 2 --include-amends
 sec 13f --cik 1067983 --latest 1
 sec 13f-aggregate --cik 1067983 --latest 1 --limit 20
@@ -81,6 +82,7 @@ sec mcp
 - 解析 Form 4 交易明细
 - 汇总 Form 4 报告、owner、签名、脚注、净买卖
 - 解析 Form 8-K 当前报告事件 item
+- 发现并分类 8-K 附件：earnings release、press release、material contract、agreement、XBRL、accountant letter 等
 - 解析 Schedule 13D/13G 大股东 5% 受益持仓报告
 - 解析 13F-HR information table
 - 聚合 13F 持仓
@@ -100,6 +102,7 @@ sec mcp
 | 哪些 owner 提交了 Form 4，净买卖是多少？ | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
 | 公司最近提交了哪些 8-K 事件？ | `sec 8k --ticker AAPL --latest 5 --pretty` |
 | 公司有没有 earnings 相关 8-K？ | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
+| 8-K 附件里有哪些 earnings release 或重要合同？ | `sec 8k-exhibits --ticker AAPL --category earnings_release --latest 5 --pretty` |
 | 最新标准化财报三大表是什么？ | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
 | 最新 SEC 原始数据推导的财务指标是什么？ | `sec metrics --ticker AAPL --period annual --latest 4 --pretty` |
 | 能不能直接生成一份财务趋势 Markdown？ | `sec report --ticker AAPL --kind financial --latest 4` |
@@ -203,6 +206,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | SEC complete submission text / archive documents | `search`、`section`、`docs`、`doc` | 原始 filing 文本、HTML/XML 附件、exhibit、可引用片段 | snippet、section、document records |
 | Form 3/4/5 XML ownership report | `form4`、`form4-summary`、`report --kind insider` | 内部人、职位、交易代码、股数、价格、金额、脚注、签名 | transaction records、ownership report records |
 | Form 8-K primary document | `8k` | 当前报告事件 item，例如 2.02 业绩、5.02 高管变化、8.01 其他事件、9.01 附件 | 8-K event records |
+| Form 8-K exhibits | `8k-exhibits` | 附件 EX 文档分类：earnings release、press release、material contract、transaction agreement、charter/bylaws、security instrument、XBRL、accountant letter | 8-K exhibit records |
 | Schedule 13D/13G primary document | `13d`、`13g`、`schedule13` | 5% 大股东受益持仓、申报人、持股比例、投票权/处分权、主动/被动意图信号 | Schedule 13 records |
 | Form 13F-HR information table | `13f`、`13f-aggregate`、`13f-diff`、`report --kind portfolio` | 机构多头持仓：issuer、class、CUSIP、市值、股数、投票权 | holding、aggregate holding、diff records |
 | Form 13F-HR primary document | `13f-summary` | filing manager、报告期、总持仓数、总市值、签名、included managers | 13F report summary records |
@@ -239,6 +243,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | Form 4 transaction | `form4` | `reporting_owner`、`officer_title`、`transaction_code`、`shares`、`price`、`value` | `accession`、`source_url` |
 | Form 4 report summary | `form4-summary` | `owners`、`transaction_count`、`net_shares`、`total_value`、`footnotes` | `accession`、`source_url` |
 | 8-K event | `8k` | `item`、`item_title`、`category`、`is_furnished_item`、`content` | `accession`、`document_url`、`source_url` |
+| 8-K exhibit | `8k-exhibits` | `document_type`、`category`、`is_earnings_release`、`description`、`content` | `accession`、`document_url`、`source_url` |
 | Schedule 13D/13G | `13d`、`13g`、`schedule13` | `reporting_persons`、`beneficially_owned_shares`、`percent_of_class`、`activist_intent` | `accession`、`document_url`、`source_url` |
 | 13F holding | `13f` | `manager`、`issuer`、`class`、`cusip`、`value_usd`、`shares` | `accession`、`source_url` |
 | 13F aggregate holding | `13f-aggregate` | `issuer`、`cusip`、`value_usd`、`shares`、`rows` | `source_url` |
@@ -766,6 +771,8 @@ sec 8k --ticker AAPL --latest 5 --pretty
 sec 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 sec 8k --ticker TSLA --item 5.02 --latest 10 --jsonl
 sec 8k --cik 320193 --item 9.01 --include-amends --pretty
+sec 8k-exhibits --ticker AAPL --category earnings_release --latest 5 --limit-bytes 1200 --pretty
+sec 8k-exhibits --ticker MSFT --category material_contract --latest 10 --jsonl
 ```
 
 常见 item：
@@ -777,6 +784,8 @@ sec 8k --cik 320193 --item 9.01 --include-amends --pretty
 - `7.01`：Regulation FD Disclosure
 - `8.01`：其他事件
 - `9.01`：财务报表和附件
+
+`8k-exhibits` 分类包括：`earnings_release`、`press_release`、`material_contract`、`transaction_agreement`、`charter_or_bylaws`、`security_instrument`、`accountant_letter`、`xbrl`、`other_exhibit`。
 
 输出字段：`accession`、`item`、`item_title`、`category`、`is_furnished_item`、`start_offset`、`end_offset`、`byte_length`、`returned_bytes`、`truncated`、`document`、`document_url`、`source_url`、`content`。
 
@@ -845,6 +854,7 @@ curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=an
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
 curl "http://127.0.0.1:8716/v1/company-report?ticker=AAPL&form=10-K&topic=segment"
 curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
+curl "http://127.0.0.1:8716/v1/8k-exhibits?ticker=AAPL&category=earnings_release&latest=5"
 curl "http://127.0.0.1:8716/v1/13f?cik=1067983&latest=1&limit=20"
 curl "http://127.0.0.1:8716/v1/proxy?ticker=AAPL&latest=1"
 curl "http://127.0.0.1:8716/v1/prospectus?ticker=RDDT&form=S-1&include_amends=true"
@@ -869,6 +879,7 @@ curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
 | `/v1/docs` | `sec docs` |
 | `/v1/form4`、`/v1/form4-summary` | `sec form4`、`sec form4-summary` |
 | `/v1/8k` | `sec 8k` |
+| `/v1/8k-exhibits` | `sec 8k-exhibits` |
 | `/v1/schedule13` | `sec 13d` / `sec 13g` |
 | `/v1/13f`、`/v1/13f-summary`、`/v1/13f-diff` | `sec 13f`、`sec 13f-summary`、`sec 13f-diff` |
 | `/v1/proxy` | `sec proxy` |
@@ -897,6 +908,7 @@ SEC_IDENTITY="Your Name your.email@example.com" sec mcp
 | `sec_company_report` | 等价于 `sec company-report` |
 | `sec_docs` | 等价于 `sec docs` |
 | `sec_form4_summary` | 等价于 `sec form4-summary` |
+| `sec_8k_exhibits` | 等价于 `sec 8k-exhibits` |
 | `sec_13f_diff` | 等价于 CIK/ticker 选择器下的 `sec 13f-diff` |
 | `sec_report` | 生成 `insider`、`portfolio`、`risk` Markdown 报告 |
 | `sec_parse` | 统一 parser pipeline |
@@ -946,6 +958,7 @@ MCP tool 参数示例：
 | `doc` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--accession`、`--filename`、`--sequence`、`--primary`、`--limit-bytes`、`--raw`、`--text`、`--jsonl`、`--pretty` |
 | `form4` / `form4-summary` | `--ticker` 或 `--cik` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `8k` | `--ticker` 或 `--cik` | `--item`、`--latest`、`--limit`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
+| `8k-exhibits` | `--ticker` 或 `--cik` | `--category`、`--latest`、`--limit`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
 | `13d` / `13g` / `schedule13` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--include-amends`、`--limit-bytes`、`--jsonl`、`--pretty` |
 | `13f` / `13f-aggregate` / `13f-diff` / `13f-summary` | `--ticker`、`--cik`、`--manager` 或 `--investor` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `parse` | `--ticker` 或 `--cik`，`--form` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |

@@ -8,7 +8,10 @@ use crate::sec::{
     client::SecClient,
     documents::{DocumentSet, SubmissionDocument, read::plain_text},
     edgar::accession_document_url,
-    models::{EightKEventRecord, EightKQuery, FilingQuery, FilingRecord},
+    models::{
+        EightKEventRecord, EightKExhibitQuery, EightKExhibitRecord, EightKQuery, FilingQuery,
+        FilingRecord,
+    },
     utils::{nonempty, truncate_utf8},
 };
 
@@ -38,6 +41,42 @@ impl SecClient {
                 item_filter.as_deref(),
                 query.limit_bytes,
             )?);
+        }
+        Ok(records)
+    }
+
+    pub async fn eightk_exhibits(
+        &self,
+        query: EightKExhibitQuery,
+    ) -> Result<Vec<EightKExhibitRecord>> {
+        let filings = self
+            .filings(FilingQuery {
+                cik: query.cik,
+                form: Some("8-K".to_string()),
+                latest: query.latest,
+                from: None,
+                to: None,
+                include_amends: query.include_amends,
+            })
+            .await?;
+
+        let category_filter = query.category.as_deref().map(normalize_category);
+        let mut records = Vec::new();
+        for filing in filings {
+            let docs = self.filing_documents(&filing).await?;
+            for doc in &docs {
+                if !is_exhibit(doc) {
+                    continue;
+                }
+                let category = exhibit_category(doc);
+                if category_filter
+                    .as_deref()
+                    .is_some_and(|filter| filter != category)
+                {
+                    continue;
+                }
+                records.push(exhibit_record(&filing, doc, category, query.limit_bytes));
+            }
         }
         Ok(records)
     }
@@ -154,6 +193,103 @@ fn event_record(
         source_url: filing.source_url.clone(),
         content,
     }
+}
+
+fn exhibit_record(
+    filing: &FilingRecord,
+    doc: &SubmissionDocument,
+    category: &'static str,
+    limit_bytes: Option<usize>,
+) -> EightKExhibitRecord {
+    let text = plain_text(&doc.content);
+    let byte_length = text.len();
+    let (content, truncated) = truncate_utf8(&text, limit_bytes);
+    EightKExhibitRecord {
+        accession: filing.accession.clone(),
+        cik: filing.cik,
+        company: filing.company.clone(),
+        filing_date: filing.filing_date.clone(),
+        report_date: filing.report_date.clone(),
+        document_type: doc.document_type.clone(),
+        sequence: doc.sequence.clone(),
+        filename: doc.filename.clone(),
+        description: doc.description.clone(),
+        category: category.to_string(),
+        is_earnings_release: category == "earnings_release",
+        is_furnished_exhibit: is_furnished_exhibit(doc),
+        byte_length,
+        returned_bytes: content.len(),
+        truncated,
+        document_url: doc
+            .filename
+            .as_deref()
+            .map(|filename| accession_document_url(filing.cik, &filing.accession, filename)),
+        source_url: filing.source_url.clone(),
+        content: (!content.is_empty()).then_some(content),
+    }
+}
+
+fn is_exhibit(doc: &SubmissionDocument) -> bool {
+    doc.document_type
+        .as_deref()
+        .is_some_and(|kind| kind.trim().to_ascii_uppercase().starts_with("EX-"))
+}
+
+fn exhibit_category(doc: &SubmissionDocument) -> &'static str {
+    let haystack = exhibit_haystack(doc);
+    let kind = doc
+        .document_type
+        .as_deref()
+        .unwrap_or_default()
+        .to_ascii_uppercase();
+    if kind.starts_with("EX-99")
+        && contains_any(
+            &haystack,
+            &["earnings", "results", "quarter", "press release"],
+        )
+    {
+        "earnings_release"
+    } else if kind.starts_with("EX-99") || haystack.contains("press release") {
+        "press_release"
+    } else if kind.starts_with("EX-10") {
+        "material_contract"
+    } else if kind.starts_with("EX-2") {
+        "transaction_agreement"
+    } else if kind.starts_with("EX-3") {
+        "charter_or_bylaws"
+    } else if kind.starts_with("EX-4") {
+        "security_instrument"
+    } else if kind.starts_with("EX-16") {
+        "accountant_letter"
+    } else if kind.starts_with("EX-101") || kind.starts_with("EX-104") {
+        "xbrl"
+    } else {
+        "other_exhibit"
+    }
+}
+
+fn is_furnished_exhibit(doc: &SubmissionDocument) -> bool {
+    doc.document_type
+        .as_deref()
+        .is_some_and(|kind| kind.trim().to_ascii_uppercase().starts_with("EX-99"))
+}
+
+fn exhibit_haystack(doc: &SubmissionDocument) -> String {
+    format!(
+        "{} {} {}",
+        doc.document_type.as_deref().unwrap_or_default(),
+        doc.description.as_deref().unwrap_or_default(),
+        doc.filename.as_deref().unwrap_or_default()
+    )
+    .to_ascii_lowercase()
+}
+
+fn contains_any(haystack: &str, needles: &[&str]) -> bool {
+    needles.iter().any(|needle| haystack.contains(needle))
+}
+
+fn normalize_category(value: &str) -> String {
+    value.trim().to_ascii_lowercase().replace('-', "_")
 }
 
 #[derive(Debug, Clone)]
@@ -310,5 +446,36 @@ mod tests {
         assert!(records[0].truncated);
         assert!(records[0].content.contains("quarterly results"));
         assert_eq!(records[1].item, "9.01");
+    }
+
+    #[test]
+    fn classifies_8k_exhibits() {
+        let filing = FilingRecord {
+            accession: "0000320193-26-000001".to_string(),
+            cik: 320193,
+            company: "Apple Inc.".to_string(),
+            form: "8-K".to_string(),
+            filing_date: "2026-01-30".to_string(),
+            report_date: Some("2026-01-29".to_string()),
+            primary_document: Some("aapl-8k.htm".to_string()),
+            primary_doc_description: Some("8-K".to_string()),
+            is_xbrl: None,
+            is_inline_xbrl: None,
+            source_url: "https://example.test/index.html".to_string(),
+            text_url: "https://example.test/submission.txt".to_string(),
+        };
+        let doc = SubmissionDocument {
+            document_type: Some("EX-99.1".to_string()),
+            sequence: Some("2".to_string()),
+            filename: Some("earnings.htm".to_string()),
+            description: Some("Earnings press release".to_string()),
+            content: "<html><body>Quarterly results press release</body></html>".to_string(),
+        };
+
+        let record = exhibit_record(&filing, &doc, exhibit_category(&doc), Some(20));
+        assert_eq!(record.category, "earnings_release");
+        assert!(record.is_earnings_release);
+        assert!(record.is_furnished_exhibit);
+        assert!(record.truncated);
     }
 }

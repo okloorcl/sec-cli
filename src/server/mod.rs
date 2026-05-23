@@ -15,10 +15,10 @@ use serde_json::json;
 use params::*;
 
 use crate::sec::{
-    CompanyReportQuery, DocumentQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery,
-    Form4Query, FundDisclosureQuery, InlineXbrlQuery, MetricsQuery, ParseQuery, ProspectusQuery,
-    ProxyQuery, Schedule13Query, SecClient, SectionQuery, StatementQuery, ThirteenFQuery,
-    supported_parsers,
+    CompanyReportQuery, DocumentQuery, EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery,
+    ForeignIssuerQuery, Form4Query, FundDisclosureQuery, InlineXbrlQuery, MetricsQuery, ParseQuery,
+    ProspectusQuery, ProxyQuery, Schedule13Query, SecClient, SectionQuery, StatementQuery,
+    ThirteenFQuery, supported_parsers,
 };
 
 #[derive(Clone)]
@@ -54,6 +54,7 @@ fn router() -> Router<AppState> {
         .route("/v1/form4", get(form4))
         .route("/v1/form4-summary", get(form4_summary))
         .route("/v1/8k", get(eightk))
+        .route("/v1/8k-exhibits", get(eightk_exhibits))
         .route("/v1/schedule13", get(schedule13))
         .route("/v1/13f", get(thirteenf))
         .route("/v1/13f-summary", get(thirteenf_summary))
@@ -250,6 +251,24 @@ async fn eightk(
             latest: params.latest.unwrap_or(5),
             include_amends: params.include_amends.unwrap_or(false),
             item: params.item,
+            limit_bytes: params.limit_bytes,
+        })
+        .await?;
+    Ok(Json(json!(records)))
+}
+
+async fn eightk_exhibits(
+    State(state): State<AppState>,
+    Query(params): Query<EightKExhibitParams>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let cik = resolve_cik(&state.client, params.ticker.as_deref(), params.cik).await?;
+    let records = state
+        .client
+        .eightk_exhibits(EightKExhibitQuery {
+            cik,
+            latest: params.latest.unwrap_or(5),
+            include_amends: params.include_amends.unwrap_or(false),
+            category: params.category,
             limit_bytes: params.limit_bytes,
         })
         .await?;

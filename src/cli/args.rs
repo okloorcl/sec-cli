@@ -66,6 +66,9 @@ pub(crate) enum Command {
     /// Parse Form 8-K current-report events by item.
     #[command(name = "8k")]
     EightK(EightKArgs),
+    /// Discover and classify Form 8-K exhibits such as earnings releases and material contracts.
+    #[command(name = "8k-exhibits")]
+    EightKExhibits(EightKExhibitsArgs),
     /// Parse Schedule 13D/13G beneficial ownership reports.
     #[command(name = "13d", aliases = ["13g", "schedule13"])]
     Schedule13(Schedule13Args),
@@ -390,6 +393,28 @@ pub(crate) struct EightKArgs {
     pub(crate) cik: Option<u64>,
     #[arg(long)]
     pub(crate) item: Option<String>,
+    #[arg(long, default_value_t = 5)]
+    pub(crate) latest: usize,
+    #[arg(long)]
+    pub(crate) limit: Option<usize>,
+    #[arg(long)]
+    pub(crate) limit_bytes: Option<usize>,
+    #[arg(long)]
+    pub(crate) include_amends: bool,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct EightKExhibitsArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long)]
+    pub(crate) category: Option<String>,
     #[arg(long, default_value_t = 5)]
     pub(crate) latest: usize,
     #[arg(long)]

@@ -260,6 +260,28 @@ pub struct EightKEventRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct EightKExhibitRecord {
+    pub accession: String,
+    pub cik: u64,
+    pub company: String,
+    pub filing_date: String,
+    pub report_date: Option<String>,
+    pub document_type: Option<String>,
+    pub sequence: Option<String>,
+    pub filename: Option<String>,
+    pub description: Option<String>,
+    pub category: String,
+    pub is_earnings_release: bool,
+    pub is_furnished_exhibit: bool,
+    pub byte_length: usize,
+    pub returned_bytes: usize,
+    pub truncated: bool,
+    pub document_url: Option<String>,
+    pub source_url: String,
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
 pub struct FinancialStatementRecord {
     pub cik: u64,
     pub company: Option<String>,
@@ -466,6 +488,7 @@ pub struct ThirteenFOtherManagerRecord {
 pub enum ParsedRecord {
     Form4Transaction(Form4TransactionRecord),
     EightKEvent(EightKEventRecord),
+    EightKExhibit(EightKExhibitRecord),
     Schedule13(Schedule13Record),
     InlineXbrlFact(InlineXbrlFactRecord),
     CompanyReport(CompanyReportRecord),

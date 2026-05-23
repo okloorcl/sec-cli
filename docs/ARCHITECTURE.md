@@ -87,7 +87,7 @@ Examples:
 - `forms/form4.rs`: Forms 3/4/5 ownership XML family can eventually share an ownership parser.
 - `forms/thirteenf.rs`: 13F-HR / amendments / 13F-NT family.
 - `company`: deeper 10-K/10-Q topic tables for segments, geography, debt, obligations, leases, taxes, and repurchases.
-- Future `forms/current_report.rs`: 8-K item extraction and exhibit discovery.
+- `eightk`: 8-K item extraction plus exhibit discovery and earnings-release classification.
 - `prospectus`: S-1 / F-1 / 424B offering and IPO signals.
 - `foreign`: 20-F / 6-K / 40-F foreign issuer annual/current reports.
 - `funds`: N-PORT portfolio holdings, N-CSR shareholder reports, and N-CEN fund census data.

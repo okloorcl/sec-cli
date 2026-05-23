@@ -263,6 +263,7 @@ pub(crate) async fn run() -> Result<()> {
             }
             print_records(&events, output)?;
         }
+        Command::EightKExhibits(args) => handlers::eightk_exhibits(&client, args).await?,
         Command::Schedule13(args) => {
             let output = output_mode(args.jsonl, args.pretty);
             let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;

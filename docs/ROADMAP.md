@@ -25,6 +25,7 @@ real commands or modules in the repository.
 - [x] Form 13F-HR quarter-over-quarter diff.
 - [x] Form 13F-HR primary document summary parser.
 - [x] 8-K event parser.
+- [x] 8-K exhibit discovery and earnings-release classification.
 - [x] Schedule 13D / 13G parser.
 - [x] DEF 14A proxy statement parser.
 - [x] S-1 / F-1 / 424B IPO and prospectus parser.

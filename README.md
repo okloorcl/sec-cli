@@ -45,6 +45,7 @@ sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000
 sec form4 --ticker AAPL --latest 3
 sec form4-summary --ticker AAPL --latest 3
 sec 8k --ticker AAPL --item 2.02 --latest 5
+sec 8k-exhibits --ticker AAPL --category earnings_release --latest 5 --pretty
 sec 13d --ticker TSLA --form 13g --latest 2 --include-amends
 sec 13f --cik 1067983 --latest 1
 sec 13f-aggregate --cik 1067983 --latest 1 --limit 20
@@ -83,6 +84,7 @@ This is an early MVP. The first implementation focuses on:
 - Parsing Form 4 insider ownership transactions
 - Summarizing Form 4 reports, owners, signatures, footnotes, and net activity
 - Parsing Form 8-K current-report events by item
+- Discovering and classifying 8-K exhibits, including earnings releases, press releases, contracts, agreements, XBRL, and accountant letters
 - Parsing Schedule 13D/13G beneficial ownership reports
 - Parsing 13F-HR information-table holdings
 - Aggregating 13F-HR holdings by CUSIP/class/put-call
@@ -107,6 +109,7 @@ These are useful, source-backed questions that work today:
 | Which executives/directors filed Form 4s and what was net activity? | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
 | Which 8-K events did a company recently report? | `sec 8k --ticker AAPL --latest 5 --pretty` |
 | Did a company file earnings-related 8-K events? | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
+| Which 8-K exhibits include earnings releases or material contracts? | `sec 8k-exhibits --ticker AAPL --category earnings_release --latest 5 --pretty` |
 | What are the latest standardized financial statement rows? | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
 | What are the latest SEC-derived financial ratios and growth metrics? | `sec metrics --ticker AAPL --period annual --latest 4 --pretty` |
 | Can I get a human-readable financial trend memo? | `sec report --ticker AAPL --kind financial --latest 4` |
@@ -211,6 +214,7 @@ Practical rule:
 | SEC complete submission text and archive documents | `search`, `section`, `docs`, `doc` | Original filing text, HTML/XML attachments, exhibits, source snippets | snippet, section, document records |
 | Form 3/4/5 XML ownership reports | `form4`, `form4-summary`, `report --kind insider` | Insider owners, roles, transaction codes, shares, prices, footnotes, signatures | transaction and ownership-report records |
 | Form 8-K primary document | `8k` | Current-report event items such as 2.02 earnings, 5.02 management changes, 8.01 other events, 9.01 exhibits | 8-K event records |
+| Form 8-K exhibits | `8k-exhibits` | Attached EX documents classified as earnings release, press release, material contract, transaction agreement, charter/bylaws, security instrument, XBRL, accountant letter | 8-K exhibit records |
 | Schedule 13D/13G primary document | `13d`, `13g`, `schedule13` | 5% beneficial ownership, reporting persons, ownership percentage, voting/dispositive power, activist/passive intent signal | Schedule 13 records |
 | Form 13F-HR information table | `13f`, `13f-aggregate`, `13f-diff`, `report --kind portfolio` | Institutional long holdings: issuer, class, CUSIP, value, shares, voting authority | holding, aggregate holding, diff records |
 | Form 13F-HR primary document | `13f-summary` | Manager identity, report period, total holdings/value, signature, included managers | 13F report summary records |
@@ -242,6 +246,7 @@ Output record cheat sheet:
 | Form 4 transaction | `form4` | `reporting_owner`, `officer_title`, `transaction_code`, `shares`, `price`, `value` | `accession`, `source_url` |
 | Form 4 report summary | `form4-summary` | `owners`, `transaction_count`, `net_shares`, `total_value`, `footnotes` | `accession`, `source_url` |
 | 8-K event | `8k` | `item`, `item_title`, `category`, `is_furnished_item`, `content` | `accession`, `document_url`, `source_url` |
+| 8-K exhibit | `8k-exhibits` | `document_type`, `category`, `is_earnings_release`, `description`, `content` | `accession`, `document_url`, `source_url` |
 | Schedule 13D/13G | `13d`, `13g`, `schedule13` | `reporting_persons`, `beneficially_owned_shares`, `percent_of_class`, `activist_intent` | `accession`, `document_url`, `source_url` |
 | 13F holding | `13f` | `manager`, `issuer`, `class`, `cusip`, `value_usd`, `shares` | `accession`, `source_url` |
 | 13F aggregate holding | `13f-aggregate` | `issuer`, `cusip`, `value_usd`, `shares`, `rows` | `source_url` |
@@ -1106,6 +1111,8 @@ sec 8k --ticker AAPL --latest 5 --pretty
 sec 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 sec 8k --ticker TSLA --item 5.02 --latest 10 --jsonl
 sec 8k --cik 320193 --item 9.01 --include-amends --pretty
+sec 8k-exhibits --ticker AAPL --category earnings_release --latest 5 --limit-bytes 1200 --pretty
+sec 8k-exhibits --ticker MSFT --category material_contract --latest 10 --jsonl
 ```
 
 Common item filters:
@@ -1117,6 +1124,10 @@ Common item filters:
 - `7.01`: Regulation FD disclosure
 - `8.01`: other events
 - `9.01`: financial statements and exhibits
+
+`8k-exhibits` categories include `earnings_release`, `press_release`,
+`material_contract`, `transaction_agreement`, `charter_or_bylaws`,
+`security_instrument`, `accountant_letter`, `xbrl`, and `other_exhibit`.
 
 Each event includes:
 
@@ -1332,6 +1343,7 @@ curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=an
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
 curl "http://127.0.0.1:8716/v1/company-report?ticker=AAPL&form=10-K&topic=segment"
 curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
+curl "http://127.0.0.1:8716/v1/8k-exhibits?ticker=AAPL&category=earnings_release&latest=5"
 curl "http://127.0.0.1:8716/v1/13f?cik=1067983&latest=1&limit=20"
 curl "http://127.0.0.1:8716/v1/proxy?ticker=AAPL&latest=1"
 curl "http://127.0.0.1:8716/v1/prospectus?ticker=RDDT&form=S-1&include_amends=true"
@@ -1356,6 +1368,7 @@ Available endpoints:
 | `/v1/docs` | `sec docs` |
 | `/v1/form4`, `/v1/form4-summary` | `sec form4`, `sec form4-summary` |
 | `/v1/8k` | `sec 8k` |
+| `/v1/8k-exhibits` | `sec 8k-exhibits` |
 | `/v1/schedule13` | `sec 13d` / `sec 13g` |
 | `/v1/13f`, `/v1/13f-summary`, `/v1/13f-diff` | `sec 13f`, `sec 13f-summary`, `sec 13f-diff` |
 | `/v1/proxy` | `sec proxy` |
@@ -1386,6 +1399,7 @@ Available MCP tools:
 | `sec_company_report` | `sec company-report` equivalent |
 | `sec_docs` | `sec docs` equivalent |
 | `sec_form4_summary` | `sec form4-summary` equivalent |
+| `sec_8k_exhibits` | `sec 8k-exhibits` equivalent |
 | `sec_13f_diff` | `sec 13f-diff` equivalent for CIK/ticker selectors |
 | `sec_report` | Markdown reports for `insider`, `portfolio`, and `risk` |
 | `sec_parse` | unified parser pipeline for supported forms |
@@ -1436,6 +1450,7 @@ Command options:
 | `form4` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `form4-summary` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `8k` | `--ticker` or `--cik` | `--item`, `--latest`, `--limit`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
+| `8k-exhibits` | `--ticker` or `--cik` | `--category`, `--latest`, `--limit`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
 | `13d` / `13g` / `schedule13` | `--ticker` or `--cik` | `--form`, `--latest`, `--include-amends`, `--limit-bytes`, `--jsonl`, `--pretty` |
 | `13f` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `13f-aggregate` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |

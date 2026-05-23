@@ -27,10 +27,10 @@ pub(crate) mod utils;
 pub use client::SecClient;
 pub use edgar::accession_text_url;
 pub use models::{
-    CompanyReportQuery, DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery,
-    ForeignIssuerQuery, Form4Query, FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery,
-    MetricsQuery, OutputMode, ParseQuery, ProspectusQuery, ProxyQuery, ReportQuery,
-    Schedule13Query, SearchQuery, SectionQuery, StatementQuery, ThirteenFQuery,
+    CompanyReportQuery, DocumentQuery, DocumentReadQuery, EightKExhibitQuery, EightKQuery,
+    FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query, FundDisclosureQuery, HtmlTableQuery,
+    InlineXbrlQuery, MetricsQuery, OutputMode, ParseQuery, ProspectusQuery, ProxyQuery,
+    ReportQuery, Schedule13Query, SearchQuery, SectionQuery, StatementQuery, ThirteenFQuery,
 };
 pub use models::{FinancialMetricRecord, MetricComponentRecord};
 pub use output::print_records;

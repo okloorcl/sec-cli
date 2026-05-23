@@ -5,8 +5,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use crate::sec::{
-    CompanyReportQuery, DocumentQuery, FactQuery, FilingQuery, Form4Query, MetricsQuery,
-    ParseQuery, ReportKind, ReportQuery, SecClient, StatementQuery, ThirteenFQuery,
+    CompanyReportQuery, DocumentQuery, EightKExhibitQuery, FactQuery, FilingQuery, Form4Query,
+    MetricsQuery, ParseQuery, ReportKind, ReportQuery, SecClient, StatementQuery, ThirteenFQuery,
     supported_parsers,
 };
 
@@ -102,6 +102,11 @@ async fn call_tool(client: &SecClient, params: Value) -> Result<Value> {
                     .await?
             )
         }
+        "sec_8k_exhibits" => json!(
+            client
+                .eightk_exhibits(eightk_exhibit_query(client, &args).await?)
+                .await?
+        ),
         "sec_13f_diff" => json!(
             client
                 .thirteenf_diff_holdings(thirteenf_query(client, &args).await?)
@@ -195,6 +200,16 @@ async fn form4_query(client: &SecClient, args: &Value) -> Result<Form4Query> {
         cik: resolve_cik(client, args).await?,
         latest: optional_usize(args, "latest").unwrap_or(3),
         include_amends: optional_bool(args, "include_amends").unwrap_or(false),
+    })
+}
+
+async fn eightk_exhibit_query(client: &SecClient, args: &Value) -> Result<EightKExhibitQuery> {
+    Ok(EightKExhibitQuery {
+        cik: resolve_cik(client, args).await?,
+        latest: optional_usize(args, "latest").unwrap_or(5),
+        include_amends: optional_bool(args, "include_amends").unwrap_or(false),
+        category: optional_string(args, "category"),
+        limit_bytes: optional_usize(args, "limit_bytes"),
     })
 }
 
@@ -306,6 +321,13 @@ fn tools() -> Vec<Value> {
             "Summarize Form 4 ownership reports for a company.",
             company_schema(
                 json!({"latest":{"type":"integer"},"include_amends":{"type":"boolean"}}),
+            ),
+        ),
+        tool(
+            "sec_8k_exhibits",
+            "Discover and classify 8-K exhibits such as earnings releases, press releases, contracts, agreements, XBRL, and accountant letters.",
+            company_schema(
+                json!({"latest":{"type":"integer"},"category":{"type":"string"},"limit_bytes":{"type":"integer"},"include_amends":{"type":"boolean"}}),
             ),
         ),
         tool(
@@ -436,6 +458,7 @@ mod tests {
         assert!(names.contains(&"sec_forms".to_string()));
         assert!(names.contains(&"sec_company_report".to_string()));
         assert!(names.contains(&"sec_metrics".to_string()));
+        assert!(names.contains(&"sec_8k_exhibits".to_string()));
         assert!(names.contains(&"sec_report".to_string()));
         assert!(names.contains(&"sec_parse".to_string()));
     }

@@ -105,6 +105,16 @@ pub(super) struct EightKParams {
 }
 
 #[derive(Deserialize)]
+pub(super) struct EightKExhibitParams {
+    pub(super) ticker: Option<String>,
+    pub(super) cik: Option<u64>,
+    pub(super) latest: Option<usize>,
+    pub(super) include_amends: Option<bool>,
+    pub(super) category: Option<String>,
+    pub(super) limit_bytes: Option<usize>,
+}
+
+#[derive(Deserialize)]
 pub(super) struct Schedule13Params {
     pub(super) ticker: Option<String>,
     pub(super) cik: Option<u64>,
