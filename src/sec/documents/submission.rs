@@ -1,6 +1,9 @@
 use anyhow::{Context, Result};
+use tokio::task::JoinSet;
 
 use crate::sec::{client::SecClient, models::FilingRecord, utils::nonempty};
+
+const MAX_CONCURRENT_DOCUMENT_FETCHES: usize = 8;
 
 #[derive(Debug, Clone)]
 pub struct SubmissionDocument {
@@ -79,6 +82,71 @@ impl SecClient {
             .await
             .with_context(|| format!("failed to download {}", filing.text_url))?;
         Ok(parse_documents(&text))
+    }
+
+    pub async fn filing_documents_batch(
+        &self,
+        filings: Vec<FilingRecord>,
+    ) -> Result<Vec<(FilingRecord, Vec<SubmissionDocument>)>> {
+        let mut output = Vec::with_capacity(filings.len());
+
+        for chunk in filings.chunks(MAX_CONCURRENT_DOCUMENT_FETCHES) {
+            let mut tasks = JoinSet::new();
+            for (offset, filing) in chunk.iter().cloned().enumerate() {
+                let client = self.clone();
+                tasks.spawn(async move {
+                    let docs = client.filing_documents(&filing).await?;
+                    Ok::<_, anyhow::Error>((offset, filing, docs))
+                });
+            }
+
+            let mut chunk_output = Vec::with_capacity(chunk.len());
+            while let Some(result) = tasks.join_next().await {
+                chunk_output.push(result??);
+            }
+            chunk_output.sort_by_key(|(offset, _, _)| *offset);
+            output.extend(
+                chunk_output
+                    .into_iter()
+                    .map(|(_, filing, docs)| (filing, docs)),
+            );
+        }
+
+        Ok(output)
+    }
+
+    pub async fn filing_texts_batch(
+        &self,
+        filings: Vec<FilingRecord>,
+    ) -> Result<Vec<(FilingRecord, String)>> {
+        let mut output = Vec::with_capacity(filings.len());
+
+        for chunk in filings.chunks(MAX_CONCURRENT_DOCUMENT_FETCHES) {
+            let mut tasks = JoinSet::new();
+            for (offset, filing) in chunk.iter().cloned().enumerate() {
+                let client = self.clone();
+                tasks.spawn(async move {
+                    let text = client
+                        .get_text(&filing.text_url)
+                        .await
+                        .with_context(|| format!("failed to download {}", filing.text_url))?;
+                    Ok::<_, anyhow::Error>((offset, filing, text))
+                });
+            }
+
+            let mut chunk_output = Vec::with_capacity(chunk.len());
+            while let Some(result) = tasks.join_next().await {
+                chunk_output.push(result??);
+            }
+            chunk_output.sort_by_key(|(offset, _, _)| *offset);
+            output.extend(
+                chunk_output
+                    .into_iter()
+                    .map(|(_, filing, text)| (filing, text)),
+            );
+        }
+
+        Ok(output)
     }
 }
 

@@ -30,8 +30,7 @@ impl SecClient {
 
         let item_filter = query.item.as_deref().map(normalize_item);
         let mut records = Vec::new();
-        for filing in filings {
-            let docs = self.filing_documents(&filing).await?;
+        for (filing, docs) in self.filing_documents_batch(filings).await? {
             let Some(doc) = DocumentSet::new(&docs).primary_documents().next() else {
                 continue;
             };
@@ -62,8 +61,7 @@ impl SecClient {
 
         let category_filter = query.category.as_deref().map(normalize_category);
         let mut records = Vec::new();
-        for filing in filings {
-            let docs = self.filing_documents(&filing).await?;
+        for (filing, docs) in self.filing_documents_batch(filings).await? {
             for doc in &docs {
                 if !is_exhibit(doc) {
                     continue;

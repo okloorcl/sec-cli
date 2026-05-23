@@ -28,8 +28,7 @@ impl SecClient {
             .await?;
 
         let mut records = Vec::new();
-        for filing in filings {
-            let docs = self.filing_documents(&filing).await?;
+        for (filing, docs) in self.filing_documents_batch(filings).await? {
             let Some(doc) = DocumentSet::new(&docs).primary_documents().next() else {
                 continue;
             };

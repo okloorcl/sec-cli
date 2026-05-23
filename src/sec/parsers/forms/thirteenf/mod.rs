@@ -25,8 +25,7 @@ impl SecClient {
     ) -> Result<Vec<ThirteenFHoldingRecord>> {
         let filings = self.thirteenf_filings(&query).await?;
         let mut records = Vec::new();
-        for filing in filings {
-            let docs = self.filing_documents(&filing).await?;
+        for (filing, docs) in self.filing_documents_batch(filings).await? {
             records.extend(holdings::parse_13f_documents(&filing, &docs)?);
         }
         Ok(records)
@@ -46,8 +45,7 @@ impl SecClient {
     ) -> Result<Vec<ThirteenFReportRecord>> {
         let filings = self.thirteenf_filings(&query).await?;
         let mut records = Vec::new();
-        for filing in filings {
-            let docs = self.filing_documents(&filing).await?;
+        for (filing, docs) in self.filing_documents_batch(filings).await? {
             records.extend(summary::parse_13f_report_documents(&filing, &docs)?);
         }
         Ok(records)

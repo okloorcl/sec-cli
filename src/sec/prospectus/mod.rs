@@ -23,8 +23,7 @@ impl SecClient {
     pub async fn prospectuses(&self, query: ProspectusQuery) -> Result<Vec<ProspectusRecord>> {
         let filings = self.prospectus_filings(&query).await?;
         let mut records = Vec::new();
-        for filing in filings {
-            let docs = self.filing_documents(&filing).await?;
+        for (filing, docs) in self.filing_documents_batch(filings).await? {
             let Some(doc) = DocumentSet::new(&docs).primary_documents().next() else {
                 continue;
             };

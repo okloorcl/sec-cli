@@ -1,10 +1,11 @@
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
     MetricsQuery, OutputMode, ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery,
-    SecClient, SectionQuery, StatementQuery, ThirteenFQuery, accession_text_url, find_matches,
+    SecClient, SectionQuery, StatementQuery, ThirteenFQuery,
+    documents::read::{content_for_terminal, validate_doc_args},
+    find_matches,
     llm::{LlmConfig, LlmProvider},
     print_records,
     resolve::{ResolveInput, resolve_verified_13f_cik, resolve_verified_13f_manager},
@@ -103,12 +104,7 @@ pub(crate) async fn run() -> Result<()> {
                 .await?;
 
             let mut matches = Vec::new();
-            for filing in filings {
-                let url = accession_text_url(filing.cik, &filing.accession);
-                let text = client
-                    .get_text(&url)
-                    .await
-                    .with_context(|| format!("failed to download {}", url))?;
+            for (filing, text) in client.filing_texts_batch(filings).await? {
                 matches.extend(find_matches(
                     &filing,
                     &text,
@@ -439,23 +435,6 @@ pub(super) async fn resolve_cik(
             .with_context(|| format!("unknown ticker '{}'", ticker));
     }
     bail!("provide --ticker or --cik");
-}
-
-pub(super) async fn resolve_optional_cik(
-    client: &SecClient,
-    ticker: Option<&str>,
-    cik: Option<u64>,
-) -> Result<Option<u64>> {
-    match (ticker, cik) {
-        (Some(ticker), None) => client
-            .cik_for_ticker(ticker)
-            .await
-            .map(Some)
-            .with_context(|| format!("unknown ticker '{}'", ticker)),
-        (None, Some(cik)) => Ok(Some(cik)),
-        (None, None) => Ok(None),
-        (Some(_), Some(_)) => bail!("provide either --ticker or --cik, not both"),
-    }
 }
 
 async fn resolve_subject(

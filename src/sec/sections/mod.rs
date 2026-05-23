@@ -26,15 +26,16 @@ impl SecClient {
 
         let target = SectionTarget::from_input(&query.item)?;
         let mut records = Vec::new();
-        for filing in filings {
-            if query
-                .accession
-                .as_deref()
-                .is_some_and(|accession| accession != filing.accession)
-            {
-                continue;
-            }
-            let docs = self.filing_documents(&filing).await?;
+        let filings = filings
+            .into_iter()
+            .filter(|filing| {
+                !query
+                    .accession
+                    .as_deref()
+                    .is_some_and(|accession| accession != filing.accession)
+            })
+            .collect::<Vec<_>>();
+        for (filing, docs) in self.filing_documents_batch(filings).await? {
             let Some(doc) = DocumentSet::new(&docs).primary_documents().next() else {
                 continue;
             };

@@ -43,8 +43,7 @@ impl SecClient {
     ) -> Result<Vec<FundDisclosureRecord>> {
         let filings = self.fund_filings(&query).await?;
         let mut records = Vec::new();
-        for filing in filings {
-            let docs = self.filing_documents(&filing).await?;
+        for (filing, docs) in self.filing_documents_batch(filings).await? {
             let Some(doc) = choose_fund_document(&docs) else {
                 continue;
             };

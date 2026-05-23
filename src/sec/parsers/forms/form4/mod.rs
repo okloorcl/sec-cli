@@ -15,8 +15,7 @@ impl SecClient {
     ) -> Result<Vec<Form4TransactionRecord>> {
         let filings = self.form4_filings(&query).await?;
         let mut records = Vec::new();
-        for filing in filings {
-            let docs = self.filing_documents(&filing).await?;
+        for (filing, docs) in self.filing_documents_batch(filings).await? {
             records.extend(transactions::parse_form4_transaction_documents(
                 &filing, &docs,
             )?);
@@ -27,8 +26,7 @@ impl SecClient {
     pub async fn form4_reports(&self, query: Form4Query) -> Result<Vec<Form4ReportRecord>> {
         let filings = self.form4_filings(&query).await?;
         let mut records = Vec::new();
-        for filing in filings {
-            let docs = self.filing_documents(&filing).await?;
+        for (filing, docs) in self.filing_documents_batch(filings).await? {
             records.extend(summary::parse_form4_report_documents(&filing, &docs)?);
         }
         Ok(records)

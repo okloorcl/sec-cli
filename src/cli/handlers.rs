@@ -12,7 +12,7 @@ use super::{
     args::{EightKExhibitsArgs, InlineXbrlArgs, ProxyArgs, TablesArgs},
     disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs},
     monitoring_args::{DailyArgs, EftsArgs},
-    runner::{output_mode, resolve_cik, resolve_optional_cik},
+    runner::{output_mode, resolve_cik},
 };
 
 pub(super) async fn daily(client: &SecClient, args: DailyArgs) -> Result<()> {
@@ -46,6 +46,19 @@ pub(super) async fn efts(client: &SecClient, args: EftsArgs) -> Result<()> {
         })
         .await?;
     print_records(&records, output)
+}
+
+async fn resolve_optional_cik(
+    client: &SecClient,
+    ticker: Option<&str>,
+    cik: Option<u64>,
+) -> Result<Option<u64>> {
+    match (ticker, cik) {
+        (Some(ticker), None) => Ok(Some(client.cik_for_ticker(ticker).await?)),
+        (None, Some(cik)) => Ok(Some(cik)),
+        (None, None) => Ok(None),
+        (Some(_), Some(_)) => anyhow::bail!("provide either --ticker or --cik, not both"),
+    }
 }
 
 pub(super) async fn ixbrl(client: &SecClient, args: InlineXbrlArgs) -> Result<()> {
