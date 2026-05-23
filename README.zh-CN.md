@@ -966,14 +966,31 @@ SEC_IDENTITY="Your Name your.email@example.com" sec mcp
 | --- | --- |
 | `sec_forms` | parser registry |
 | `sec_filings` | 等价于 `sec filings` |
+| `sec_daily` | 等价于 `sec daily` 全市场 index 扫描 |
+| `sec_efts` | 等价于 `sec efts` SEC 全文搜索 |
 | `sec_facts` | 等价于 `sec facts` |
 | `sec_statements` | 等价于 `sec statements` |
 | `sec_metrics` | 等价于 `sec metrics` |
+| `sec_ixbrl` | 等价于 `sec ixbrl` |
+| `sec_tables` | 等价于 `sec tables` |
 | `sec_company_report` | 等价于 `sec company-report` |
+| `sec_proxy` | 等价于 `sec proxy` |
+| `sec_prospectus` | 等价于 `sec prospectus` |
+| `sec_foreign` | 等价于 `sec foreign` |
+| `sec_fund` | 等价于 `sec fund` |
+| `sec_search` | 等价于 `sec search` |
+| `sec_section` | 等价于 `sec section` |
 | `sec_docs` | 等价于 `sec docs` |
+| `sec_doc` | 等价于 `sec doc` |
+| `sec_form4` | 等价于 `sec form4` |
 | `sec_form4_summary` | 等价于 `sec form4-summary` |
+| `sec_8k` | 等价于 `sec 8k` |
 | `sec_8k_exhibits` | 等价于 `sec 8k-exhibits` |
+| `sec_schedule13` | 等价于 `sec 13d` / `sec 13g` |
+| `sec_13f` | 等价于 `sec 13f` |
+| `sec_13f_aggregate` | 等价于 `sec 13f-aggregate` |
 | `sec_13f_diff` | 等价于 CIK/ticker 选择器下的 `sec 13f-diff` |
+| `sec_13f_summary` | 等价于 `sec 13f-summary` |
 | `sec_report` | 生成 `insider`、`portfolio`、`risk` Markdown 报告 |
 | `sec_parse` | 统一 parser pipeline |
 

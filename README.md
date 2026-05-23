@@ -1474,14 +1474,31 @@ Available MCP tools:
 | --- | --- |
 | `sec_forms` | parser registry |
 | `sec_filings` | `sec filings` equivalent |
+| `sec_daily` | `sec daily` all-market index scan |
+| `sec_efts` | `sec efts` SEC full-text search |
 | `sec_facts` | `sec facts` equivalent |
 | `sec_statements` | `sec statements` equivalent |
 | `sec_metrics` | `sec metrics` equivalent |
+| `sec_ixbrl` | `sec ixbrl` equivalent |
+| `sec_tables` | `sec tables` equivalent |
 | `sec_company_report` | `sec company-report` equivalent |
+| `sec_proxy` | `sec proxy` equivalent |
+| `sec_prospectus` | `sec prospectus` equivalent |
+| `sec_foreign` | `sec foreign` equivalent |
+| `sec_fund` | `sec fund` equivalent |
+| `sec_search` | `sec search` equivalent |
+| `sec_section` | `sec section` equivalent |
 | `sec_docs` | `sec docs` equivalent |
+| `sec_doc` | `sec doc` equivalent |
+| `sec_form4` | `sec form4` equivalent |
 | `sec_form4_summary` | `sec form4-summary` equivalent |
+| `sec_8k` | `sec 8k` equivalent |
 | `sec_8k_exhibits` | `sec 8k-exhibits` equivalent |
+| `sec_schedule13` | `sec 13d` / `sec 13g` equivalent |
+| `sec_13f` | `sec 13f` equivalent |
+| `sec_13f_aggregate` | `sec 13f-aggregate` equivalent |
 | `sec_13f_diff` | `sec 13f-diff` equivalent for CIK/ticker selectors |
+| `sec_13f_summary` | `sec 13f-summary` equivalent |
 | `sec_report` | Markdown reports for `insider`, `portfolio`, and `risk` |
 | `sec_parse` | unified parser pipeline for supported forms |
 
