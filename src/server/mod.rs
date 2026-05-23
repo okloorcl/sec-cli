@@ -15,10 +15,10 @@ use serde_json::json;
 use params::*;
 
 use crate::sec::{
-    CompanyReportQuery, DocumentQuery, EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery,
-    ForeignIssuerQuery, Form4Query, FundDisclosureQuery, InlineXbrlQuery, MetricsQuery, ParseQuery,
-    ProspectusQuery, ProxyQuery, Schedule13Query, SecClient, SectionQuery, StatementQuery,
-    ThirteenFQuery, supported_parsers,
+    CompanyReportQuery, DailyIndexQuery, DocumentQuery, EightKExhibitQuery, EightKQuery, FactQuery,
+    FilingQuery, ForeignIssuerQuery, Form4Query, FundDisclosureQuery, InlineXbrlQuery,
+    MetricsQuery, ParseQuery, ProspectusQuery, ProxyQuery, Schedule13Query, SecClient,
+    SectionQuery, StatementQuery, ThirteenFQuery, daily::latest_sec_index_date, supported_parsers,
 };
 
 #[derive(Clone)]
@@ -44,6 +44,7 @@ fn router() -> Router<AppState> {
         .route("/health", get(health))
         .route("/v1/forms", get(forms))
         .route("/v1/filings", get(filings))
+        .route("/v1/daily", get(daily))
         .route("/v1/facts", get(facts))
         .route("/v1/statements", get(statements))
         .route("/v1/metrics", get(metrics))
@@ -87,6 +88,26 @@ async fn filings(
             latest: params.latest.unwrap_or(10),
             from: params.from,
             to: params.to,
+            include_amends: params.include_amends.unwrap_or(false),
+        })
+        .await?;
+    Ok(Json(json!(records)))
+}
+
+async fn daily(
+    State(state): State<AppState>,
+    Query(params): Query<DailyParams>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let date = params
+        .date
+        .unwrap_or_else(|| latest_sec_index_date(chrono::Utc::now().date_naive()));
+    let records = state
+        .client
+        .daily_filings(DailyIndexQuery {
+            date,
+            form: params.form,
+            company: params.company,
+            limit: params.limit.or(Some(100)),
             include_amends: params.include_amends.unwrap_or(false),
         })
         .await?;

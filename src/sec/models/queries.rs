@@ -11,6 +11,15 @@ pub struct FilingQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct DailyIndexQuery {
+    pub date: NaiveDate,
+    pub form: Option<String>,
+    pub company: Option<String>,
+    pub limit: Option<usize>,
+    pub include_amends: bool,
+}
+
+#[derive(Debug, Clone)]
 pub struct FactQuery {
     pub cik: u64,
     pub concept: String,

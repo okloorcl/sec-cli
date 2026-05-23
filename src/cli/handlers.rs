@@ -1,14 +1,34 @@
 use anyhow::Result;
+use chrono::Utc;
 use sec_cli::sec::{
-    CompanyReportQuery, EightKExhibitQuery, ForeignIssuerQuery, FundDisclosureQuery,
-    HtmlTableQuery, InlineXbrlQuery, ProspectusQuery, ProxyQuery, SecClient, print_records,
+    CompanyReportQuery, DailyIndexQuery, EightKExhibitQuery, ForeignIssuerQuery,
+    FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, ProspectusQuery, ProxyQuery, SecClient,
+    daily::latest_sec_index_date, print_records,
 };
 
 use super::{
     args::{EightKExhibitsArgs, InlineXbrlArgs, ProxyArgs, TablesArgs},
     disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs},
+    monitoring_args::DailyArgs,
     runner::{output_mode, resolve_cik},
 };
+
+pub(super) async fn daily(client: &SecClient, args: DailyArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let date = args
+        .date
+        .unwrap_or_else(|| latest_sec_index_date(Utc::now().date_naive()));
+    let records = client
+        .daily_filings(DailyIndexQuery {
+            date,
+            form: args.form,
+            company: args.company,
+            limit: Some(args.limit),
+            include_amends: args.include_amends,
+        })
+        .await?;
+    print_records(&records, output)
+}
 
 pub(super) async fn ixbrl(client: &SecClient, args: InlineXbrlArgs) -> Result<()> {
     let output = output_mode(args.jsonl, args.pretty);

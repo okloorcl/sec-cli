@@ -38,6 +38,7 @@ pub(crate) async fn run() -> Result<()> {
                 .await?;
             print_records(&filings, output)?;
         }
+        Command::Daily(args) => handlers::daily(&client, args).await?,
         Command::Facts(args) => {
             let output = output_mode(args.jsonl, args.pretty);
             let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;

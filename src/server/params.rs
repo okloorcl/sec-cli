@@ -21,6 +21,15 @@ pub(super) struct FilingsParams {
 }
 
 #[derive(Deserialize)]
+pub(super) struct DailyParams {
+    pub(super) date: Option<chrono::NaiveDate>,
+    pub(super) form: Option<String>,
+    pub(super) company: Option<String>,
+    pub(super) limit: Option<usize>,
+    pub(super) include_amends: Option<bool>,
+}
+
+#[derive(Deserialize)]
 pub(super) struct FactsParams {
     pub(super) ticker: Option<String>,
     pub(super) cik: Option<u64>,

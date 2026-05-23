@@ -3,6 +3,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use super::analysis_args::{MetricsArgs, StatementsArgs};
 use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs};
+use super::monitoring_args::{DailyArgs, McpArgs, ServeArgs};
 
 #[derive(Parser, Debug)]
 #[command(name = "sec")]
@@ -24,6 +25,9 @@ pub(crate) struct Cli {
 pub(crate) enum Command {
     /// Find SEC filings by ticker/CIK, form, and date.
     Filings(FilingsArgs),
+    /// Scan the SEC all-market daily master index.
+    #[command(name = "daily", alias = "monitor")]
+    Daily(DailyArgs),
     /// Query SEC company facts by concept alias or XBRL concept name.
     Facts(FactsArgs),
     /// Build standardized financial statement rows from SEC CompanyFacts.
@@ -115,17 +119,6 @@ pub(crate) struct FilingsArgs {
     #[arg(long)]
     pub(crate) pretty: bool,
 }
-
-#[derive(Args, Debug)]
-pub(crate) struct ServeArgs {
-    #[arg(long, default_value = "127.0.0.1")]
-    pub(crate) host: String,
-    #[arg(long, default_value_t = 8716)]
-    pub(crate) port: u16,
-}
-
-#[derive(Args, Debug)]
-pub(crate) struct McpArgs {}
 
 #[derive(Args, Debug)]
 pub(crate) struct FactsArgs {

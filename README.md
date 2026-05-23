@@ -19,10 +19,12 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 | Fund disclosure | N-PORT holdings, N-CSR shareholder reports, N-CEN census, N-PX votes, 497K summaries, 24F notices |
 | Capital markets | S-1/F-1/424B prospectus terms, IPO signals, proceeds, risks, underwriters |
 | Financial analysis | SEC-derived margins, growth, free cash flow, ROA/ROE, liquidity, leverage |
+| Market monitoring | SEC daily master index scans across all new filings by date, form, and company |
 | Agent interface | Stable JSON/JSONL, LLM name resolution, source URLs, accession numbers |
 
 ```bash
 sec filings --ticker AAPL --form 10-K
+sec daily --date 2026-05-15 --form 8-K --limit 50 --pretty
 sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
@@ -67,6 +69,7 @@ clear exit codes, local caching, and source URLs on every result.
 This is an early MVP. The first implementation focuses on:
 
 - Finding company filings from SEC submissions data
+- Scanning SEC daily master indexes for all-market filing monitoring by date, form, company, and amendments
 - Querying SEC CompanyFacts for source-backed XBRL facts
 - Building standardized 10-K/10-Q income statement, balance sheet, and cash flow rows from CompanyFacts
 - Calculating source-backed financial metrics such as growth, margins, free cash flow, ROA/ROE, current ratio, and leverage
@@ -111,6 +114,7 @@ These are useful, source-backed questions that work today:
 | Which 8-K events did a company recently report? | `sec 8k --ticker AAPL --latest 5 --pretty` |
 | Did a company file earnings-related 8-K events? | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
 | Which 8-K exhibits include earnings releases or material contracts? | `sec 8k-exhibits --ticker AAPL --category earnings_release --latest 5 --pretty` |
+| What did the whole market file on a specific day? | `sec daily --date 2026-05-15 --form 8-K --limit 50 --pretty` |
 | What are the latest standardized financial statement rows? | `sec statements --ticker AAPL --statement all --period annual --latest 1 --pretty` |
 | What are the latest SEC-derived financial ratios and growth metrics? | `sec metrics --ticker AAPL --period annual --latest 4 --pretty` |
 | Can I get a human-readable financial trend memo? | `sec report --ticker AAPL --kind financial --latest 4` |
@@ -205,6 +209,7 @@ Practical rule:
 | Data/source | Commands | What it contains | Main output table |
 | --- | --- | --- | --- |
 | SEC submissions JSON | `filings` | Filing list, dates, accession numbers, primary document names | filing records |
+| SEC daily master index | `daily`, `monitor` | All-market daily filing feed: CIK, company, form, filing date, archive filename, accession, source URLs | daily filing records |
 | SEC CompanyFacts JSON | `facts`, `statements`, `metrics`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, derived margins/growth/returns/liquidity/leverage | fact records, financial statement rows, financial metric records, Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
@@ -232,6 +237,7 @@ Output record cheat sheet:
 | Output record | Produced by | Read this first | Source fields |
 | --- | --- | --- | --- |
 | Filing | `filings` | `company`, `form`, `filing_date`, `report_date`, `primary_document` | `accession`, `source_url`, `text_url` |
+| Daily filing | `daily`, `monitor` | `company`, `form`, `filing_date`, `filename` | `accession`, `source_url`, `text_url` |
 | Fact | `facts` | `concept`, `label`, `value`, `unit`, `fy`, `fp`, `filed` | `accession`, `source_url`, `fact_id` |
 | Financial statement row | `statements` | `statement`, `line_order`, `line_item`, `value`, `unit`, `fiscal_year`, `fiscal_period` | `accession`, `source_url`, `fact_id` |
 | Financial metric | `metrics` | `metric`, `category`, `value`, `display_value`, `period_end`, `calculation`, `components` | `source_urls`, component `accession`, component `fact_id` |
@@ -537,6 +543,23 @@ Each result includes:
 - `primary_document`
 - `source_url`
 - `text_url`
+
+### daily
+
+Scan the all-market SEC daily master index. This is the high-volume monitoring
+entry point: it starts from a SEC filing date and filters the whole daily feed,
+instead of starting from a single ticker.
+
+```bash
+sec daily --date 2026-05-15 --form 8-K --limit 50 --pretty
+sec daily --date 2026-05-15 --form 13F-HR --include-amends --jsonl
+sec daily --date 2026-05-15 --company apple --pretty
+sec monitor --form 4 --limit 100 --jsonl
+```
+
+If `--date` is omitted, sec-cli uses the latest SEC weekday in UTC. Weekend
+defaults roll back to Friday. Each record includes `cik`, `company`, `form`,
+`filing_date`, `accession`, `filename`, `text_url`, and `source_url`.
 
 ### facts
 
@@ -1351,6 +1374,7 @@ SEC_IDENTITY="Your Name your.email@example.com" sec serve --host 127.0.0.1 --por
 curl "http://127.0.0.1:8716/health"
 curl "http://127.0.0.1:8716/v1/forms"
 curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"
+curl "http://127.0.0.1:8716/v1/daily?date=2026-05-15&form=8-K&limit=50"
 curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
 curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
@@ -1372,6 +1396,7 @@ Available endpoints:
 | `/health` | health check |
 | `/v1/forms` | `sec forms` |
 | `/v1/filings` | `sec filings` |
+| `/v1/daily` | `sec daily` |
 | `/v1/facts` | `sec facts` |
 | `/v1/statements` | `sec statements` |
 | `/v1/metrics` | `sec metrics` |
@@ -1444,6 +1469,7 @@ Command options:
 | Command | Required selector | Important options |
 | --- | --- | --- |
 | `filings` | `--ticker` or `--cik` | `--form`, `--latest`, `--from`, `--to`, `--include-amends`, `--jsonl`, `--pretty` |
+| `daily` / `monitor` | none | `--date`, `--form`, `--company`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `facts` | `--ticker` or `--cik`, `--concept` | `--form`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `statements` | `--ticker` or `--cik` | `--statement`, `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `metrics` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |

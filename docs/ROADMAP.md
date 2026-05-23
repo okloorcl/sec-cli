@@ -32,6 +32,7 @@ real commands or modules in the repository.
 - [x] 20-F / 6-K / 40-F foreign issuer parser.
 - [x] N-PORT / N-CSR / N-CEN fund disclosure parser.
 - [x] N-PX / 497K / 24F-2NT fund voting, summary prospectus, and securities-sold notice parser.
+- [x] SEC daily master index scanner for all-market filing monitoring.
 - [x] Shared parser utilities, cache TTL policy, and hot-path parser performance cleanup.
 - [x] Core utility test coverage for search, reports, output, filings, facts, storage, and parser dispatch.
 - [x] Investor/fund/person resolver with LLM fallback and SEC validation.
