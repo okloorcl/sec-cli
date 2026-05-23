@@ -97,11 +97,12 @@ sec mcp
 - 聚合 13F 持仓
 - 比较最近两期 13F 组合变化
 - 解析 13F cover、summary、signature、other managers
+- 输出 JSON、JSONL、CSV、终端表格和 Markdown 汇报
 - 本地缓存 SEC 响应
 - 通过本地 JSON HTTP API 对外提供同一套核心查询
-- 通过 stdio MCP adapter 给 Agent 暴露 SEC 工具
+- 通过 stdio MCP adapter 给 Agent 暴露 SEC 查询、解析和报告工具
 
-长期目标：逐步覆盖 edgartools 里有价值的结构化输出，同时保持 CLI/Agent 原生体验：稳定 schema、明确 exit code、来源链接、Markdown 汇报、未来 Arrow/Parquet 和本地 HTTP/MCP。
+长期目标：继续补强 Arrow/Parquet 导出、批量离线归档，以及基于当前 CLI/HTTP/MCP 的更深 Agent 查询工作流。
 
 ## 能准确回答什么
 
@@ -132,7 +133,7 @@ sec mcp
 | 公司最新 10-K 风险因素是什么？ | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
 | 生成能直接给人看的分析摘要？ | `sec report --ticker AAPL --kind risk` |
 | 本地 app 或 agent 怎么通过 HTTP 调用？ | `sec serve --port 8716`，然后 `curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"` |
-| 支持 MCP 的 Agent 怎么直接调用？ | 在 Agent 配置里启动 `sec mcp`，并设置 `SEC_IDENTITY` |
+| 支持 MCP 的 Agent 怎么直接调用？ | 先运行 `sec config set-identity ...`，再在 Agent 配置里启动 `sec mcp` |
 | 答案来源在哪里？ | 结构化结果包含 `source_url`，document 结果还包含 `document_url` |
 
 ## 参数怎么选
@@ -957,7 +958,8 @@ curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
 启动 stdio Model Context Protocol adapter，给支持 MCP 的 Agent 使用。它通过 stdin/stdout 读写 JSON-RPC，不需要启动 HTTP server。
 
 ```bash
-SEC_IDENTITY="Your Name your.email@example.com" sec mcp
+sec config set-identity "Your Name your.email@example.com"
+sec mcp
 ```
 
 当前 MCP tools：

@@ -54,7 +54,7 @@ pub(crate) enum Command {
     Prospectus(ProspectusArgs),
     /// Parse 20-F/6-K/40-F foreign issuer disclosures.
     Foreign(ForeignArgs),
-    /// Parse N-PORT/N-CSR/N-CEN fund disclosures.
+    /// Parse N-PORT/N-CSR/N-CEN/N-PX/497K/24F-2NT fund disclosures.
     Fund(FundArgs),
     /// Search filing submission text and return source-backed snippets.
     Search(SearchArgs),

@@ -99,14 +99,14 @@ This is an early MVP. The first implementation focuses on:
 - Aggregating 13F-HR holdings by CUSIP/class/put-call
 - Comparing the latest two 13F-HR portfolios
 - Parsing 13F-HR cover, summary, signature, and manager metadata
-- Returning JSON arrays or JSONL records
+- Returning JSON arrays, JSONL, CSV, terminal tables, and Markdown reports
 - Caching SEC responses locally
 - Serving the same core queries through a local JSON HTTP API
-- Serving core SEC tools through a stdio MCP adapter for agents
+- Serving the SEC query/parser/report surface through a stdio MCP adapter for agents
 
 Longer term, the project aims to grow into a Rust-powered SEC disclosure engine:
-more form-specific parsers, XBRL streaming parsing, table extraction,
-Parquet/Arrow exports, and agent-native query workflows.
+Arrow/Parquet exports, optional bulk/offline archives, and deeper agent-native
+query workflows on top of the current CLI/HTTP/MCP surfaces.
 
 ## What You Can Answer Accurately
 
@@ -138,7 +138,7 @@ These are useful, source-backed questions that work today:
 | What if I know the investor name but not the CIK? | `sec resolve --query 段永平 --pretty`, then `sec 13f-diff --investor 段永平 --pretty` |
 | What are a company's latest 10-K risk factors? | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
 | How can an app or local agent call sec-cli over HTTP? | `sec serve --port 8716`, then `curl "http://127.0.0.1:8716/v1/filings?ticker=AAPL&form=10-K&latest=1"` |
-| How can an MCP-capable agent call sec-cli directly? | Configure the agent to launch `sec mcp` with `SEC_IDENTITY` set |
+| How can an MCP-capable agent call sec-cli directly? | Run `sec config set-identity ...`, then configure the agent to launch `sec mcp` |
 | Where did the answer come from? | Every structured result includes `source_url`; document results also include `document_url` |
 
 ## How To Choose Selectors
@@ -282,7 +282,7 @@ record, and Markdown reports that can be dropped directly into an analyst note.
 The code is intentionally split by responsibility:
 
 - `cli`: command arguments and CLI orchestration only
-- `lib`: reusable Rust core for CLI, future API, and future MCP adapters
+- `lib`: reusable Rust core shared by the CLI, HTTP API, MCP adapter, and future batch/export jobs
 - `http`: low-level SEC HTTP
 - `storage`: local byte cache/store
 - `client`: SEC domain facade, ticker-to-CIK lookup
@@ -1386,7 +1386,7 @@ Each report summary includes:
 ### parse
 
 Use the unified parser pipeline for supported forms. This is the interface most
-future API/MCP adapters should call internally.
+HTTP/MCP adapters and future batch/export jobs should call internally.
 
 ```bash
 sec parse --ticker AAPL --form 4 --latest 1 --limit 5 --pretty
@@ -1465,7 +1465,8 @@ uses JSON-RPC over stdin/stdout and exposes source-backed SEC tools without
 requiring an HTTP server.
 
 ```bash
-SEC_IDENTITY="Your Name your.email@example.com" sec mcp
+sec config set-identity "Your Name your.email@example.com"
+sec mcp
 ```
 
 Available MCP tools:

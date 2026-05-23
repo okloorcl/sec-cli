@@ -1,6 +1,6 @@
 [package]
 name = "sec-cli"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 description = "Agent-ready SEC EDGAR parser and query CLI, powered by Rust."
 license = "MIT"

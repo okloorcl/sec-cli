@@ -45,6 +45,7 @@ real commands or modules in the repository.
 - [x] Terminal table and CSV output modes.
 - [x] Typed SEC submissions/companyfacts response DTOs.
 - [x] Mockable LLM resolver and cache-store abstractions.
+- [x] Centralized disclosure name patterns for auditors and underwriters.
 - [x] Cross-platform CI for Linux amd64/i686/arm64/arm32, Windows amd64, and macOS arm64.
 
 ## Planned

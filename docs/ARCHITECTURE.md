@@ -1,8 +1,8 @@
 # sec-cli Architecture
 
 `sec-cli` is a Rust SEC disclosure engine with a CLI shell. The core is built as
-a library so the same pipeline can later serve a CLI, HTTP API, MCP server,
-batch worker, or embedded agent tool.
+a library so the same pipeline serves the CLI, local HTTP API, stdio MCP server,
+and future batch/export jobs.
 
 ## Design Goal
 
@@ -15,7 +15,7 @@ The project should optimize for three things before adding many forms:
 ## Layer Map
 
 ```text
-CLI / future API / future MCP
+CLI / HTTP API / MCP / future batch jobs
         |
         v
 query + parser pipeline
@@ -33,7 +33,7 @@ submission/document layer
 form parsers / table parsers / XBRL parsers
         |
         v
-domain records -> JSON / JSONL / future Arrow / Parquet
+domain records -> JSON / JSONL / CSV / terminal tables / Markdown / future Arrow / Parquet
 ```
 
 ## Current Modules
@@ -75,7 +75,7 @@ src/sec/models/                     query models and output records
 src/sec/pipeline/                   unified form dispatch for supported parsed forms
 src/sec/registry/                   supported form parser registry
 src/sec/search/                     filing text search
-src/sec/output/                     JSON / JSONL rendering
+src/sec/output/                     JSON / JSONL / CSV / terminal table rendering
 ```
 
 ## Form Parser Rule
@@ -170,13 +170,13 @@ The current codebase already has these boundaries in place:
 - `models`: query DTOs and stable output record schemas.
 - `registry`: parser discovery and supported form families.
 - `pipeline`: runtime dispatch from `form` to parser.
-- `mcp`: JSON-RPC stdio adapter exposing a small, stable tool surface for agents.
+- `mcp`: JSON-RPC stdio adapter exposing the core SEC query/parser/report surface for agents.
 - `server`: local HTTP API that reuses the same client and parser records as the CLI.
 
-This means future CLI commands, HTTP handlers, MCP tools, and batch jobs should
+This means CLI commands, HTTP handlers, MCP tools, and future batch jobs should
 not talk directly to `reqwest`, file caches, or parser internals.
 
 ## Near-Term Build Order
 
-1. Split storage into a trait-backed cache/store layer if an alternate backend is needed.
-2. Add export layer for Arrow/Parquet.
+1. Add export layer for Arrow/Parquet.
+2. Add optional bulk archive / offline mode.
