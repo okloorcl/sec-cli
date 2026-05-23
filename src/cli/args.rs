@@ -27,6 +27,8 @@ pub(crate) enum Command {
     Search(SearchArgs),
     /// List documents and attachments inside SEC complete submissions.
     Docs(DocsArgs),
+    /// Read one document from a complete SEC submission.
+    Doc(DocArgs),
     /// Parse Form 4 insider ownership transactions.
     Form4(Form4Args),
     /// Summarize Form 4 issuer, owners, signatures, footnotes, and net transactions.
@@ -128,6 +130,38 @@ pub(crate) struct DocsArgs {
     #[arg(long)]
     pub(crate) jsonl: bool,
     #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct DocArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long)]
+    pub(crate) form: Option<String>,
+    #[arg(long, default_value_t = 1)]
+    pub(crate) latest: usize,
+    #[arg(long)]
+    pub(crate) accession: Option<String>,
+    #[arg(long)]
+    pub(crate) filename: Option<String>,
+    #[arg(long)]
+    pub(crate) sequence: Option<String>,
+    #[arg(long)]
+    pub(crate) primary: bool,
+    #[arg(long)]
+    pub(crate) include_amends: bool,
+    #[arg(long)]
+    pub(crate) limit_bytes: Option<usize>,
+    #[arg(long, conflicts_with_all = ["text", "jsonl", "pretty"])]
+    pub(crate) raw: bool,
+    #[arg(long, conflicts_with_all = ["raw", "jsonl", "pretty"])]
+    pub(crate) text: bool,
+    #[arg(long, conflicts_with_all = ["raw", "text"])]
+    pub(crate) jsonl: bool,
+    #[arg(long, conflicts_with_all = ["raw", "text"])]
     pub(crate) pretty: bool,
 }
 

@@ -2,9 +2,11 @@ use std::env;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
+use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
-    DocumentQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery, SearchQuery,
-    SecClient, ThirteenFQuery, accession_text_url, find_matches, print_records, supported_parsers,
+    DocumentQuery, DocumentReadQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery,
+    SearchQuery, SecClient, ThirteenFQuery, accession_text_url, find_matches, print_records,
+    supported_parsers,
 };
 
 use super::args::{Cli, Command};
@@ -94,6 +96,33 @@ pub(crate) async fn run() -> Result<()> {
                 })
                 .await?;
             print_records(&documents, output)?;
+        }
+        Command::Doc(args) => {
+            validate_doc_args(&args.filename, &args.sequence)?;
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let limit_bytes = if args.text { None } else { args.limit_bytes };
+            let record = client
+                .document_content(DocumentReadQuery {
+                    cik,
+                    form: args.form,
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                    accession: args.accession,
+                    filename: args.filename,
+                    sequence: args.sequence,
+                    primary: args.primary,
+                    limit_bytes,
+                })
+                .await?;
+
+            if args.raw || args.text {
+                print!(
+                    "{}",
+                    content_for_terminal(&record, args.text, args.limit_bytes)
+                );
+            } else {
+                print_records(&[record], output_mode(args.jsonl, args.pretty))?;
+            }
         }
         Command::Form4(args) => {
             let output = output_mode(args.jsonl, args.pretty);

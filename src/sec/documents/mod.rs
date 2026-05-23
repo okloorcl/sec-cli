@@ -1,3 +1,4 @@
+pub mod read;
 pub mod records;
 pub mod selectors;
 pub mod submission;

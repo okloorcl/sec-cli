@@ -7,6 +7,7 @@ sec filings --ticker AAPL --form 10-K
 sec facts --ticker AAPL --concept revenue
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
+sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000
 sec form4 --ticker AAPL --latest 3
 sec form4-summary --ticker AAPL --latest 3
 sec 13f --cik 1067983 --latest 1
@@ -27,6 +28,7 @@ This is an early MVP. The first implementation focuses on:
 - Finding company filings from SEC submissions data
 - Querying SEC CompanyFacts for source-backed XBRL facts
 - Searching filing submission text with snippets
+- Listing and reading individual SEC submission documents
 - Parsing Form 4 insider ownership transactions
 - Summarizing Form 4 reports, owners, signatures, footnotes, and net activity
 - Parsing 13F-HR information-table holdings
@@ -169,6 +171,40 @@ Each document includes:
 - `is_primary`
 - `document_url`
 - `source_url`
+
+### doc
+
+Read one document from a complete submission. By default, `sec doc` returns one
+JSON record with source metadata and content. Use `--raw` for exact extracted
+document content or `--text` for compact plain text.
+
+```bash
+sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000 --pretty
+sec doc --ticker AAPL --form 10-K --sequence 1 --text --limit-bytes 12000
+sec doc --cik 320193 --accession 0000320193-25-000079 --filename aapl-20250927.htm --raw
+```
+
+Selectors:
+
+- `--primary` selects sequence `1`
+- `--sequence 2` selects a document by SEC sequence
+- `--filename form4.xml` selects a document by filename
+- `--accession` narrows the filing set to one accession
+- `--limit-bytes` returns a UTF-8-safe prefix and sets `truncated`
+
+Each JSON record includes:
+
+- `accession`
+- `document_type`
+- `sequence`
+- `filename`
+- `content_type`
+- `byte_length`
+- `returned_bytes`
+- `truncated`
+- `document_url`
+- `source_url`
+- `content`
 
 ### form4
 

@@ -33,7 +33,7 @@ impl SecClient {
     }
 }
 
-fn document_record(filing: &FilingRecord, doc: &SubmissionDocument) -> DocumentRecord {
+pub(crate) fn document_record(filing: &FilingRecord, doc: &SubmissionDocument) -> DocumentRecord {
     DocumentRecord {
         accession: filing.accession.clone(),
         cik: filing.cik,
