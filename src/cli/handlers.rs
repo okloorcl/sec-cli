@@ -1,12 +1,12 @@
 use anyhow::Result;
 use sec_cli::sec::{
-    ForeignIssuerQuery, HtmlTableQuery, InlineXbrlQuery, ProspectusQuery, ProxyQuery, SecClient,
-    print_records,
+    ForeignIssuerQuery, FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, ProspectusQuery,
+    ProxyQuery, SecClient, print_records,
 };
 
 use super::{
     args::{InlineXbrlArgs, ProxyArgs, TablesArgs},
-    disclosure_args::{ForeignArgs, ProspectusArgs},
+    disclosure_args::{ForeignArgs, FundArgs, ProspectusArgs},
     runner::{output_mode, resolve_cik},
 };
 
@@ -82,6 +82,22 @@ pub(super) async fn foreign(client: &SecClient, args: ForeignArgs) -> Result<()>
             form: Some(args.form),
             latest: args.latest,
             include_amends: args.include_amends,
+            limit_bytes: Some(args.limit_bytes),
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn fund(client: &SecClient, args: FundArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .fund_disclosures(FundDisclosureQuery {
+            cik,
+            form: Some(args.form),
+            latest: args.latest,
+            include_amends: args.include_amends,
+            limit_holdings: Some(args.limit_holdings),
             limit_bytes: Some(args.limit_bytes),
         })
         .await?;

@@ -15,6 +15,7 @@
 | 高管/董事交易 | Form 4 owner、职位、交易代码、股数、价格、金额、脚注、签名 |
 | 机构持仓 | 13F 持仓、组合摘要、Top holdings、季度变化 |
 | 公司披露 | 8-K 事件、10-K/10-Q 风险因素、MD&A、20-F/6-K/40-F 外国发行人披露、全文搜索 |
+| 基金披露 | N-PORT 持仓、N-CSR 股东报告、N-CEN 年度基金运营信息 |
 | 资本市场 | S-1/F-1/424B 招股书条款、IPO 信号、募资用途、风险、承销商 |
 | Agent 接口 | 稳定 JSON/JSONL、source URL、accession、document 元数据 |
 
@@ -27,6 +28,7 @@ sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
 sec proxy --ticker AAPL --latest 1 --pretty
 sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty
 sec foreign --ticker TSM --form 20-F --latest 1 --pretty
+sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
@@ -61,6 +63,7 @@ sec forms --pretty
 - 解析 DEF 14A 股东大会委托书：会议、投票事项、董事候选人、审计师、高管薪酬表
 - 解析 S-1/F-1/424B 招股书和发行说明书：证券类型、ticker/交易所、价格区间、募资用途、风险、承销商、关键表格
 - 解析 20-F/6-K/40-F 外国发行人披露：年度报告、当前报告、交易所/代码、审计师、事件信号、关键章节摘要
+- 解析 N-PORT/N-CSR/N-CEN 基金披露：组合持仓、基金元数据、股东报告摘要、财务报表和内控章节
 - 搜索 filing 原文并返回 snippet
 - 抽取 10-K/10-Q 常用 section：Business、Risk Factors、MD&A 等
 - 生成 Markdown 专业汇报：insider、portfolio、risk
@@ -92,6 +95,7 @@ sec forms --pretty
 | 最新 proxy statement 里有哪些投票事项和高管薪酬？ | `sec proxy --ticker AAPL --latest 1 --pretty` |
 | IPO 招股书关键条款是什么？ | `sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty` |
 | 外国发行人最新年报/当前报告披露了什么？ | `sec foreign --ticker TSM --form 20-F --latest 1 --pretty` |
+| 基金在 N-PORT 里披露了哪些持仓？ | `sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty` |
 | 哪些 5% 大股东提交了 13D/13G？ | `sec 13d --ticker TSLA --form 13g --include-amends --pretty` |
 | Berkshire 最新 13F 持仓是什么？ | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | 最近两期 13F 哪些仓位变化最大？ | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
@@ -119,6 +123,7 @@ sec forms --pretty
 - `proxy`
 - `prospectus`
 - `foreign`
+- `fund`
 - `parse`
 - `report --kind risk`
 - `report --kind insider`
@@ -175,6 +180,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | DEF 14A proxy statement 主文档 | `proxy`、`parse --form "DEF 14A"` | 股东大会日期/地点、投票事项、董事会建议、董事候选人、审计师、NEO、高管薪酬表 | proxy statement records |
 | S-1/F-1/424B prospectus 主文档 | `prospectus`、`parse --form "S-1"` | 发行证券、IPO/招股书类型、ticker/交易所、价格区间、发行股数、募资用途、承销商、审计师、风险/业务/摊薄摘要 | prospectus records |
 | 20-F/6-K/40-F foreign issuer 主文档 | `foreign`、`parse --form "20-F"` | 外国私营发行人年报/当前报告、交易所、股票代码、审计师、事件信号、风险/业务/经营回顾/内控/财报摘要 | foreign issuer records |
+| N-PORT/N-CSR/N-CEN fund documents | `fund`、`parse --form "NPORT-P"` | 基金 registrant/series/class 元数据、N-PORT 持仓、资产/负债/净资产、N-CSR 股东报告、内控和财务报表章节 | fund disclosure records |
 | SEC complete submission text / archive documents | `search`、`section`、`docs`、`doc` | 原始 filing 文本、HTML/XML 附件、exhibit、可引用片段 | snippet、section、document records |
 | Form 3/4/5 XML ownership report | `form4`、`form4-summary`、`report --kind insider` | 内部人、职位、交易代码、股数、价格、金额、脚注、签名 | transaction records、ownership report records |
 | Form 8-K primary document | `8k` | 当前报告事件 item，例如 2.02 业绩、5.02 高管变化、8.01 其他事件、9.01 附件 | 8-K event records |
@@ -205,6 +211,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | Proxy statement | `proxy`、`parse --form "DEF 14A"` | `meeting_date`、`proposals`、`director_nominees`、`auditor`、`named_executive_officers`、`summary_compensation_table` | `accession`、`document_url`、`source_url` |
 | Prospectus | `prospectus`、`parse --form "S-1"` | `securities_offered`、`proposed_ticker`、`exchange`、`price_range`、`shares_offered`、`underwriters`、`risk_factors` | `accession`、`document_url`、`source_url` |
 | Foreign issuer | `foreign`、`parse --form "20-F"` | `report_type`、`exchange`、`ticker_or_symbol`、`auditor`、`event_signals`、`risk_factors`、`operating_review` | `accession`、`document_url`、`source_url` |
+| Fund disclosure | `fund`、`parse --form "NPORT-P"` | `disclosure_type`、`registrant_name`、`series_name`、`period_end`、`holdings`、`net_assets` | `accession`、`document_url`、`source_url` |
 | Search snippet | `search` | `query`、`snippet`、`offset`、`form`、`filing_date` | `accession`、`source_url`、`document`、`section` |
 | Section | `section` | `item`、`title`、`content`、`truncated` | `accession`、`document_url`、`source_url` |
 | Document | `docs`、`doc` | `filename`、`document_type`、`description`、`content_type`、`content` | `accession`、`document_url`、`source_url` |
@@ -378,6 +385,7 @@ cargo run --bin sec -- statements --ticker AAPL --statement cashflow --period qu
 cargo run --bin sec -- ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --latest 1 --limit 3 --pretty
 cargo run --bin sec -- tables --ticker AAPL --form 10-K --latest 1 --limit-tables 3 --limit-rows 5 --pretty
 cargo run --bin sec -- foreign --ticker TSM --form 20-F --latest 1 --limit-bytes 800 --pretty
+cargo run --bin sec -- fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 5 --pretty
 cargo run --bin sec -- form4-summary --ticker AAPL --latest 2 --pretty
 cargo run --bin sec -- 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 cargo run --bin sec -- 13d --ticker TSLA --form 13g --latest 2 --include-amends --pretty
@@ -526,6 +534,22 @@ sec parse --ticker BABA --form "6-K" --latest 1 --pretty
 `--form` 支持：`all`、`20-F`、`20-F/A`、`6-K`、`6-K/A`、`40-F`、`40-F/A`。如果要看修正版，加 `--include-amends`。
 
 输出字段：`report_type`、`is_amendment`、`exchange`、`ticker_or_symbol`、`auditor`、`event_signals`、`risk_factors`、`business`、`operating_review`、`controls`、`financial_statements`、`document_url`、`source_url`。
+
+### fund
+
+解析 N-PORT、N-CSR/N-CSRS 和 N-CEN 基金披露。`NPORT-P` 最结构化，包含组合持仓、证券标识、美元市值、组合占比、资产分类、发行人分类、国家和受限证券标记。`N-CSR` / `N-CSRS` 是股东报告，`N-CEN` 是年度基金 census / 运营信息。
+
+```bash
+sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty
+sec fund --cik 0000036405 --form N-CSR --latest 1 --limit-bytes 1200 --pretty
+sec fund --cik 0000036405 --form N-CEN --latest 1 --pretty
+sec fund --cik 0000036405 --form all --latest 5 --include-amends --jsonl
+sec parse --cik 0000036405 --form "NPORT-P" --latest 1 --limit 10 --pretty
+```
+
+`--form` 支持：`all`、`NPORT-P`、`NPORT-P/A`、`N-PORT`、`N-PORT/A`、`N-CSR`、`N-CSR/A`、`N-CSRS`、`N-CSRS/A`、`N-CEN`、`N-CEN/A`。用 `--limit-holdings` 控制返回的 N-PORT 持仓数量。
+
+输出字段：`disclosure_type`、`registrant_name`、`series_name`、`class_name`、`period_end`、`fiscal_year_end`、`total_assets`、`total_liabilities`、`net_assets`、`holdings_count`、`holdings`、`shareholder_report`、`portfolio_summary`、`financial_statements`、`controls`、`document_url`、`source_url`。
 
 ### search
 
@@ -717,6 +741,7 @@ sec forms --pretty
 | `proxy` | `--ticker` 或 `--cik` | `--latest`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `prospectus` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-bytes`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `foreign` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
+| `fund` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-holdings`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
 | `search` | `--ticker` 或 `--cik`，`--query` | `--form`、`--latest`、`--context`、`--include-amends`、`--jsonl`、`--pretty` |
 | `section` | `--ticker` 或 `--cik`，`--item` | `--form`、`--latest`、`--accession`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
 | `report` | `--ticker`、`--cik`、`--manager` 或 `--investor`，`--kind` | `--latest`、`--limit`、`--limit-bytes`、`--include-amends` |
@@ -750,6 +775,7 @@ sec ixbrl --ticker AAPL --form 10-K --concept NetIncomeLoss --limit 5 --jsonl
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty
 sec 13d --ticker TSLA --form 13g --latest 2 --include-amends --pretty
 sec foreign --ticker TSM --form 20-F --latest 1 --pretty
+sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty
 sec 13f-diff --cik 1067983 --limit 20 --jsonl
 sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty

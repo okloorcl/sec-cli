@@ -61,6 +61,7 @@ src/sec/parsers/                    shared parser machinery and form parsers
 src/sec/proxy/                      DEF 14A proxy statement parser
 src/sec/prospectus/                 S-1/F-1/424B prospectus parser
 src/sec/foreign/                    20-F/6-K/40-F foreign issuer parser
+src/sec/funds/                      N-PORT/N-CSR/N-CEN fund disclosure parser
 src/sec/utils.rs                    shared string, legal suffix, and truncation helpers
 src/sec/parsers/xml.rs              streaming XML helpers
 src/sec/parsers/forms/              form-specific parsers
@@ -85,9 +86,10 @@ Examples:
 - Future `forms/current_report.rs`: 8-K item extraction and exhibit discovery.
 - `prospectus`: S-1 / F-1 / 424B offering and IPO signals.
 - `foreign`: 20-F / 6-K / 40-F foreign issuer annual/current reports.
+- `funds`: N-PORT portfolio holdings, N-CSR shareholder reports, and N-CEN fund census data.
 - `proxy`: DEF 14A compensation and governance tables.
 - `schedule13`: SC 13D / SC 13G beneficial ownership.
-- Future `forms/funds.rs`: N-PORT, N-CEN, N-PX, 497K, 24F-2NT.
+- Future `forms/fund_votes.rs`: N-PX voting records, 497K summaries, and 24F-2NT notices.
 
 Not every HTML table needs a separate top-level parser. The right split is:
 
@@ -163,7 +165,6 @@ not talk directly to `reqwest`, file caches, or parser internals.
 
 ## Near-Term Build Order
 
-1. Add N-PORT / N-CSR / N-CEN fund disclosure parser.
+1. Add HTTP API and MCP adapters after the core records and parser pipeline are stable.
 2. Split storage into a trait-backed cache/store layer if an alternate backend is needed.
 3. Add export layer for Arrow/Parquet.
-4. Add HTTP API and MCP adapters after the core records and parser pipeline are stable.

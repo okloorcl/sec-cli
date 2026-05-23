@@ -70,6 +70,7 @@ pub(crate) async fn run() -> Result<()> {
         Command::Proxy(args) => handlers::proxy(&client, args).await?,
         Command::Prospectus(args) => handlers::prospectus(&client, args).await?,
         Command::Foreign(args) => handlers::foreign(&client, args).await?,
+        Command::Fund(args) => handlers::fund(&client, args).await?,
         Command::Search(args) => {
             let output = output_mode(args.jsonl, args.pretty);
             let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;

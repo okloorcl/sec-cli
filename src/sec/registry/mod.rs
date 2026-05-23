@@ -9,6 +9,7 @@ pub enum ParserKind {
     Proxy,
     Prospectus,
     ForeignIssuer,
+    FundDisclosure,
     ThirteenF,
 }
 
@@ -59,6 +60,23 @@ const PARSERS: &[ParserSpec] = &[
         canonical_form: "20-F",
         forms: &["20-F", "20-F/A", "6-K", "6-K/A", "40-F", "40-F/A"],
         record_kind: "foreign_issuer",
+    },
+    ParserSpec {
+        kind: ParserKind::FundDisclosure,
+        canonical_form: "NPORT-P",
+        forms: &[
+            "NPORT-P",
+            "NPORT-P/A",
+            "N-PORT",
+            "N-PORT/A",
+            "N-CSR",
+            "N-CSR/A",
+            "N-CSRS",
+            "N-CSRS/A",
+            "N-CEN",
+            "N-CEN/A",
+        ],
+        record_kind: "fund_disclosure",
     },
     ParserSpec {
         kind: ParserKind::ThirteenF,

@@ -26,6 +26,7 @@ real commands or modules in the repository.
 - [x] DEF 14A proxy statement parser.
 - [x] S-1 / F-1 / 424B IPO and prospectus parser.
 - [x] 20-F / 6-K / 40-F foreign issuer parser.
+- [x] N-PORT / N-CSR / N-CEN fund disclosure parser.
 - [x] Shared parser utilities, cache TTL policy, and hot-path parser performance cleanup.
 - [x] Core utility test coverage for search, reports, output, filings, facts, storage, and parser dispatch.
 - [x] Investor/fund/person resolver with LLM fallback and SEC validation.
@@ -34,14 +35,13 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] N-PORT / N-CSR / N-CEN fund disclosure parser.
 - [ ] Local HTTP API.
 - [ ] MCP adapter for agent tools.
 
 ## Suggested Implementation Order
 
-1. N-PORT / N-CSR / N-CEN parser.
-2. Local HTTP API and MCP adapter.
+1. Local HTTP API.
+2. MCP adapter for agent tools.
 
 ## Completion Rule
 

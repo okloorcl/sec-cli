@@ -2,6 +2,7 @@ pub mod client;
 pub mod documents;
 pub mod edgar;
 pub mod foreign;
+pub mod funds;
 pub mod http;
 pub mod ixbrl;
 pub mod llm;
@@ -25,9 +26,9 @@ pub use client::SecClient;
 pub use edgar::accession_text_url;
 pub use models::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery,
-    Form4Query, HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery, ProspectusQuery,
-    ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery, StatementQuery,
-    ThirteenFQuery,
+    Form4Query, FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery,
+    ProspectusQuery, ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery,
+    StatementQuery, ThirteenFQuery,
 };
 pub use output::print_records;
 pub use registry::supported_parsers;

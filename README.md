@@ -15,6 +15,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 | Insider activity | Form 4 owner, role, transaction code, shares, price, value, footnotes, signatures |
 | Institutional holdings | 13F holdings, portfolio summary, top positions, quarter-over-quarter changes |
 | Company disclosure | 8-K events, 10-K/10-Q risk factors, MD&A, foreign issuer 20-F/6-K/40-F, filing search |
+| Fund disclosure | N-PORT holdings, N-CSR shareholder reports, N-CEN annual fund census metadata |
 | Capital markets | S-1/F-1/424B prospectus terms, IPO signals, proceeds, risks, underwriters |
 | Agent interface | Stable JSON/JSONL, LLM name resolution, source URLs, accession numbers |
 
@@ -27,6 +28,7 @@ sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
 sec proxy --ticker AAPL --latest 1 --pretty
 sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty
 sec foreign --ticker TSM --form 20-F --latest 1 --pretty
+sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
@@ -63,6 +65,7 @@ This is an early MVP. The first implementation focuses on:
 - Parsing DEF 14A proxy statements for meeting details, voting proposals, directors, auditors, and executive compensation tables
 - Parsing S-1/F-1/424B prospectuses for securities offered, ticker/exchange, price range, proceeds, risks, underwriters, and selected offering tables
 - Parsing 20-F/6-K/40-F foreign issuer disclosures for annual reports, current reports, exchanges, symbols, auditors, event signals, and key excerpts
+- Parsing N-PORT/N-CSR/N-CEN fund disclosures for portfolio holdings, fund metadata, shareholder-report excerpts, and financial statement sections
 - Searching filing submission text with snippets
 - Extracting common 10-K/10-Q sections such as business, risk factors, and MD&A
 - Generating source-backed Markdown reports for insider activity, 13F portfolios, and risk review
@@ -99,6 +102,7 @@ These are useful, source-backed questions that work today:
 | What is in the latest proxy statement? | `sec proxy --ticker AAPL --latest 1 --pretty` |
 | What are the key terms in an IPO prospectus? | `sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty` |
 | What did a foreign private issuer disclose in its latest annual/current report? | `sec foreign --ticker TSM --form 20-F --latest 1 --pretty` |
+| What holdings did a fund disclose in N-PORT? | `sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty` |
 | Which 5% beneficial owners recently filed 13D/13G? | `sec 13d --ticker TSLA --form 13g --include-amends --pretty` |
 | What is Berkshire Hathaway's latest 13F portfolio? | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | What changed between the latest two 13F filings? | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
@@ -126,6 +130,7 @@ Company-disclosure commands use `--ticker` or `--cik`:
 - `proxy`
 - `prospectus`
 - `foreign`
+- `fund`
 - `parse`
 - `report --kind risk`
 - `report --kind insider`
@@ -183,6 +188,7 @@ Practical rule:
 | DEF 14A proxy statement primary document | `proxy`, `parse --form "DEF 14A"` | Annual meeting date/site, voting proposals, board recommendations, director nominees, auditor, named executive officers, summary compensation table | proxy statement records |
 | S-1/F-1/424B prospectus primary document | `prospectus`, `parse --form "S-1"` | Securities offered, IPO/prospectus type, ticker/exchange, price range, shares, proceeds, underwriters, auditor, risk/business/proceeds excerpts | prospectus records |
 | 20-F/6-K/40-F foreign issuer primary document | `foreign`, `parse --form "20-F"` | Foreign private issuer annual/current reports, exchanges, symbols, auditors, event signals, risk/business/operating review/controls/financial statements excerpts | foreign issuer records |
+| N-PORT/N-CSR/N-CEN fund documents | `fund`, `parse --form "NPORT-P"` | Fund registrant/series/class metadata, N-PORT holdings, assets/liabilities/net assets, N-CSR shareholder report excerpts, controls and financial statements | fund disclosure records |
 | SEC complete submission text and archive documents | `search`, `section`, `docs`, `doc` | Original filing text, HTML/XML attachments, exhibits, source snippets | snippet, section, document records |
 | Form 3/4/5 XML ownership reports | `form4`, `form4-summary`, `report --kind insider` | Insider owners, roles, transaction codes, shares, prices, footnotes, signatures | transaction and ownership-report records |
 | Form 8-K primary document | `8k` | Current-report event items such as 2.02 earnings, 5.02 management changes, 8.01 other events, 9.01 exhibits | 8-K event records |
@@ -208,6 +214,7 @@ Output record cheat sheet:
 | Proxy statement | `proxy`, `parse --form "DEF 14A"` | `meeting_date`, `proposals`, `director_nominees`, `auditor`, `named_executive_officers`, `summary_compensation_table` | `accession`, `document_url`, `source_url` |
 | Prospectus | `prospectus`, `parse --form "S-1"` | `securities_offered`, `proposed_ticker`, `exchange`, `price_range`, `shares_offered`, `underwriters`, `risk_factors` | `accession`, `document_url`, `source_url` |
 | Foreign issuer | `foreign`, `parse --form "20-F"` | `report_type`, `exchange`, `ticker_or_symbol`, `auditor`, `event_signals`, `risk_factors`, `operating_review` | `accession`, `document_url`, `source_url` |
+| Fund disclosure | `fund`, `parse --form "NPORT-P"` | `disclosure_type`, `registrant_name`, `series_name`, `period_end`, `holdings`, `net_assets` | `accession`, `document_url`, `source_url` |
 | Search snippet | `search` | `query`, `snippet`, `offset`, `form`, `filing_date` | `accession`, `source_url`, `document`, `section` |
 | Section | `section` | `item`, `title`, `content`, `truncated` | `accession`, `document_url`, `source_url` |
 | Document | `docs`, `doc` | `filename`, `document_type`, `description`, `content_type`, `content` | `accession`, `document_url`, `source_url` |
@@ -401,6 +408,7 @@ cargo run --bin sec -- statements --ticker AAPL --statement cashflow --period qu
 cargo run --bin sec -- ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --latest 1 --limit 3 --pretty
 cargo run --bin sec -- tables --ticker AAPL --form 10-K --latest 1 --limit-tables 3 --limit-rows 5 --pretty
 cargo run --bin sec -- foreign --ticker TSM --form 20-F --latest 1 --limit-bytes 800 --pretty
+cargo run --bin sec -- fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 5 --pretty
 cargo run --bin sec -- form4-summary --ticker AAPL --latest 2 --pretty
 cargo run --bin sec -- 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 cargo run --bin sec -- 13d --ticker TSLA --form 13g --latest 2 --include-amends --pretty
@@ -693,6 +701,46 @@ Each foreign issuer record includes:
 - `operating_review`
 - `controls`
 - `financial_statements`
+- `document_url`
+- `source_url`
+
+### fund
+
+Parse N-PORT, N-CSR/N-CSRS, and N-CEN fund disclosures. `NPORT-P` is the most
+structured source: it contains portfolio holdings, security identifiers, values,
+portfolio percentages, asset categories, issuer categories, country, and
+restricted-security flags. `N-CSR` and `N-CSRS` are shareholder reports, while
+`N-CEN` is the annual fund census.
+
+```bash
+sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty
+sec fund --cik 0000036405 --form N-CSR --latest 1 --limit-bytes 1200 --pretty
+sec fund --cik 0000036405 --form N-CEN --latest 1 --pretty
+sec fund --cik 0000036405 --form all --latest 5 --include-amends --jsonl
+sec parse --cik 0000036405 --form "NPORT-P" --latest 1 --limit 10 --pretty
+```
+
+`--form` accepts `all`, `NPORT-P`, `NPORT-P/A`, `N-PORT`, `N-PORT/A`,
+`N-CSR`, `N-CSR/A`, `N-CSRS`, `N-CSRS/A`, `N-CEN`, and `N-CEN/A`. Use
+`--limit-holdings` to cap the returned N-PORT holdings array.
+
+Each fund disclosure record includes:
+
+- `disclosure_type`
+- `registrant_name`
+- `series_name`
+- `class_name`
+- `period_end`
+- `fiscal_year_end`
+- `total_assets`
+- `total_liabilities`
+- `net_assets`
+- `holdings_count`
+- `holdings`
+- `shareholder_report`
+- `portfolio_summary`
+- `financial_statements`
+- `controls`
 - `document_url`
 - `source_url`
 
@@ -1169,6 +1217,7 @@ Command options:
 | `proxy` | `--ticker` or `--cik` | `--latest`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `prospectus` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-bytes`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `foreign` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
+| `fund` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-holdings`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
 | `search` | `--ticker` or `--cik`, `--query` | `--form`, `--latest`, `--context`, `--include-amends`, `--jsonl`, `--pretty` |
 | `section` | `--ticker` or `--cik`, `--item` | `--form`, `--latest`, `--accession`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
 | `report` | `--ticker`, `--cik`, `--manager`, or `--investor`; `--kind` | `--latest`, `--limit`, `--limit-bytes`, `--include-amends` |
@@ -1221,6 +1270,7 @@ sec ixbrl --ticker AAPL --form 10-K --concept NetIncomeLoss --limit 5 --jsonl
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty
 sec 13d --ticker TSLA --form 13g --latest 2 --include-amends --pretty
 sec foreign --ticker TSM --form 20-F --latest 1 --pretty
+sec fund --cik 0000036405 --form NPORT-P --latest 1 --limit-holdings 10 --pretty
 sec 13f-diff --cik 1067983 --limit 20 --jsonl
 sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty

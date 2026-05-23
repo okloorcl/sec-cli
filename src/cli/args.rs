@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-use super::disclosure_args::{ForeignArgs, ProspectusArgs};
+use super::disclosure_args::{ForeignArgs, FundArgs, ProspectusArgs};
 
 #[derive(Parser, Debug)]
 #[command(name = "sec")]
@@ -37,6 +37,8 @@ pub(crate) enum Command {
     Prospectus(ProspectusArgs),
     /// Parse 20-F/6-K/40-F foreign issuer disclosures.
     Foreign(ForeignArgs),
+    /// Parse N-PORT/N-CSR/N-CEN fund disclosures.
+    Fund(FundArgs),
     /// Search filing submission text and return source-backed snippets.
     Search(SearchArgs),
     /// Extract a named 10-K/10-Q section from a primary filing document.
