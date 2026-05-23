@@ -40,7 +40,11 @@ real commands or modules in the repository.
 - [x] Source-backed Markdown reports for insider activity, portfolio activity, and risk review.
 - [x] Local JSON HTTP API for core SEC queries and parser endpoints.
 - [x] Stdio MCP adapter for core SEC agent tools.
-- [x] Expanded MCP tools for documents, Form 4 summaries, 13F diff, and Markdown reports.
+- [x] Expanded MCP tools for daily index, EFTS, documents, sections, iXBRL, tables, proxy, prospectus, foreign issuer, funds, Form 4, 8-K, Schedule 13D/G, 13F, and Markdown reports.
+- [x] Local SEC identity config and shell completion generation.
+- [x] Terminal table and CSV output modes.
+- [x] Typed SEC submissions/companyfacts response DTOs.
+- [x] Mockable LLM resolver and cache-store abstractions.
 - [x] Cross-platform CI for Linux amd64/i686/arm64/arm32, Windows amd64, and macOS arm64.
 
 ## Planned
