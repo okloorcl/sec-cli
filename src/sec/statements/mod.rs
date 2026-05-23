@@ -12,6 +12,8 @@ use crate::sec::{
     models::{FinancialStatementRecord, StatementQuery},
 };
 
+pub mod stitch;
+
 impl SecClient {
     pub async fn financial_statements(
         &self,

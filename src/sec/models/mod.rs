@@ -26,15 +26,17 @@ pub use queries::{
     EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
     FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery, ProspectusQuery,
     ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery, StatementQuery,
-    ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
+    StatementStitchQuery, ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery,
+    XbrlStatementQuery, XbrlTreeQuery,
 };
 pub use records::{
     DocumentContentRecord, DocumentRecord, EightKEventRecord, EightKExhibitRecord, FactRecord,
     FilingRecord, FinancialStatementRecord, Form4FootnoteRecord, Form4OwnerRecord,
     Form4ReportRecord, Form4SignatureRecord, Form4TransactionRecord, InlineXbrlFactRecord,
     ParsedRecord, ResolveCandidateRecord, ResolveValidationRecord, Schedule13Record, SearchMatch,
-    SectionRecord, ThirteenFAggregateHoldingRecord, ThirteenFDiffRecord, ThirteenFHoldingRecord,
-    ThirteenFOtherManagerRecord, ThirteenFReportRecord, XbrlCalculationCheckRecord,
-    XbrlLinkbaseRecord, XbrlPresentationTreeRecord, XbrlStatementRecord,
+    SectionRecord, StitchedStatementRecord, ThirteenFAggregateHoldingRecord, ThirteenFDiffRecord,
+    ThirteenFHoldingRecord, ThirteenFOtherManagerRecord, ThirteenFReportRecord,
+    XbrlCalculationCheckRecord, XbrlLinkbaseRecord, XbrlPresentationTreeRecord,
+    XbrlStatementRecord,
 };
 pub use tables::HtmlTableRecord;

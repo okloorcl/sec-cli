@@ -41,6 +41,13 @@ pub fn tools() -> Vec<Value> {
             ),
         ),
         tool(
+            "sec_stitch",
+            "Stitch 10-K and 10-Q statement rows into a de-duplicated CompanyFacts time series.",
+            company_schema(
+                json!({"statement":{"type":"string"},"unit":{"type":"string"},"latest":{"type":"integer"}}),
+            ),
+        ),
+        tool(
             "sec_metrics",
             "Calculate source-backed financial ratios, growth, free cash flow, returns, liquidity, and leverage.",
             company_schema(
@@ -252,6 +259,7 @@ mod tests {
             "sec_daily",
             "sec_efts",
             "sec_scores",
+            "sec_stitch",
             "sec_ixbrl",
             "sec_tables",
             "sec_proxy",

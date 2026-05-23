@@ -10,6 +10,7 @@ real commands or modules in the repository.
 - [x] SEC submissions JSON filing metadata.
 - [x] SEC CompanyFacts XBRL fact lookup.
 - [x] 10-K / 10-Q financial statements builder.
+- [x] Cross-form 10-K / 10-Q statement stitching into de-duplicated CompanyFacts time series.
 - [x] Expanded standard concept alias catalog for broader statement rows and fact lookup aliases.
 - [x] Standard concept mapping expanded beyond 100 common US-GAAP candidates across income statement, balance sheet, and cash-flow lines.
 - [x] 10-K / 10-Q company-report topic table parser.
@@ -58,15 +59,13 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] Cross-form 10-K / 10-Q financial statement stitching.
 - [ ] Arrow / Parquet export layer.
 - [ ] Optional bulk archive / offline mode.
 
 ## Suggested Implementation Order
 
-1. Cross-form statement stitching.
-2. Arrow / Parquet export layer.
-3. Optional bulk archive / offline mode.
+1. Arrow / Parquet export layer.
+2. Optional bulk archive / offline mode.
 
 ## Completion Rule
 

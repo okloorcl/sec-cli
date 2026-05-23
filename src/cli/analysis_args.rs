@@ -21,6 +21,24 @@ pub(crate) struct StatementsArgs {
 }
 
 #[derive(Args, Debug)]
+pub(crate) struct StitchArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long, default_value = "all")]
+    pub(crate) statement: String,
+    #[arg(long)]
+    pub(crate) unit: Option<String>,
+    #[arg(long, default_value_t = 8)]
+    pub(crate) latest: usize,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
 pub(crate) struct MetricsArgs {
     #[arg(long, conflicts_with = "cik")]
     pub(crate) ticker: Option<String>,

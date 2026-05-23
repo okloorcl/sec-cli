@@ -29,6 +29,7 @@ sec daily --date 2026-05-15 --form 8-K --limit 50 --pretty
 sec efts --query "supply chain risk" --form 10-K --from 2024-01-01 --to 2024-12-31 --limit 10 --pretty
 sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
+sec stitch --ticker AAPL --statement income --latest 8 --pretty
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec scores --ticker AAPL --period annual --latest 1 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
@@ -223,7 +224,7 @@ Practical rule:
 | SEC submissions JSON | `filings` | Filing list, dates, accession numbers, primary document names | filing records |
 | SEC daily master index | `daily`, `monitor` | All-market daily filing feed: CIK, company, form, filing date, archive filename, accession, source URLs | daily filing records |
 | SEC EDGAR Full-Text Search / EFTS | `efts`, `full-text`, `global-search` | All-market text-search hits with score, company, CIK, form, dates, accession, document URL | EFTS search records |
-| SEC CompanyFacts JSON | `facts`, `statements`, `metrics`, `scores`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, derived margins/growth/returns/liquidity/leverage, Piotroski/Altman/Beneish health scores | fact records, financial statement rows, financial metric records, health score records, Markdown financial report |
+| SEC CompanyFacts JSON | `facts`, `statements`, `stitch`, `metrics`, `scores`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, de-duplicated 10-K/10-Q time series, derived margins/growth/returns/liquidity/leverage, Piotroski/Altman/Beneish health scores | fact records, financial statement rows, stitched statement rows, financial metric records, health score records, Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
 | XBRL linkbase attachments | `xbrl-links`, `linkbase`, `xbrl-tree`, `xbrl-calc`, `xbrl-statement` | EX-101.PRE/CAL/DEF/LAB/SCH relationships: presentation arcs, calculation weights, definition arcs, labels, schema elements, rendered statement rows with same-accession CompanyFacts values | XBRL linkbase relationship records, presentation tree rows, calculation checks, rendered XBRL statement rows |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
@@ -255,6 +256,7 @@ Output record cheat sheet:
 | EFTS search hit | `efts`, `full-text`, `global-search` | `company`, `form`, `file_date`, `score`, `document` | `accession`, `source_url`, `document_url` |
 | Fact | `facts` | `concept`, `label`, `value`, `unit`, `fy`, `fp`, `filed` | `accession`, `source_url`, `fact_id` |
 | Financial statement row | `statements` | `statement`, `line_order`, `line_item`, `value`, `unit`, `fiscal_year`, `fiscal_period` | `accession`, `source_url`, `fact_id` |
+| Stitched statement row | `stitch`, `statement-stitch` | `statement`, `line_item`, `period_kind`, `form`, `value`, `duplicate_forms`, `source_count` | `accession`, `source_url`, `fact_id` |
 | Financial metric | `metrics` | `metric`, `category`, `value`, `display_value`, `period_end`, `calculation`, `components` | `source_urls`, component `accession`, component `fact_id` |
 | Financial health score | `scores` | `score_name`, `score`, `max_score`, `rating`, `period_end`, `signals` | `source_urls`, signal `calculation` |
 | Inline XBRL fact | `ixbrl` | `name`, `context_ref`, `unit_ref`, `scale`, `raw_value`, `numeric_value` | `accession`, `document_url`, `source_url` |
@@ -696,6 +698,24 @@ Each row includes:
 - `accession`
 - `source_url`
 - `fact_id`
+
+### stitch
+
+Build a de-duplicated 10-K / 10-Q CompanyFacts time series from standardized
+statement rows. It groups rows by statement line and period end, prefers 10-K
+FY rows for annual periods, keeps 10-Q rows for quarterly periods, and exposes
+`duplicate_forms` plus `source_count` so agents can see when multiple facts fed
+the same stitched period.
+
+```bash
+sec stitch --ticker AAPL --statement income --latest 8 --pretty
+sec stitch --ticker AAPL --statement all --latest 6 --jsonl
+sec statement-stitch --cik 320193 --statement cashflow --latest 10 --output table
+```
+
+Each row includes: `statement`, `line_item`, `period_kind`, `form`,
+`fiscal_period`, `value`, `numeric_value`, `duplicate_forms`, `source_count`,
+`accession`, `source_url`, and `fact_id`.
 
 ### metrics
 
@@ -1550,6 +1570,7 @@ curl "http://127.0.0.1:8716/v1/daily?date=2026-05-15&form=8-K&limit=50"
 curl "http://127.0.0.1:8716/v1/efts?query=supply%20chain%20risk&form=10-K&from=2024-01-01&to=2024-12-31&limit=10"
 curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
 curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
+curl "http://127.0.0.1:8716/v1/stitch?ticker=AAPL&statement=income&latest=8"
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
 curl "http://127.0.0.1:8716/v1/scores?ticker=AAPL&period=annual&latest=1"
 curl "http://127.0.0.1:8716/v1/company-report?ticker=AAPL&form=10-K&topic=segment"
@@ -1574,6 +1595,7 @@ Available endpoints:
 | `/v1/efts` | `sec efts` |
 | `/v1/facts` | `sec facts` |
 | `/v1/statements` | `sec statements` |
+| `/v1/stitch` | `sec stitch` |
 | `/v1/metrics` | `sec metrics` |
 | `/v1/scores` | `sec scores` |
 | `/v1/company-report` | `sec company-report` |
@@ -1612,6 +1634,7 @@ Available MCP tools:
 | `sec_efts` | `sec efts` SEC full-text search |
 | `sec_facts` | `sec facts` equivalent |
 | `sec_statements` | `sec statements` equivalent |
+| `sec_stitch` | `sec stitch` equivalent |
 | `sec_metrics` | `sec metrics` equivalent |
 | `sec_scores` | `sec scores` equivalent |
 | `sec_ixbrl` | `sec ixbrl` equivalent |
@@ -1669,6 +1692,7 @@ Command options:
 | `efts` / `full-text` / `global-search` | `--query` | `--ticker`, `--cik`, `--form`, `--from`, `--to`, `--limit`, `--jsonl`, `--pretty` |
 | `facts` | `--ticker` or `--cik`, `--concept` | `--form`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `statements` | `--ticker` or `--cik` | `--statement`, `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
+| `stitch` / `statement-stitch` | `--ticker` or `--cik` | `--statement`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `metrics` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `scores` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `company-report` | `--ticker` or `--cik` | `--form`, `--topic`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |

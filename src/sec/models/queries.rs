@@ -192,6 +192,14 @@ pub struct XbrlStatementQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct StatementStitchQuery {
+    pub cik: u64,
+    pub statement: String,
+    pub unit: Option<String>,
+    pub latest: usize,
+}
+
+#[derive(Debug, Clone)]
 pub struct CompanyReportQuery {
     pub cik: u64,
     pub form: Option<String>,

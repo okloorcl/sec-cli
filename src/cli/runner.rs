@@ -4,8 +4,8 @@ use clap_complete::generate;
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
     HealthScoreQuery, MetricsQuery, OutputMode, ParseQuery, ReportKind, ReportQuery,
-    Schedule13Query, SearchQuery, SecClient, SectionQuery, StatementQuery, ThirteenFQuery,
-    XbrlCalculationQuery, XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
+    Schedule13Query, SearchQuery, SecClient, SectionQuery, StatementQuery, StatementStitchQuery,
+    ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
     documents::read::{content_for_terminal, validate_doc_args},
     find_matches,
     llm::{LlmConfig, LlmProvider},
@@ -84,6 +84,19 @@ pub(crate) async fn run() -> Result<()> {
                     cik,
                     statement: args.statement,
                     form: statement_period_form(args.period),
+                    unit: args.unit,
+                    latest: args.latest,
+                })
+                .await?;
+            print_records(&records, output)?;
+        }
+        Command::Stitch(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let records = client
+                .stitched_statements(StatementStitchQuery {
+                    cik,
+                    statement: args.statement,
                     unit: args.unit,
                     latest: args.latest,
                 })

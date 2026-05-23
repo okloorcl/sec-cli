@@ -30,13 +30,14 @@ pub mod xbrl;
 
 pub use client::SecClient;
 pub use edgar::accession_text_url;
+pub use models::StitchedStatementRecord;
 pub use models::{
     CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery, EftsSearchQuery,
     EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
     FundDisclosureQuery, HealthScoreQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery,
     OutputMode, ParseQuery, ProspectusQuery, ProxyQuery, ReportQuery, Schedule13Query, SearchQuery,
-    SectionQuery, StatementQuery, ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery,
-    XbrlStatementQuery, XbrlTreeQuery,
+    SectionQuery, StatementQuery, StatementStitchQuery, ThirteenFQuery, XbrlCalculationQuery,
+    XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
 };
 pub use models::{DailyFilingRecord, EftsSearchRecord};
 pub use models::{

@@ -29,6 +29,7 @@ sec daily --date 2026-05-15 --form 8-K --limit 50 --pretty
 sec efts --query "supply chain risk" --form 10-K --from 2024-01-01 --to 2024-12-31 --limit 10 --pretty
 sec facts --ticker AAPL --concept revenue
 sec statements --ticker AAPL --statement income --period annual --latest 4
+sec stitch --ticker AAPL --statement income --latest 8 --pretty
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec scores --ticker AAPL --period annual --latest 1 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
@@ -216,7 +217,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | SEC submissions JSON | `filings` | 公司提交过哪些 filing、日期、accession、主文档名 | filing records |
 | SEC daily master index | `daily`、`monitor` | 全市场某日新增 filing feed：CIK、公司、form、提交日期、archive 文件名、accession、来源 URL | daily filing records |
 | SEC EDGAR Full-Text Search / EFTS | `efts`、`full-text`、`global-search` | 全市场全文搜索命中：分数、公司、CIK、form、日期、accession、document URL | EFTS search records |
-| SEC CompanyFacts JSON | `facts`、`statements`、`metrics`、`scores`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行、二次推导的利润率/增长率/回报率/流动性/杠杆，以及 Piotroski/Altman/Beneish 健康评分 | fact records、financial statement rows、financial metric records、health score records、Markdown financial report |
+| SEC CompanyFacts JSON | `facts`、`statements`、`stitch`、`metrics`、`scores`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行、去重拼接的 10-K/10-Q 时间序列、二次推导指标，以及 Piotroski/Altman/Beneish 健康评分 | fact records、financial statement rows、stitched statement rows、financial metric records、health score records、Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | filing HTML 内嵌的 `ix:nonFraction` / `ix:nonNumeric`、context、unit、scale、decimals、原始值 | Inline XBRL fact records |
 | XBRL linkbase 附件 | `xbrl-links`、`linkbase`、`xbrl-tree`、`xbrl-calc`、`xbrl-statement` | EX-101.PRE/CAL/DEF/LAB/SCH 关系：presentation arcs、calculation weights、definition arcs、标签、schema elements，以及挂载同一 accession CompanyFacts 数值后的报表行 | XBRL linkbase relationship records、presentation tree rows、calculation checks、rendered XBRL statement rows |
 | Filing HTML tables | `tables` | 主 HTML 文档里的表格行，例如薪酬表、分部表、注册证券表、债务表、合同表 | HTML table records |
@@ -253,6 +254,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | EFTS search hit | `efts`、`full-text`、`global-search` | `company`、`form`、`file_date`、`score`、`document` | `accession`、`source_url`、`document_url` |
 | Fact | `facts` | `concept`、`label`、`value`、`unit`、`fy`、`fp`、`filed` | `accession`、`source_url`、`fact_id` |
 | Financial statement row | `statements` | `statement`、`line_order`、`line_item`、`value`、`unit`、`fiscal_year`、`fiscal_period` | `accession`、`source_url`、`fact_id` |
+| Stitched statement row | `stitch`、`statement-stitch` | `statement`、`line_item`、`period_kind`、`form`、`value`、`duplicate_forms`、`source_count` | `accession`、`source_url`、`fact_id` |
 | Financial metric | `metrics` | `metric`、`category`、`value`、`display_value`、`period_end`、`calculation`、`components` | `source_urls`、component `accession`、component `fact_id` |
 | Financial health score | `scores` | `score_name`、`score`、`max_score`、`rating`、`period_end`、`signals` | `source_urls`、signal `calculation` |
 | Inline XBRL fact | `ixbrl` | `name`、`context_ref`、`unit_ref`、`scale`、`raw_value`、`numeric_value` | `accession`、`document_url`、`source_url` |
@@ -611,6 +613,18 @@ sec statements --cik 320193 --statement all --period annual --latest 1 --pretty
 - `all`：不过滤 filing form
 
 输出字段：`cik`、`company`、`statement`、`line_order`、`line_item`、`concept`、`taxonomy`、`label`、`value`、`numeric_value`、`unit`、`fiscal_year`、`fiscal_period`、`form`、`filed`、`start`、`end`、`frame`、`accession`、`source_url`、`fact_id`。
+
+### stitch
+
+从标准化 CompanyFacts 财报行里构建去重后的 10-K / 10-Q 时间序列。它会按报表行和 period end 分组，年度 FY 优先选择 10-K，季度保留 10-Q，并输出 `duplicate_forms` 和 `source_count`，让 Agent 能看见同一个期间是否存在多个来源事实。
+
+```bash
+sec stitch --ticker AAPL --statement income --latest 8 --pretty
+sec stitch --ticker AAPL --statement all --latest 6 --jsonl
+sec statement-stitch --cik 320193 --statement cashflow --latest 10 --output table
+```
+
+输出字段：`statement`、`line_item`、`period_kind`、`form`、`fiscal_period`、`value`、`numeric_value`、`duplicate_forms`、`source_count`、`accession`、`source_url`、`fact_id`。
 
 ### metrics
 
@@ -1011,6 +1025,7 @@ curl "http://127.0.0.1:8716/v1/daily?date=2026-05-15&form=8-K&limit=50"
 curl "http://127.0.0.1:8716/v1/efts?query=supply%20chain%20risk&form=10-K&from=2024-01-01&to=2024-12-31&limit=10"
 curl "http://127.0.0.1:8716/v1/facts?ticker=AAPL&concept=revenue&latest=3"
 curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=annual&latest=2"
+curl "http://127.0.0.1:8716/v1/stitch?ticker=AAPL&statement=income&latest=8"
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
 curl "http://127.0.0.1:8716/v1/scores?ticker=AAPL&period=annual&latest=1"
 curl "http://127.0.0.1:8716/v1/company-report?ticker=AAPL&form=10-K&topic=segment"
@@ -1035,6 +1050,7 @@ curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
 | `/v1/efts` | `sec efts` |
 | `/v1/facts` | `sec facts` |
 | `/v1/statements` | `sec statements` |
+| `/v1/stitch` | `sec stitch` |
 | `/v1/metrics` | `sec metrics` |
 | `/v1/scores` | `sec scores` |
 | `/v1/company-report` | `sec company-report` |
@@ -1071,6 +1087,7 @@ sec mcp
 | `sec_efts` | 等价于 `sec efts` SEC 全文搜索 |
 | `sec_facts` | 等价于 `sec facts` |
 | `sec_statements` | 等价于 `sec statements` |
+| `sec_stitch` | 等价于 `sec stitch` |
 | `sec_metrics` | 等价于 `sec metrics` |
 | `sec_scores` | 等价于 `sec scores` |
 | `sec_ixbrl` | 等价于 `sec ixbrl` |
@@ -1128,6 +1145,7 @@ MCP tool 参数示例：
 | `efts` / `full-text` / `global-search` | `--query` | `--ticker`、`--cik`、`--form`、`--from`、`--to`、`--limit`、`--jsonl`、`--pretty` |
 | `facts` | `--ticker` 或 `--cik`，`--concept` | `--form`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `statements` | `--ticker` 或 `--cik` | `--statement`、`--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
+| `stitch` / `statement-stitch` | `--ticker` 或 `--cik` | `--statement`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `metrics` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `scores` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `company-report` | `--ticker` 或 `--cik` | `--form`、`--topic`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |

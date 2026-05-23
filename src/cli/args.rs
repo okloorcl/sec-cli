@@ -2,8 +2,8 @@ use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use super::analysis_args::{
-    MetricsArgs, ScoresArgs, StatementsArgs, XbrlCalcArgs, XbrlLinkbaseArgs, XbrlStatementArgs,
-    XbrlTreeArgs,
+    MetricsArgs, ScoresArgs, StatementsArgs, StitchArgs, XbrlCalcArgs, XbrlLinkbaseArgs,
+    XbrlStatementArgs, XbrlTreeArgs,
 };
 use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs, ProxyArgs};
 use super::monitoring_args::{DailyArgs, EftsArgs, McpArgs, OutputArg, ServeArgs};
@@ -42,6 +42,9 @@ pub(crate) enum Command {
     Facts(FactsArgs),
     /// Build standardized financial statement rows from SEC CompanyFacts.
     Statements(StatementsArgs),
+    /// Stitch 10-K and 10-Q statement rows into a de-duplicated time series.
+    #[command(name = "stitch", aliases = ["statement-stitch", "statements-stitch"])]
+    Stitch(StitchArgs),
     /// Calculate source-backed financial ratios and growth metrics.
     Metrics(MetricsArgs),
     /// Calculate SEC-derived financial-health scores.

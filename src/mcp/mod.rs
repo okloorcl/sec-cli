@@ -14,7 +14,7 @@ use args::{
     eightk_exhibit_query, eightk_query, fact_query, filing_query, foreign_query, form4_query,
     fund_query, health_score_query, ixbrl_query, metrics_query, parse_query, prospectus_query,
     proxy_query, report_kind, report_query, schedule13_query, search_inputs, section_query,
-    statement_query, table_query, thirteenf_query,
+    statement_query, stitch_query, table_query, thirteenf_query,
 };
 use protocol::{RpcRequest, error_response, initialize_result, success_response};
 use schema::tools;
@@ -80,6 +80,11 @@ async fn call_tool(client: &SecClient, params: Value) -> Result<Value> {
         "sec_statements" => json!(
             client
                 .financial_statements(statement_query(client, &args).await?)
+                .await?
+        ),
+        "sec_stitch" => json!(
+            client
+                .stitched_statements(stitch_query(client, &args).await?)
                 .await?
         ),
         "sec_metrics" => json!(

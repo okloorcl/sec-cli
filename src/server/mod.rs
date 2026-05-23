@@ -20,7 +20,7 @@ use crate::sec::{
     CompanyReportQuery, DailyIndexQuery, DocumentQuery, EftsSearchQuery, EightKExhibitQuery,
     EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, FundDisclosureQuery, HealthScoreQuery,
     InlineXbrlQuery, MetricsQuery, ParseQuery, ProspectusQuery, ProxyQuery, Schedule13Query,
-    SecClient, SectionQuery, StatementQuery,
+    SecClient, SectionQuery, StatementQuery, StatementStitchQuery,
     daily::latest_sec_index_date,
     efts::{parse_forms, require_query},
     supported_parsers,
@@ -53,6 +53,7 @@ fn router() -> Router<AppState> {
         .route("/v1/efts", get(efts))
         .route("/v1/facts", get(facts))
         .route("/v1/statements", get(statements))
+        .route("/v1/stitch", get(stitch))
         .route("/v1/metrics", get(metrics))
         .route("/v1/scores", get(scores))
         .route("/v1/company-report", get(company_report))
@@ -172,6 +173,23 @@ async fn statements(
             form: period_form(params.period.as_deref()),
             unit: params.unit,
             latest: params.latest.unwrap_or(4),
+        })
+        .await?;
+    Ok(Json(json!(records)))
+}
+
+async fn stitch(
+    State(state): State<AppState>,
+    Query(params): Query<StatementsParams>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let cik = resolve_cik(&state.client, params.ticker.as_deref(), params.cik).await?;
+    let records = state
+        .client
+        .stitched_statements(StatementStitchQuery {
+            cik,
+            statement: params.statement.unwrap_or_else(|| "all".to_string()),
+            unit: params.unit,
+            latest: params.latest.unwrap_or(8),
         })
         .await?;
     Ok(Json(json!(records)))
