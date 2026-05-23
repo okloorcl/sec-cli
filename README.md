@@ -4,6 +4,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 
 [![Rust](https://img.shields.io/badge/Rust-2024-orange)](https://www.rust-lang.org/)
 [![CI](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml)
+[![Release](https://github.com/okloorcl/sec-cli/actions/workflows/release.yml/badge.svg)](https://github.com/okloorcl/sec-cli/actions/workflows/release.yml)
 [![SEC EDGAR](https://img.shields.io/badge/Data-SEC%20EDGAR-blue)](https://www.sec.gov/edgar)
 [![Output](https://img.shields.io/badge/Output-JSON%20%7C%20JSONL%20%7C%20Markdown-green)](#output-modes)
 [![Agent Ready](https://img.shields.io/badge/Agent-ready-111827)](#agent-workflows)
@@ -267,17 +268,48 @@ See `docs/ARCHITECTURE.md` for the longer-term architecture.
 
 ## Install
 
-From this repository:
+For normal use, download a prebuilt binary from the latest GitHub Release. You
+do not need Rust or Cargo unless you are developing sec-cli itself.
+
+Release page: <https://github.com/okloorcl/sec-cli/releases/latest>
+
+| Platform | Architecture | Release asset |
+| --- | --- | --- |
+| macOS | Apple Silicon / arm64 | `sec-cli-aarch64-apple-darwin.tar.gz` |
+| Windows | amd64 / x86_64 | `sec-cli-x86_64-pc-windows-msvc.zip` |
+| Linux | amd64 / x86_64 | `sec-cli-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux | amd32 / i686 | `sec-cli-i686-unknown-linux-gnu.tar.gz` |
+| Linux | arm64 / AArch64 | `sec-cli-aarch64-unknown-linux-gnu.tar.gz` |
+| Linux | arm32 / ARMv7 hard-float | `sec-cli-armv7-unknown-linux-gnueabihf.tar.gz` |
+
+macOS Apple Silicon:
 
 ```bash
-cargo install --path .
+curl -L -o sec-cli.tar.gz \
+  https://github.com/okloorcl/sec-cli/releases/latest/download/sec-cli-aarch64-apple-darwin.tar.gz
+tar -xzf sec-cli.tar.gz
+sudo mv sec-cli-aarch64-apple-darwin/sec /usr/local/bin/sec
+sec --help
 ```
 
-During development:
+Linux amd64:
 
 ```bash
-SEC_IDENTITY="Your Name your.email@example.com" \
-  cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 2 --pretty
+curl -L -o sec-cli.tar.gz \
+  https://github.com/okloorcl/sec-cli/releases/latest/download/sec-cli-x86_64-unknown-linux-gnu.tar.gz
+tar -xzf sec-cli.tar.gz
+sudo mv sec-cli-x86_64-unknown-linux-gnu/sec /usr/local/bin/sec
+sec --help
+```
+
+Windows PowerShell:
+
+```powershell
+Invoke-WebRequest `
+  -Uri https://github.com/okloorcl/sec-cli/releases/latest/download/sec-cli-x86_64-pc-windows-msvc.zip `
+  -OutFile sec-cli.zip
+Expand-Archive sec-cli.zip -DestinationPath .
+.\sec-cli-x86_64-pc-windows-msvc\sec.exe --help
 ```
 
 SEC requests must include a real identity:
@@ -292,9 +324,22 @@ You can also pass it per command:
 sec --identity "Your Name your.email@example.com" filings --ticker AAPL
 ```
 
-## CI Targets
+## Development
 
-GitHub Actions checks the project on every push and pull request:
+Use Cargo only when you are developing or testing the project locally:
+
+```bash
+cargo build
+cargo test
+
+SEC_IDENTITY="Your Name your.email@example.com" \
+  cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 2 --pretty
+```
+
+## CI And Release Targets
+
+GitHub Actions checks the project on every push and pull request. Pushing a
+`v*` tag builds and uploads release binaries for the same targets:
 
 | Platform | Architecture | Rust target | CI behavior |
 | --- | --- | --- | --- |

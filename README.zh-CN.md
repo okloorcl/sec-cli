@@ -4,6 +4,7 @@
 
 [![Rust](https://img.shields.io/badge/Rust-2024-orange)](https://www.rust-lang.org/)
 [![CI](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml)
+[![Release](https://github.com/okloorcl/sec-cli/actions/workflows/release.yml/badge.svg)](https://github.com/okloorcl/sec-cli/actions/workflows/release.yml)
 [![SEC EDGAR](https://img.shields.io/badge/Data-SEC%20EDGAR-blue)](https://www.sec.gov/edgar)
 [![Output](https://img.shields.io/badge/Output-JSON%20%7C%20JSONL%20%7C%20Markdown-green)](#输出模式)
 [![Agent Ready](https://img.shields.io/badge/Agent-ready-111827)](#agent-工作流)
@@ -254,15 +255,47 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 
 ## 安装
 
+普通使用直接下载 GitHub 最新 Release 里编译好的二进制，不需要安装 Rust，也不需要用 Cargo。
+
+Release 页面：<https://github.com/okloorcl/sec-cli/releases/latest>
+
+| 平台 | 架构 | Release 资产 |
+| --- | --- | --- |
+| macOS | Apple Silicon / arm64 | `sec-cli-aarch64-apple-darwin.tar.gz` |
+| Windows | amd64 / x86_64 | `sec-cli-x86_64-pc-windows-msvc.zip` |
+| Linux | amd64 / x86_64 | `sec-cli-x86_64-unknown-linux-gnu.tar.gz` |
+| Linux | amd32 / i686 | `sec-cli-i686-unknown-linux-gnu.tar.gz` |
+| Linux | arm64 / AArch64 | `sec-cli-aarch64-unknown-linux-gnu.tar.gz` |
+| Linux | arm32 / ARMv7 hard-float | `sec-cli-armv7-unknown-linux-gnueabihf.tar.gz` |
+
+macOS Apple Silicon：
+
 ```bash
-cargo install --path .
+curl -L -o sec-cli.tar.gz \
+  https://github.com/okloorcl/sec-cli/releases/latest/download/sec-cli-aarch64-apple-darwin.tar.gz
+tar -xzf sec-cli.tar.gz
+sudo mv sec-cli-aarch64-apple-darwin/sec /usr/local/bin/sec
+sec --help
 ```
 
-开发时：
+Linux amd64：
 
 ```bash
-SEC_IDENTITY="Your Name your.email@example.com" \
-  cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 2 --pretty
+curl -L -o sec-cli.tar.gz \
+  https://github.com/okloorcl/sec-cli/releases/latest/download/sec-cli-x86_64-unknown-linux-gnu.tar.gz
+tar -xzf sec-cli.tar.gz
+sudo mv sec-cli-x86_64-unknown-linux-gnu/sec /usr/local/bin/sec
+sec --help
+```
+
+Windows PowerShell：
+
+```powershell
+Invoke-WebRequest `
+  -Uri https://github.com/okloorcl/sec-cli/releases/latest/download/sec-cli-x86_64-pc-windows-msvc.zip `
+  -OutFile sec-cli.zip
+Expand-Archive sec-cli.zip -DestinationPath .
+.\sec-cli-x86_64-pc-windows-msvc\sec.exe --help
 ```
 
 SEC identity 是必需的，建议设置为真实姓名和邮箱：
@@ -277,9 +310,21 @@ export SEC_IDENTITY="Your Name your.email@example.com"
 sec --identity "Your Name your.email@example.com" filings --ticker AAPL
 ```
 
-## CI 支持平台
+## 开发
 
-GitHub Actions 会在每次 push 和 pull request 时检查项目：
+只有开发、调试、跑测试时才需要 Cargo：
+
+```bash
+cargo build
+cargo test
+
+SEC_IDENTITY="Your Name your.email@example.com" \
+  cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 2 --pretty
+```
+
+## CI 和 Release 支持平台
+
+GitHub Actions 会在每次 push 和 pull request 时检查项目。推送 `v*` tag 时，会为同一批 target 构建并上传 Release 二进制：
 
 | 平台 | 架构 | Rust target | CI 做什么 |
 | --- | --- | --- | --- |
