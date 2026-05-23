@@ -78,7 +78,7 @@ This is an early MVP. The first implementation focuses on:
 - Scanning SEC daily master indexes for all-market filing monitoring by date, form, company, and amendments
 - Searching SEC EDGAR Full-Text Search across the market with optional ticker/CIK, form, and date filters
 - Querying SEC CompanyFacts for source-backed XBRL facts
-- Building standardized 10-K/10-Q income statement, balance sheet, and cash flow rows from CompanyFacts
+- Building broader standardized 10-K/10-Q income statement, balance sheet, and cash flow rows from CompanyFacts
 - Calculating source-backed financial metrics such as growth, margins, free cash flow, ROA/ROE, current ratio, and leverage
 - Streaming Inline XBRL facts directly from primary filing HTML
 - Parsing XBRL presentation, calculation, definition, label, and schema linkbase attachments
@@ -651,9 +651,9 @@ sec statements --cik 320193 --statement all --period annual --latest 1 --pretty
 
 `--statement` accepts:
 
-- `income`: revenue, cost of revenue, gross profit, operating income, net income, EPS, shares
-- `balance`: cash, current assets, total assets, liabilities, equity
-- `cashflow`: operating cash flow, capex, investing cash flow, dividends, repurchases, financing cash flow
+- `income`: revenue, cost of revenue, gross profit, R&D, SG&A, operating income, interest, tax, net income, EPS, shares
+- `balance`: cash, securities, receivables, inventory, current assets, PP&E, goodwill, intangibles, leases, debt, liabilities, equity
+- `cashflow`: net income, D&A, stock compensation, working-capital changes, operating cash flow, capex, acquisitions, dividends, repurchases, debt issuance/repayment, cash change
 - `all`: income, balance, and cashflow together
 
 `--period` accepts:

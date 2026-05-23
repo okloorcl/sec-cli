@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 
 use crate::sec::{
     client::SecClient,
+    concepts,
     edgar::filings::matches_form,
     models::{FactQuery, FactRecord},
 };
@@ -122,35 +123,16 @@ fn concept_matches(
 ) -> bool {
     let concept_lc = concept.to_ascii_lowercase();
     if is_strict_alias(query) {
-        return known_concept_alias(query, &concept_lc);
+        return concepts::concept_matches_alias(query, &concept_lc);
     }
-    if concept_lc.contains(query) || known_concept_alias(query, &concept_lc) {
+    if concept_lc.contains(query) || concepts::concept_matches_alias(query, concept) {
         return true;
     }
     label.is_some_and(|value| value.to_ascii_lowercase().contains(query))
 }
 
 fn is_strict_alias(query: &str) -> bool {
-    matches!(
-        query,
-        "revenue" | "revenues" | "net income" | "netincome" | "assets" | "total assets" | "cash"
-    )
-}
-
-fn known_concept_alias(query: &str, concept: &str) -> bool {
-    match query {
-        "revenue" | "revenues" => matches!(
-            concept,
-            "revenues"
-                | "revenuefromcontractwithcustomerexcludingassessedtax"
-                | "salesrevenuenet"
-                | "salesrevenuegoodsnet"
-        ),
-        "net income" | "netincome" => concept == "netincomeloss",
-        "assets" | "total assets" => concept == "assets",
-        "cash" => concept == "cashandcashequivalentsatcarryingvalue",
-        _ => false,
-    }
+    concepts::aliases_for(query).is_some()
 }
 
 #[cfg(test)]
@@ -169,6 +151,12 @@ mod tests {
         assert!(!concept_matches(
             "cash",
             "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents",
+            None,
+            None
+        ));
+        assert!(concept_matches(
+            "capex",
+            "PaymentsToAcquireProductiveAssets",
             None,
             None
         ));

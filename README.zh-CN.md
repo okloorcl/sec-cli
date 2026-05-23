@@ -76,7 +76,7 @@ sec mcp
 - 扫描 SEC daily master index：按日期、form、公司名和修正版过滤全市场新增 filing
 - 调用 SEC EDGAR Full-Text Search / EFTS：按关键词、ticker/CIK、form、日期做全市场全文搜索
 - 查询 SEC CompanyFacts
-- 从 CompanyFacts 组装标准化 10-K/10-Q 三大表：利润表、资产负债表、现金流量表
+- 从 CompanyFacts 组装更宽的标准化 10-K/10-Q 三大表：利润表、资产负债表、现金流量表
 - 基于 SEC CompanyFacts 计算二次分析指标：增长率、利润率、自由现金流、ROA/ROE、流动比率、杠杆
 - 直接从 filing HTML 流式解析 Inline XBRL facts
 - 解析 XBRL presentation、calculation、definition、label 和 schema linkbase 附件
@@ -591,9 +591,9 @@ sec statements --cik 320193 --statement all --period annual --latest 1 --pretty
 
 `--statement`：
 
-- `income`：营收、收入成本、毛利、营业利润、净利润、EPS、股数
-- `balance`：现金、流动资产、总资产、负债、股东权益
-- `cashflow`：经营现金流、资本开支、投资现金流、分红、回购、融资现金流
+- `income`：营收、收入成本、毛利、研发、SG&A、营业利润、利息、税、净利润、EPS、股数
+- `balance`：现金、证券、应收、存货、流动资产、PP&E、商誉、无形资产、租赁、债务、负债、股东权益
+- `cashflow`：净利润、折旧摊销、股权激励、营运资本变化、经营现金流、资本开支、收购、分红、回购、债务发行/偿还、现金变化
 - `all`：一次输出利润表、资产负债表、现金流量表
 
 `--period`：

@@ -10,6 +10,7 @@ real commands or modules in the repository.
 - [x] SEC submissions JSON filing metadata.
 - [x] SEC CompanyFacts XBRL fact lookup.
 - [x] 10-K / 10-Q financial statements builder.
+- [x] Expanded standard concept alias catalog for broader statement rows and fact lookup aliases.
 - [x] 10-K / 10-Q company-report topic table parser.
 - [x] Source-backed financial metrics and secondary analysis from CompanyFacts.
 - [x] Financial trend Markdown report over SEC-derived metrics.
@@ -55,7 +56,7 @@ real commands or modules in the repository.
 - [ ] Presentation-tree financial statement rendering with filing fact values.
 - [ ] Standard taxonomy label fallback for US-GAAP/DEI/SRT concepts not defined in filing extension labels.
 - [ ] Calculation-linkbase validation for rendered statements.
-- [ ] Expanded standard concept mapping for 100+ financial statement concepts.
+- [ ] Expanded standard concept mapping toward 100+ financial statement concepts.
 - [ ] Financial metrics expansion toward 50+ ratios and financial-health scores.
 - [ ] Cross-form 10-K / 10-Q financial statement stitching.
 - [ ] Arrow / Parquet export layer.

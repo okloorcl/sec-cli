@@ -1,5 +1,6 @@
 pub mod client;
 pub mod company;
+pub mod concepts;
 pub mod daily;
 pub mod documents;
 pub mod edgar;
