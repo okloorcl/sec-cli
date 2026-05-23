@@ -5,8 +5,8 @@ use clap::Parser;
 use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery,
-    SearchQuery, SecClient, ThirteenFQuery, accession_text_url, find_matches, print_records,
-    supported_parsers,
+    SearchQuery, SecClient, SectionQuery, ThirteenFQuery, accession_text_url, find_matches,
+    print_records, supported_parsers,
 };
 
 use super::args::{Cli, Command};
@@ -82,6 +82,22 @@ pub(crate) async fn run() -> Result<()> {
                 ));
             }
             print_records(&matches, output)?;
+        }
+        Command::Section(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let records = client
+                .sections(SectionQuery {
+                    cik,
+                    form: Some(args.form),
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                    accession: args.accession,
+                    item: args.item,
+                    limit_bytes: args.limit_bytes,
+                })
+                .await?;
+            print_records(&records, output)?;
         }
         Command::Docs(args) => {
             let output = output_mode(args.jsonl, args.pretty);

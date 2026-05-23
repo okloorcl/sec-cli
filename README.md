@@ -6,6 +6,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 sec filings --ticker AAPL --form 10-K
 sec facts --ticker AAPL --concept revenue
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
+sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
 sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000
 sec form4 --ticker AAPL --latest 3
@@ -28,6 +29,7 @@ This is an early MVP. The first implementation focuses on:
 - Finding company filings from SEC submissions data
 - Querying SEC CompanyFacts for source-backed XBRL facts
 - Searching filing submission text with snippets
+- Extracting common 10-K/10-Q sections such as business, risk factors, and MD&A
 - Listing and reading individual SEC submission documents
 - Parsing Form 4 insider ownership transactions
 - Summarizing Form 4 reports, owners, signatures, footnotes, and net activity
@@ -149,6 +151,43 @@ sec search --ticker NVDA --form 10-K --query "export controls" --jsonl
 
 Search first tries an exact case-insensitive phrase match, then falls back to a
 token-window match so agent queries are more robust against SEC HTML markup.
+
+### section
+
+Extract common sections from the primary 10-K or 10-Q document. The extractor
+normalizes HTML/XBRL markup to text, locates item headings, chooses the largest
+matching body over table-of-contents hits, and returns source-backed JSON.
+
+```bash
+sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000 --pretty
+sec section --ticker MSFT --form 10-K --item mda --latest 1 --pretty
+sec section --cik 320193 --form 10-K --item 7 --jsonl
+```
+
+Supported item aliases include:
+
+- `business` / `1`
+- `risk-factors` / `1A`
+- `cybersecurity` / `1C`
+- `properties` / `2`
+- `legal-proceedings` / `3`
+- `mda` / `7`
+- `market-risk` / `7A`
+- `financial-statements` / `8`
+
+Each section includes:
+
+- `accession`
+- `item`
+- `title`
+- `start_offset`
+- `end_offset`
+- `byte_length`
+- `returned_bytes`
+- `truncated`
+- `document_url`
+- `source_url`
+- `content`
 
 ### docs
 

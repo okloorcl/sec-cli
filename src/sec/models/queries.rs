@@ -48,6 +48,17 @@ pub struct DocumentReadQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct SectionQuery {
+    pub cik: u64,
+    pub form: Option<String>,
+    pub latest: usize,
+    pub include_amends: bool,
+    pub accession: Option<String>,
+    pub item: String,
+    pub limit_bytes: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Form4Query {
     pub cik: u64,
     pub latest: usize,

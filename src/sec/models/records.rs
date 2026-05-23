@@ -92,6 +92,28 @@ pub struct DocumentContentRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct SectionRecord {
+    pub accession: String,
+    pub cik: u64,
+    pub company: String,
+    pub form: String,
+    pub filing_date: String,
+    pub item: String,
+    pub title: String,
+    pub start_offset: usize,
+    pub end_offset: usize,
+    pub byte_length: usize,
+    pub returned_bytes: usize,
+    pub truncated: bool,
+    pub document: Option<String>,
+    pub document_sequence: Option<String>,
+    pub document_description: Option<String>,
+    pub document_url: Option<String>,
+    pub source_url: String,
+    pub content: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct Form4TransactionRecord {
     pub accession: String,
     pub cik: u64,

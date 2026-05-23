@@ -47,8 +47,27 @@ pub fn plain_text(content: &str) -> String {
         .replace("&gt;", ">")
         .replace("&quot;", "\"")
         .replace("&#39;", "'");
+    let decoded = decode_numeric_entities(&decoded);
 
     decoded.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn decode_numeric_entities(value: &str) -> String {
+    Regex::new(r"&#(x[0-9a-fA-F]+|\d+);")
+        .expect("valid regex")
+        .replace_all(value, |caps: &regex::Captures| {
+            let raw = &caps[1];
+            let parsed = if let Some(hex) = raw.strip_prefix('x') {
+                u32::from_str_radix(hex, 16).ok()
+            } else {
+                raw.parse::<u32>().ok()
+            };
+            parsed
+                .and_then(char::from_u32)
+                .map(|ch| ch.to_string())
+                .unwrap_or_else(|| caps[0].to_string())
+        })
+        .into_owned()
 }
 
 fn select_filing<'a>(
@@ -184,8 +203,9 @@ mod tests {
 
     #[test]
     fn extracts_plain_text_from_html() {
-        let text = plain_text("<html><script>x()</script><body>A&nbsp;&amp; B</body></html>");
+        let text =
+            plain_text("<html><script>x()</script><body>A&nbsp;&amp; B &#8217;</body></html>");
 
-        assert_eq!(text, "A & B");
+        assert_eq!(text, "A & B \u{2019}");
     }
 }

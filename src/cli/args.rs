@@ -25,6 +25,8 @@ pub(crate) enum Command {
     Facts(FactsArgs),
     /// Search filing submission text and return source-backed snippets.
     Search(SearchArgs),
+    /// Extract a named 10-K/10-Q section from a primary filing document.
+    Section(SectionArgs),
     /// List documents and attachments inside SEC complete submissions.
     Docs(DocsArgs),
     /// Read one document from a complete SEC submission.
@@ -107,6 +109,30 @@ pub(crate) struct SearchArgs {
     pub(crate) include_amends: bool,
     #[arg(long, default_value_t = 220)]
     pub(crate) context: usize,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct SectionArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long, default_value = "10-K")]
+    pub(crate) form: String,
+    #[arg(long)]
+    pub(crate) item: String,
+    #[arg(long, default_value_t = 1)]
+    pub(crate) latest: usize,
+    #[arg(long)]
+    pub(crate) accession: Option<String>,
+    #[arg(long)]
+    pub(crate) include_amends: bool,
+    #[arg(long)]
+    pub(crate) limit_bytes: Option<usize>,
     #[arg(long)]
     pub(crate) jsonl: bool,
     #[arg(long)]
