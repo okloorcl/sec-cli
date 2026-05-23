@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
+use std::sync::LazyLock;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use regex::Regex;
 
 use crate::sec::{
@@ -96,9 +97,12 @@ pub fn parse_8k_events(
 }
 
 fn item_headings(text: &str) -> Result<Vec<ItemHeading>> {
-    let regex = Regex::new(r"(?i)\bitem\s+([1-9]\.\d{2})\b").context("invalid 8-K item regex")?;
+    static ITEM_RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(?i)\bitem\s+([1-9]\.\d{2})\b").expect("valid 8-K item regex")
+    });
+
     let mut headings = Vec::new();
-    for capture in regex.captures_iter(text) {
+    for capture in ITEM_RE.captures_iter(text) {
         let Some(full) = capture.get(0) else {
             continue;
         };
@@ -189,10 +193,14 @@ fn clean_heading_title(value: &str) -> String {
 }
 
 fn extract_inline_title(text: &str, start: usize) -> String {
+    static NEXT_ITEM_RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(?i)\bitem\s+[1-9]\.\d{2}\b").expect("valid 8-K next item regex")
+    });
+
     let rest = &text[start..text.len().min(start + 180)];
-    let next_item = Regex::new(r"(?i)\bitem\s+[1-9]\.\d{2}\b")
-        .ok()
-        .and_then(|regex| regex.find(rest).map(|m| m.start()))
+    let next_item = NEXT_ITEM_RE
+        .find(rest)
+        .map(|m| m.start())
         .unwrap_or(rest.len());
     let line_end = rest.find(['\n', '\r']).unwrap_or(rest.len());
     clean_heading_title(&rest[..next_item.min(line_end)])

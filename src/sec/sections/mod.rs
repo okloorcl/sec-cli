@@ -1,4 +1,6 @@
-use anyhow::{Context, Result};
+use std::sync::LazyLock;
+
+use anyhow::Result;
 use regex::Regex;
 
 use crate::sec::{
@@ -210,21 +212,33 @@ fn locate_section(text: &str, target: &SectionTarget) -> Result<Option<(usize, u
 }
 
 fn start_candidates(text: &str, target: &SectionTarget) -> Result<Vec<usize>> {
+    let occurrences = item_occurrences(text);
     let mut starts = Vec::new();
-    for alias in target.aliases {
-        let pattern = format!(
-            r"(?i)\bitem\s+{}\s*[\.\-:]*\s*{}",
-            regex::escape(target.item),
-            flexible_words(alias)
-        );
-        let regex = Regex::new(&pattern).context("invalid section start regex")?;
-        starts.extend(regex.find_iter(text).map(|m| m.start()));
+    for (idx, occurrence) in occurrences.iter().enumerate() {
+        if !same_item(&occurrence.item, target.item) {
+            continue;
+        }
+        let title_end = occurrences
+            .get(idx + 1)
+            .map(|next| next.start)
+            .unwrap_or(text.len());
+        let title = text[occurrence.end..title_end].trim();
+        if target
+            .aliases
+            .iter()
+            .any(|alias| title_matches(title, alias))
+        {
+            starts.push(occurrence.start);
+        }
     }
 
     if starts.is_empty() {
-        let pattern = format!(r"(?i)\bitem\s+{}\s*[\.\-:]", regex::escape(target.item));
-        let regex = Regex::new(&pattern).context("invalid item start regex")?;
-        starts.extend(regex.find_iter(text).map(|m| m.start()));
+        starts.extend(
+            occurrences
+                .iter()
+                .filter(|occurrence| same_item(&occurrence.item, target.item))
+                .map(|occurrence| occurrence.start),
+        );
     }
 
     starts.sort_unstable();
@@ -233,25 +247,58 @@ fn start_candidates(text: &str, target: &SectionTarget) -> Result<Vec<usize>> {
 }
 
 fn next_heading(text: &str, from: usize, target: &SectionTarget) -> Option<usize> {
-    target
-        .next_items
-        .iter()
-        .filter_map(|item| {
-            let pattern = format!(r"(?i)\bitem\s+{}\s*[\.\-:]", regex::escape(item));
-            Regex::new(&pattern)
-                .ok()
-                .and_then(|regex| regex.find(&text[from..]))
-                .map(|m| from + m.start())
+    item_occurrences(&text[from..])
+        .into_iter()
+        .filter(|occurrence| {
+            target
+                .next_items
+                .iter()
+                .any(|target_item| same_item(&occurrence.item, target_item))
         })
+        .map(|occurrence| from + occurrence.start)
         .min()
 }
 
-fn flexible_words(value: &str) -> String {
+#[derive(Debug)]
+struct ItemOccurrence {
+    item: String,
+    start: usize,
+    end: usize,
+}
+
+fn item_occurrences(text: &str) -> Vec<ItemOccurrence> {
+    static ITEM_NUMBER_RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(?i)\bitem\s+([0-9]+[a-z]?)\s*[\.\-:]").expect("valid section next item regex")
+    });
+
+    ITEM_NUMBER_RE
+        .captures_iter(text)
+        .filter_map(|capture| {
+            let item = capture.get(1)?.as_str().to_string();
+            let full = capture.get(0)?;
+            Some(ItemOccurrence {
+                item,
+                start: full.start(),
+                end: full.end(),
+            })
+        })
+        .collect()
+}
+
+fn title_matches(title: &str, alias: &str) -> bool {
+    normalize_heading(title).contains(&normalize_heading(alias))
+}
+
+fn same_item(left: &str, right: &str) -> bool {
+    normalize_heading(left) == normalize_heading(right)
+}
+
+fn normalize_heading(value: &str) -> String {
     value
-        .split_whitespace()
-        .map(regex::escape)
-        .collect::<Vec<_>>()
-        .join(r"\s+")
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 #[cfg(test)]

@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use regex::Regex;
 
 use super::models::{FilingRecord, SearchMatch, SearchQuery};
@@ -99,25 +101,31 @@ fn build_match(
             .unwrap_or_else(|| "complete-submission.txt".to_string()),
         section: infer_section(&text[..offset]),
         offset,
-        snippet: normalize_ws(&strip_tags(&text[start..end])),
+        snippet: normalize_ws(&strip_tags(
+            &text[start..end],
+            starts_inside_tag(text, start),
+        )),
         source_url: filing.text_url.clone(),
     }
 }
 
 fn infer_section(prefix: &str) -> Option<String> {
+    static SECTION_RE: LazyLock<Regex> = LazyLock::new(|| {
+        Regex::new(r"(?i)item\s+([0-9]+[a-z]?)\.?\s+([^\n<]{3,120})")
+            .expect("valid search section regex")
+    });
+
     let tail_start = prefix.len().saturating_sub(20_000);
     let tail = &prefix[tail_start..];
-    let re = Regex::new(r"(?i)item\s+([0-9]+[a-z]?)\.?\s+([^\n<]{3,120})").ok()?;
-    re.captures_iter(tail)
+    SECTION_RE
+        .captures_iter(tail)
         .last()
         .and_then(|caps| caps.get(0).map(|m| normalize_ws(m.as_str())))
 }
 
-fn strip_tags(value: &str) -> String {
+fn strip_tags(value: &str, starts_inside_tag: bool) -> String {
     let mut out = String::with_capacity(value.len());
-    let mut in_tag = value
-        .find('>')
-        .is_some_and(|gt| value.find('<').map_or(true, |lt| gt < lt));
+    let mut in_tag = starts_inside_tag;
 
     for ch in value.chars() {
         match ch {
@@ -131,6 +139,13 @@ fn strip_tags(value: &str) -> String {
         }
     }
     out
+}
+
+fn starts_inside_tag(full_text: &str, start: usize) -> bool {
+    let prefix = &full_text[..start];
+    let last_open = prefix.rfind('<');
+    let last_close = prefix.rfind('>');
+    last_open.is_some_and(|open| last_close.is_none_or(|close| open > close))
 }
 
 fn normalize_ws(value: &str) -> String {

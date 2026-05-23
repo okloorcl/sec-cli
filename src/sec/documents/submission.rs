@@ -83,16 +83,16 @@ impl SecClient {
 }
 
 pub fn parse_documents(text: &str) -> Vec<SubmissionDocument> {
-    let lower = text.to_ascii_lowercase();
     let mut docs = Vec::new();
     let mut cursor = 0;
+    const OPEN: &str = "<document>";
+    const CLOSE: &str = "</document>";
 
-    while let Some(start_rel) = lower[cursor..].find("<document>") {
-        let start = cursor + start_rel + "<document>".len();
-        let Some(end_rel) = lower[start..].find("</document>") else {
+    while let Some(open_start) = find_ascii_case_insensitive(text, OPEN, cursor) {
+        let start = open_start + OPEN.len();
+        let Some(end) = find_ascii_case_insensitive(text, CLOSE, start) else {
             break;
         };
-        let end = start + end_rel;
         let raw = &text[start..end];
         let content = extract_tag(raw, "TEXT").unwrap_or(raw).trim().to_string();
 
@@ -104,16 +104,15 @@ pub fn parse_documents(text: &str) -> Vec<SubmissionDocument> {
             content,
         });
 
-        cursor = end + "</document>".len();
+        cursor = end + CLOSE.len();
     }
 
     docs
 }
 
 fn extract_metadata(raw: &str, tag: &str) -> Option<String> {
-    let lower = raw.to_ascii_lowercase();
-    let needle = format!("<{}>", tag.to_ascii_lowercase());
-    let start = lower.find(&needle)? + needle.len();
+    let needle = format!("<{tag}>");
+    let start = find_ascii_case_insensitive(raw, &needle, 0)? + needle.len();
     let rest = &raw[start..];
     let value = rest
         .lines()
@@ -127,10 +126,21 @@ fn extract_metadata(raw: &str, tag: &str) -> Option<String> {
 }
 
 fn extract_tag<'a>(raw: &'a str, tag: &str) -> Option<&'a str> {
-    let lower = raw.to_ascii_lowercase();
-    let open = format!("<{}>", tag.to_ascii_lowercase());
-    let close = format!("</{}>", tag.to_ascii_lowercase());
-    let start = lower.find(&open)? + open.len();
-    let end = lower[start..].find(&close)? + start;
+    let open = format!("<{tag}>");
+    let close = format!("</{tag}>");
+    let start = find_ascii_case_insensitive(raw, &open, 0)? + open.len();
+    let end = find_ascii_case_insensitive(raw, &close, start)?;
     Some(&raw[start..end])
+}
+
+fn find_ascii_case_insensitive(haystack: &str, needle: &str, from: usize) -> Option<usize> {
+    let haystack = haystack.as_bytes();
+    let needle = needle.as_bytes();
+    if needle.is_empty() || from > haystack.len() || needle.len() > haystack.len() {
+        return None;
+    }
+    haystack[from..]
+        .windows(needle.len())
+        .position(|window| window.eq_ignore_ascii_case(needle))
+        .map(|pos| from + pos)
 }
