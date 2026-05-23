@@ -14,7 +14,7 @@
 | --- | --- |
 | 高管/董事交易 | Form 4 owner、职位、交易代码、股数、价格、金额、脚注、签名 |
 | 机构持仓 | 13F 持仓、组合摘要、Top holdings、季度变化 |
-| 公司披露 | 8-K 事件、10-K/10-Q 风险因素、MD&A、全文搜索、精确来源片段 |
+| 公司披露 | 8-K 事件、10-K/10-Q 风险因素、MD&A、20-F/6-K/40-F 外国发行人披露、全文搜索 |
 | 资本市场 | S-1/F-1/424B 招股书条款、IPO 信号、募资用途、风险、承销商 |
 | Agent 接口 | 稳定 JSON/JSONL、source URL、accession、document 元数据 |
 
@@ -26,6 +26,7 @@ sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExc
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
 sec proxy --ticker AAPL --latest 1 --pretty
 sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty
+sec foreign --ticker TSM --form 20-F --latest 1 --pretty
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
@@ -59,6 +60,7 @@ sec forms --pretty
 - 从 filing 主 HTML 抽取表格
 - 解析 DEF 14A 股东大会委托书：会议、投票事项、董事候选人、审计师、高管薪酬表
 - 解析 S-1/F-1/424B 招股书和发行说明书：证券类型、ticker/交易所、价格区间、募资用途、风险、承销商、关键表格
+- 解析 20-F/6-K/40-F 外国发行人披露：年度报告、当前报告、交易所/代码、审计师、事件信号、关键章节摘要
 - 搜索 filing 原文并返回 snippet
 - 抽取 10-K/10-Q 常用 section：Business、Risk Factors、MD&A 等
 - 生成 Markdown 专业汇报：insider、portfolio、risk
@@ -89,6 +91,7 @@ sec forms --pretty
 | filing 里有哪些 HTML 表格？ | `sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty` |
 | 最新 proxy statement 里有哪些投票事项和高管薪酬？ | `sec proxy --ticker AAPL --latest 1 --pretty` |
 | IPO 招股书关键条款是什么？ | `sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty` |
+| 外国发行人最新年报/当前报告披露了什么？ | `sec foreign --ticker TSM --form 20-F --latest 1 --pretty` |
 | 哪些 5% 大股东提交了 13D/13G？ | `sec 13d --ticker TSLA --form 13g --include-amends --pretty` |
 | Berkshire 最新 13F 持仓是什么？ | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | 最近两期 13F 哪些仓位变化最大？ | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
@@ -115,6 +118,7 @@ sec forms --pretty
 - `8k`
 - `proxy`
 - `prospectus`
+- `foreign`
 - `parse`
 - `report --kind risk`
 - `report --kind insider`
@@ -170,6 +174,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | Filing HTML tables | `tables` | 主 HTML 文档里的表格行，例如薪酬表、分部表、注册证券表、债务表、合同表 | HTML table records |
 | DEF 14A proxy statement 主文档 | `proxy`、`parse --form "DEF 14A"` | 股东大会日期/地点、投票事项、董事会建议、董事候选人、审计师、NEO、高管薪酬表 | proxy statement records |
 | S-1/F-1/424B prospectus 主文档 | `prospectus`、`parse --form "S-1"` | 发行证券、IPO/招股书类型、ticker/交易所、价格区间、发行股数、募资用途、承销商、审计师、风险/业务/摊薄摘要 | prospectus records |
+| 20-F/6-K/40-F foreign issuer 主文档 | `foreign`、`parse --form "20-F"` | 外国私营发行人年报/当前报告、交易所、股票代码、审计师、事件信号、风险/业务/经营回顾/内控/财报摘要 | foreign issuer records |
 | SEC complete submission text / archive documents | `search`、`section`、`docs`、`doc` | 原始 filing 文本、HTML/XML 附件、exhibit、可引用片段 | snippet、section、document records |
 | Form 3/4/5 XML ownership report | `form4`、`form4-summary`、`report --kind insider` | 内部人、职位、交易代码、股数、价格、金额、脚注、签名 | transaction records、ownership report records |
 | Form 8-K primary document | `8k` | 当前报告事件 item，例如 2.02 业绩、5.02 高管变化、8.01 其他事件、9.01 附件 | 8-K event records |
@@ -199,6 +204,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | HTML table | `tables` | `title_hint`、`row_count`、`column_count`、`headers`、`rows`、`truncated` | `accession`、`document_url`、`source_url` |
 | Proxy statement | `proxy`、`parse --form "DEF 14A"` | `meeting_date`、`proposals`、`director_nominees`、`auditor`、`named_executive_officers`、`summary_compensation_table` | `accession`、`document_url`、`source_url` |
 | Prospectus | `prospectus`、`parse --form "S-1"` | `securities_offered`、`proposed_ticker`、`exchange`、`price_range`、`shares_offered`、`underwriters`、`risk_factors` | `accession`、`document_url`、`source_url` |
+| Foreign issuer | `foreign`、`parse --form "20-F"` | `report_type`、`exchange`、`ticker_or_symbol`、`auditor`、`event_signals`、`risk_factors`、`operating_review` | `accession`、`document_url`、`source_url` |
 | Search snippet | `search` | `query`、`snippet`、`offset`、`form`、`filing_date` | `accession`、`source_url`、`document`、`section` |
 | Section | `section` | `item`、`title`、`content`、`truncated` | `accession`、`document_url`、`source_url` |
 | Document | `docs`、`doc` | `filename`、`document_type`、`description`、`content_type`、`content` | `accession`、`document_url`、`source_url` |
@@ -371,6 +377,7 @@ cargo run --bin sec -- statements --ticker AAPL --statement income --period annu
 cargo run --bin sec -- statements --ticker AAPL --statement cashflow --period quarterly --latest 4 --jsonl
 cargo run --bin sec -- ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --latest 1 --limit 3 --pretty
 cargo run --bin sec -- tables --ticker AAPL --form 10-K --latest 1 --limit-tables 3 --limit-rows 5 --pretty
+cargo run --bin sec -- foreign --ticker TSM --form 20-F --latest 1 --limit-bytes 800 --pretty
 cargo run --bin sec -- form4-summary --ticker AAPL --latest 2 --pretty
 cargo run --bin sec -- 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 cargo run --bin sec -- 13d --ticker TSLA --form 13g --latest 2 --include-amends --pretty
@@ -502,6 +509,23 @@ sec parse --ticker RDDT --form "424B4" --latest 1 --pretty
 `--form` 支持：`all`、`S-1`、`S-1/A`、`F-1`、`F-1/A`、`424B`、`424B1` 到 `424B5`，以及 `424B7`。想看 S-1 修正版时加 `--include-amends`。
 
 输出字段：`prospectus_type`、`is_ipo_related`、`securities_offered`、`proposed_ticker`、`exchange`、`price_range`、`shares_offered`、`offering_amount`、`underwriters`、`auditor`、`use_of_proceeds`、`risk_factors`、`business`、`dilution`、`tables`、`document_url`、`source_url`。
+
+### foreign
+
+解析 20-F、6-K、40-F 外国发行人披露。这个命令适合 ADR 和外国私营发行人，例如 TSM、BABA、ASML、SHOP、SONY。它会抽取报告类型、交易所/代码线索、审计师、当前报告事件信号，以及 Risk Factors、Business、Operating Review、Controls、Financial Statements 等关键章节。
+
+```bash
+sec foreign --ticker TSM --form 20-F --latest 1 --pretty
+sec foreign --ticker BABA --form 6-K --latest 3 --limit-bytes 800 --pretty
+sec foreign --ticker SHOP --form 40-F --latest 1 --pretty
+sec foreign --cik 1046179 --form all --latest 5 --include-amends --jsonl
+sec parse --ticker TSM --form "20-F" --latest 1 --pretty
+sec parse --ticker BABA --form "6-K" --latest 1 --pretty
+```
+
+`--form` 支持：`all`、`20-F`、`20-F/A`、`6-K`、`6-K/A`、`40-F`、`40-F/A`。如果要看修正版，加 `--include-amends`。
+
+输出字段：`report_type`、`is_amendment`、`exchange`、`ticker_or_symbol`、`auditor`、`event_signals`、`risk_factors`、`business`、`operating_review`、`controls`、`financial_statements`、`document_url`、`source_url`。
 
 ### search
 
@@ -692,6 +716,7 @@ sec forms --pretty
 | `tables` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `proxy` | `--ticker` 或 `--cik` | `--latest`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `prospectus` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-bytes`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
+| `foreign` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
 | `search` | `--ticker` 或 `--cik`，`--query` | `--form`、`--latest`、`--context`、`--include-amends`、`--jsonl`、`--pretty` |
 | `section` | `--ticker` 或 `--cik`，`--item` | `--form`、`--latest`、`--accession`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
 | `report` | `--ticker`、`--cik`、`--manager` 或 `--investor`，`--kind` | `--latest`、`--limit`、`--limit-bytes`、`--include-amends` |
@@ -724,6 +749,7 @@ sec 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 sec ixbrl --ticker AAPL --form 10-K --concept NetIncomeLoss --limit 5 --jsonl
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty
 sec 13d --ticker TSLA --form 13g --latest 2 --include-amends --pretty
+sec foreign --ticker TSM --form 20-F --latest 1 --pretty
 sec 13f-diff --cik 1067983 --limit 20 --jsonl
 sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty

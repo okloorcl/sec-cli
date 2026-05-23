@@ -8,6 +8,7 @@ pub enum ParserKind {
     Schedule13,
     Proxy,
     Prospectus,
+    ForeignIssuer,
     ThirteenF,
 }
 
@@ -52,6 +53,12 @@ const PARSERS: &[ParserSpec] = &[
             "424B7",
         ],
         record_kind: "prospectus",
+    },
+    ParserSpec {
+        kind: ParserKind::ForeignIssuer,
+        canonical_form: "20-F",
+        forms: &["20-F", "20-F/A", "6-K", "6-K/A", "40-F", "40-F/A"],
+        record_kind: "foreign_issuer",
     },
     ParserSpec {
         kind: ParserKind::ThirteenF,

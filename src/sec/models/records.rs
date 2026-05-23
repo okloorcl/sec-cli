@@ -1,7 +1,9 @@
 use serde::Serialize;
 use serde_json::Value;
 
-use super::{prospectus::ProspectusRecord, proxy::ProxyStatementRecord};
+use super::{
+    foreign::ForeignIssuerRecord, prospectus::ProspectusRecord, proxy::ProxyStatementRecord,
+};
 
 #[derive(Debug, Serialize, Clone)]
 pub struct FilingRecord {
@@ -467,5 +469,6 @@ pub enum ParsedRecord {
     InlineXbrlFact(InlineXbrlFactRecord),
     ProxyStatement(ProxyStatementRecord),
     Prospectus(ProspectusRecord),
+    ForeignIssuer(ForeignIssuerRecord),
     ThirteenfHolding(ThirteenFHoldingRecord),
 }

@@ -3,8 +3,8 @@ use anyhow::{Result, anyhow};
 use super::{
     client::SecClient,
     models::{
-        EightKQuery, Form4Query, ParseQuery, ParsedRecord, ProspectusQuery, ProxyQuery,
-        Schedule13Query, ThirteenFQuery,
+        EightKQuery, ForeignIssuerQuery, Form4Query, ParseQuery, ParsedRecord, ProspectusQuery,
+        ProxyQuery, Schedule13Query, ThirteenFQuery,
     },
     registry::{ParserKind, parser_for_form},
 };
@@ -73,6 +73,18 @@ impl SecClient {
                 .into_iter()
                 .map(ParsedRecord::Prospectus)
                 .collect(),
+            ParserKind::ForeignIssuer => self
+                .foreign_issuer_reports(ForeignIssuerQuery {
+                    cik: query.cik,
+                    form: Some(query.form.clone()),
+                    latest: query.latest,
+                    include_amends: query.include_amends,
+                    limit_bytes: None,
+                })
+                .await?
+                .into_iter()
+                .map(ParsedRecord::ForeignIssuer)
+                .collect(),
             ParserKind::ThirteenF => self
                 .thirteenf_holdings(ThirteenFQuery {
                     cik: query.cik,
@@ -119,6 +131,14 @@ mod tests {
         assert_eq!(
             parser_kind_for_form("424B").unwrap(),
             ParserKind::Prospectus
+        );
+        assert_eq!(
+            parser_kind_for_form("20-F").unwrap(),
+            ParserKind::ForeignIssuer
+        );
+        assert_eq!(
+            parser_kind_for_form("6-K").unwrap(),
+            ParserKind::ForeignIssuer
         );
         assert_eq!(
             parser_kind_for_form("13F-HR").unwrap(),

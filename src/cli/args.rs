@@ -1,6 +1,8 @@
 use chrono::NaiveDate;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
+use super::disclosure_args::{ForeignArgs, ProspectusArgs};
+
 #[derive(Parser, Debug)]
 #[command(name = "sec")]
 #[command(bin_name = "sec")]
@@ -33,6 +35,8 @@ pub(crate) enum Command {
     Proxy(ProxyArgs),
     /// Parse S-1/F-1/424B registration statements and prospectuses.
     Prospectus(ProspectusArgs),
+    /// Parse 20-F/6-K/40-F foreign issuer disclosures.
+    Foreign(ForeignArgs),
     /// Search filing submission text and return source-backed snippets.
     Search(SearchArgs),
     /// Extract a named 10-K/10-Q section from a primary filing document.
@@ -467,30 +471,6 @@ pub(crate) struct ParseArgs {
 
 #[derive(Args, Debug)]
 pub(crate) struct OutputArgs {
-    #[arg(long)]
-    pub(crate) jsonl: bool,
-    #[arg(long)]
-    pub(crate) pretty: bool,
-}
-
-#[derive(Args, Debug)]
-pub(crate) struct ProspectusArgs {
-    #[arg(long, conflicts_with = "cik")]
-    pub(crate) ticker: Option<String>,
-    #[arg(long)]
-    pub(crate) cik: Option<u64>,
-    #[arg(long, default_value = "all")]
-    pub(crate) form: String,
-    #[arg(long, default_value_t = 1)]
-    pub(crate) latest: usize,
-    #[arg(long)]
-    pub(crate) include_amends: bool,
-    #[arg(long, default_value_t = 1200)]
-    pub(crate) limit_bytes: usize,
-    #[arg(long, default_value_t = 8)]
-    pub(crate) limit_tables: usize,
-    #[arg(long, default_value_t = 8)]
-    pub(crate) limit_rows: usize,
     #[arg(long)]
     pub(crate) jsonl: bool,
     #[arg(long)]

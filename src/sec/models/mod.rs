@@ -1,15 +1,18 @@
+pub mod foreign;
 pub mod prospectus;
 pub mod proxy;
 pub mod queries;
 pub mod records;
 pub mod tables;
 
+pub use foreign::{ForeignExcerptRecord, ForeignIssuerRecord};
 pub use prospectus::{ProspectusExcerptRecord, ProspectusRecord, ProspectusTableRecord};
 pub use proxy::{ProxyProposalRecord, ProxyStatementRecord, ProxyTableRecord};
 pub use queries::{
-    DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
-    HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery, ProspectusQuery, ProxyQuery,
-    ReportQuery, Schedule13Query, SearchQuery, SectionQuery, StatementQuery, ThirteenFQuery,
+    DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery,
+    Form4Query, HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery, ProspectusQuery,
+    ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery, StatementQuery,
+    ThirteenFQuery,
 };
 pub use records::{
     DocumentContentRecord, DocumentRecord, EightKEventRecord, FactRecord, FilingRecord,

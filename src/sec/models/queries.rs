@@ -133,6 +133,15 @@ pub struct ProspectusQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct ForeignIssuerQuery {
+    pub cik: u64,
+    pub form: Option<String>,
+    pub latest: usize,
+    pub include_amends: bool,
+    pub limit_bytes: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
 pub struct StatementQuery {
     pub cik: u64,
     pub statement: String,
