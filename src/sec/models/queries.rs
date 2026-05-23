@@ -122,6 +122,17 @@ pub struct ProxyQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct ProspectusQuery {
+    pub cik: u64,
+    pub form: Option<String>,
+    pub latest: usize,
+    pub include_amends: bool,
+    pub limit_bytes: Option<usize>,
+    pub limit_tables: Option<usize>,
+    pub limit_rows: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
 pub struct StatementQuery {
     pub cik: u64,
     pub statement: String,

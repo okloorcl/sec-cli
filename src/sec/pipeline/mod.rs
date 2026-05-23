@@ -3,8 +3,8 @@ use anyhow::{Result, anyhow};
 use super::{
     client::SecClient,
     models::{
-        EightKQuery, Form4Query, ParseQuery, ParsedRecord, ProxyQuery, Schedule13Query,
-        ThirteenFQuery,
+        EightKQuery, Form4Query, ParseQuery, ParsedRecord, ProspectusQuery, ProxyQuery,
+        Schedule13Query, ThirteenFQuery,
     },
     registry::{ParserKind, parser_for_form},
 };
@@ -59,6 +59,20 @@ impl SecClient {
                 .into_iter()
                 .map(ParsedRecord::ProxyStatement)
                 .collect(),
+            ParserKind::Prospectus => self
+                .prospectuses(ProspectusQuery {
+                    cik: query.cik,
+                    form: Some(query.form.clone()),
+                    latest: query.latest,
+                    include_amends: query.include_amends,
+                    limit_bytes: None,
+                    limit_tables: None,
+                    limit_rows: None,
+                })
+                .await?
+                .into_iter()
+                .map(ParsedRecord::Prospectus)
+                .collect(),
             ParserKind::ThirteenF => self
                 .thirteenf_holdings(ThirteenFQuery {
                     cik: query.cik,
@@ -97,6 +111,15 @@ mod tests {
             ParserKind::Schedule13
         );
         assert_eq!(parser_kind_for_form("DEF 14A").unwrap(), ParserKind::Proxy);
+        assert_eq!(parser_kind_for_form("S-1").unwrap(), ParserKind::Prospectus);
+        assert_eq!(
+            parser_kind_for_form("424B4").unwrap(),
+            ParserKind::Prospectus
+        );
+        assert_eq!(
+            parser_kind_for_form("424B").unwrap(),
+            ParserKind::Prospectus
+        );
         assert_eq!(
             parser_kind_for_form("13F-HR").unwrap(),
             ParserKind::ThirteenF
@@ -105,6 +128,6 @@ mod tests {
 
     #[test]
     fn rejects_unsupported_forms() {
-        assert!(parser_kind_for_form("S-1").is_err());
+        assert!(parser_kind_for_form("10-K").is_err());
     }
 }

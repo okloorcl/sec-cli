@@ -15,6 +15,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 | Insider activity | Form 4 owner, role, transaction code, shares, price, value, footnotes, signatures |
 | Institutional holdings | 13F holdings, portfolio summary, top positions, quarter-over-quarter changes |
 | Company disclosure | 8-K events, 10-K/10-Q risk factors, MD&A, filing search, exact source snippets |
+| Capital markets | S-1/F-1/424B prospectus terms, IPO signals, proceeds, risks, underwriters |
 | Agent interface | Stable JSON/JSONL, LLM name resolution, source URLs, accession numbers |
 
 ```bash
@@ -24,6 +25,7 @@ sec statements --ticker AAPL --statement income --period annual --latest 4
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10
 sec proxy --ticker AAPL --latest 1 --pretty
+sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
@@ -58,6 +60,7 @@ This is an early MVP. The first implementation focuses on:
 - Streaming Inline XBRL facts directly from primary filing HTML
 - Extracting HTML tables from filing primary documents
 - Parsing DEF 14A proxy statements for meeting details, voting proposals, directors, auditors, and executive compensation tables
+- Parsing S-1/F-1/424B prospectuses for securities offered, ticker/exchange, price range, proceeds, risks, underwriters, and selected offering tables
 - Searching filing submission text with snippets
 - Extracting common 10-K/10-Q sections such as business, risk factors, and MD&A
 - Generating source-backed Markdown reports for insider activity, 13F portfolios, and risk review
@@ -92,6 +95,7 @@ These are useful, source-backed questions that work today:
 | What Inline XBRL facts are embedded in the filing HTML? | `sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax --pretty` |
 | What tables are embedded in a filing? | `sec tables --ticker AAPL --form 10-K --limit-tables 5 --limit-rows 10 --pretty` |
 | What is in the latest proxy statement? | `sec proxy --ticker AAPL --latest 1 --pretty` |
+| What are the key terms in an IPO prospectus? | `sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty` |
 | Which 5% beneficial owners recently filed 13D/13G? | `sec 13d --ticker TSLA --form 13g --include-amends --pretty` |
 | What is Berkshire Hathaway's latest 13F portfolio? | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | What changed between the latest two 13F filings? | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
@@ -116,6 +120,8 @@ Company-disclosure commands use `--ticker` or `--cik`:
 - `form4`
 - `form4-summary`
 - `8k`
+- `proxy`
+- `prospectus`
 - `parse`
 - `report --kind risk`
 - `report --kind insider`
@@ -171,6 +177,7 @@ Practical rule:
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
 | DEF 14A proxy statement primary document | `proxy`, `parse --form "DEF 14A"` | Annual meeting date/site, voting proposals, board recommendations, director nominees, auditor, named executive officers, summary compensation table | proxy statement records |
+| S-1/F-1/424B prospectus primary document | `prospectus`, `parse --form "S-1"` | Securities offered, IPO/prospectus type, ticker/exchange, price range, shares, proceeds, underwriters, auditor, risk/business/proceeds excerpts | prospectus records |
 | SEC complete submission text and archive documents | `search`, `section`, `docs`, `doc` | Original filing text, HTML/XML attachments, exhibits, source snippets | snippet, section, document records |
 | Form 3/4/5 XML ownership reports | `form4`, `form4-summary`, `report --kind insider` | Insider owners, roles, transaction codes, shares, prices, footnotes, signatures | transaction and ownership-report records |
 | Form 8-K primary document | `8k` | Current-report event items such as 2.02 earnings, 5.02 management changes, 8.01 other events, 9.01 exhibits | 8-K event records |
@@ -194,6 +201,7 @@ Output record cheat sheet:
 | Inline XBRL fact | `ixbrl` | `name`, `context_ref`, `unit_ref`, `scale`, `raw_value`, `numeric_value` | `accession`, `document_url`, `source_url` |
 | HTML table | `tables` | `title_hint`, `row_count`, `column_count`, `headers`, `rows`, `truncated` | `accession`, `document_url`, `source_url` |
 | Proxy statement | `proxy`, `parse --form "DEF 14A"` | `meeting_date`, `proposals`, `director_nominees`, `auditor`, `named_executive_officers`, `summary_compensation_table` | `accession`, `document_url`, `source_url` |
+| Prospectus | `prospectus`, `parse --form "S-1"` | `securities_offered`, `proposed_ticker`, `exchange`, `price_range`, `shares_offered`, `underwriters`, `risk_factors` | `accession`, `document_url`, `source_url` |
 | Search snippet | `search` | `query`, `snippet`, `offset`, `form`, `filing_date` | `accession`, `source_url`, `document`, `section` |
 | Section | `section` | `item`, `title`, `content`, `truncated` | `accession`, `document_url`, `source_url` |
 | Document | `docs`, `doc` | `filename`, `document_type`, `description`, `content_type`, `content` | `accession`, `document_url`, `source_url` |
@@ -603,6 +611,44 @@ Each proxy record includes:
 - `auditor`
 - `named_executive_officers`
 - `summary_compensation_table`
+- `document_url`
+- `source_url`
+
+### prospectus
+
+Parse S-1, F-1, and 424B prospectus filings. This command extracts capital
+markets signals that are useful for IPO and offering analysis: offered
+securities, IPO/prospectus type, proposed ticker, exchange, price range, shares,
+offering amount, underwriters, auditor, selected tables, and source-backed
+excerpts for use of proceeds, risk factors, business, and dilution.
+
+```bash
+sec prospectus --ticker RDDT --form S-1 --include-amends --latest 1 --pretty
+sec prospectus --cik 1713445 --form all --latest 3 --limit-bytes 800 --limit-tables 5 --pretty
+sec parse --ticker RDDT --form "424B4" --latest 1 --pretty
+```
+
+`--form` accepts `all`, `S-1`, `S-1/A`, `F-1`, `F-1/A`, `424B`, `424B1`
+through `424B5`, plus `424B7`. Use `--include-amends` when you want amended
+registration statements such as `S-1/A`.
+
+Each prospectus record includes:
+
+- `prospectus_type`
+- `is_ipo_related`
+- `securities_offered`
+- `proposed_ticker`
+- `exchange`
+- `price_range`
+- `shares_offered`
+- `offering_amount`
+- `underwriters`
+- `auditor`
+- `use_of_proceeds`
+- `risk_factors`
+- `business`
+- `dilution`
+- `tables`
 - `document_url`
 - `source_url`
 
@@ -1077,6 +1123,7 @@ Command options:
 | `ixbrl` | `--ticker` or `--cik` | `--form`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `tables` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `proxy` | `--ticker` or `--cik` | `--latest`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
+| `prospectus` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit-bytes`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `search` | `--ticker` or `--cik`, `--query` | `--form`, `--latest`, `--context`, `--include-amends`, `--jsonl`, `--pretty` |
 | `section` | `--ticker` or `--cik`, `--item` | `--form`, `--latest`, `--accession`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
 | `report` | `--ticker`, `--cik`, `--manager`, or `--investor`; `--kind` | `--latest`, `--limit`, `--limit-bytes`, `--include-amends` |

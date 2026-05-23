@@ -7,6 +7,7 @@ pub enum ParserKind {
     EightK,
     Schedule13,
     Proxy,
+    Prospectus,
     ThirteenF,
 }
 
@@ -42,6 +43,15 @@ const PARSERS: &[ParserSpec] = &[
         canonical_form: "DEF 14A",
         forms: &["DEF 14A", "DEF 14A/A"],
         record_kind: "proxy_statement",
+    },
+    ParserSpec {
+        kind: ParserKind::Prospectus,
+        canonical_form: "S-1",
+        forms: &[
+            "S-1", "S-1/A", "F-1", "F-1/A", "424B", "424B1", "424B2", "424B3", "424B4", "424B5",
+            "424B7",
+        ],
+        record_kind: "prospectus",
     },
     ParserSpec {
         kind: ParserKind::ThirteenF,

@@ -68,6 +68,7 @@ pub(crate) async fn run() -> Result<()> {
         Command::Ixbrl(args) => handlers::ixbrl(&client, args).await?,
         Command::Tables(args) => handlers::tables(&client, args).await?,
         Command::Proxy(args) => handlers::proxy(&client, args).await?,
+        Command::Prospectus(args) => handlers::prospectus(&client, args).await?,
         Command::Search(args) => {
             let output = output_mode(args.jsonl, args.pretty);
             let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;

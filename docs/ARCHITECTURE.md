@@ -59,6 +59,7 @@ src/sec/documents/selectors.rs      primary XML, ownership XML, 13F table select
 src/sec/documents/records.rs        document inventory records for CLI/API use
 src/sec/parsers/                    shared parser machinery and form parsers
 src/sec/proxy/                      DEF 14A proxy statement parser
+src/sec/prospectus/                 S-1/F-1/424B prospectus parser
 src/sec/utils.rs                    shared string, legal suffix, and truncation helpers
 src/sec/parsers/xml.rs              streaming XML helpers
 src/sec/parsers/forms/              form-specific parsers
@@ -81,8 +82,9 @@ Examples:
 - `forms/thirteenf.rs`: 13F-HR / amendments / 13F-NT family.
 - Future `forms/company_reports.rs`: 10-K, 10-Q, 20-F, 40-F section extraction.
 - Future `forms/current_report.rs`: 8-K item extraction and exhibit discovery.
-- Future `forms/proxy.rs`: DEF 14A compensation and governance tables.
-- Future `forms/schedule13.rs`: SC 13D / SC 13G beneficial ownership.
+- `prospectus`: S-1 / F-1 / 424B offering and IPO signals.
+- `proxy`: DEF 14A compensation and governance tables.
+- `schedule13`: SC 13D / SC 13G beneficial ownership.
 - Future `forms/funds.rs`: N-PORT, N-CEN, N-PX, 497K, 24F-2NT.
 
 Not every HTML table needs a separate top-level parser. The right split is:
@@ -159,9 +161,8 @@ not talk directly to `reqwest`, file caches, or parser internals.
 
 ## Near-Term Build Order
 
-1. Add S-1 / 424B IPO and prospectus parser.
-2. Add 20-F / 6-K / 40-F foreign issuer parser.
-3. Add N-PORT / N-CSR / N-CEN fund disclosure parser.
-4. Split storage into a trait-backed cache/store layer if an alternate backend is needed.
-5. Add export layer for Arrow/Parquet.
-6. Add HTTP API and MCP adapters after the core records and parser pipeline are stable.
+1. Add 20-F / 6-K / 40-F foreign issuer parser.
+2. Add N-PORT / N-CSR / N-CEN fund disclosure parser.
+3. Split storage into a trait-backed cache/store layer if an alternate backend is needed.
+4. Add export layer for Arrow/Parquet.
+5. Add HTTP API and MCP adapters after the core records and parser pipeline are stable.

@@ -24,6 +24,7 @@ real commands or modules in the repository.
 - [x] 8-K event parser.
 - [x] Schedule 13D / 13G parser.
 - [x] DEF 14A proxy statement parser.
+- [x] S-1 / F-1 / 424B IPO and prospectus parser.
 - [x] Shared parser utilities, cache TTL policy, and hot-path parser performance cleanup.
 - [x] Core utility test coverage for search, reports, output, filings, facts, storage, and parser dispatch.
 - [x] Investor/fund/person resolver with LLM fallback and SEC validation.
@@ -32,7 +33,6 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] S-1 / 424B IPO and prospectus parser.
 - [ ] 20-F / 6-K / 40-F foreign issuer parser.
 - [ ] N-PORT / N-CSR / N-CEN fund disclosure parser.
 - [ ] Local HTTP API.
@@ -40,10 +40,9 @@ real commands or modules in the repository.
 
 ## Suggested Implementation Order
 
-1. S-1 / 424B parser.
-2. 20-F / 6-K / 40-F parser.
-3. N-PORT / N-CSR / N-CEN parser.
-4. Local HTTP API and MCP adapter.
+1. 20-F / 6-K / 40-F parser.
+2. N-PORT / N-CSR / N-CEN parser.
+3. Local HTTP API and MCP adapter.
 
 ## Completion Rule
 

@@ -76,13 +76,12 @@ fn is_expired(path: &Path, ttl: Duration) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
 
     fn temp_cache_dir() -> PathBuf {
-        let nonce = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos();
-        std::env::temp_dir().join(format!("sec-cli-storage-test-{nonce}"))
+        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!("sec-cli-storage-test-{}-{id}", std::process::id()))
     }
 
     #[test]
