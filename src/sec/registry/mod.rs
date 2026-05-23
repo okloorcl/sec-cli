@@ -4,6 +4,7 @@ use serde::Serialize;
 #[serde(rename_all = "snake_case")]
 pub enum ParserKind {
     Form4,
+    EightK,
     ThirteenF,
 }
 
@@ -21,6 +22,12 @@ const PARSERS: &[ParserSpec] = &[
         canonical_form: "4",
         forms: &["3", "3/A", "4", "4/A", "5", "5/A"],
         record_kind: "form4_transaction",
+    },
+    ParserSpec {
+        kind: ParserKind::EightK,
+        canonical_form: "8-K",
+        forms: &["8-K", "8-K/A"],
+        record_kind: "eightk_event",
     },
     ParserSpec {
         kind: ParserKind::ThirteenF,

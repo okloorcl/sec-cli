@@ -14,7 +14,7 @@
 | --- | --- |
 | 高管/董事交易 | Form 4 owner、职位、交易代码、股数、价格、金额、脚注、签名 |
 | 机构持仓 | 13F 持仓、组合摘要、Top holdings、季度变化 |
-| 公司披露 | 10-K/10-Q 风险因素、MD&A、全文搜索、精确来源片段 |
+| 公司披露 | 8-K 事件、10-K/10-Q 风险因素、MD&A、全文搜索、精确来源片段 |
 | Agent 接口 | 稳定 JSON/JSONL、source URL、accession、document 元数据 |
 
 ```bash
@@ -30,6 +30,7 @@ sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
 sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000
 sec form4 --ticker AAPL --latest 3
 sec form4-summary --ticker AAPL --latest 3
+sec 8k --ticker AAPL --item 2.02 --latest 5
 sec 13f --cik 1067983 --latest 1
 sec 13f-aggregate --cik 1067983 --latest 1 --limit 20
 sec 13f-diff --cik 1067983 --limit 20
@@ -53,6 +54,7 @@ sec forms --pretty
 - 列出和读取 complete submission 内的 documents
 - 解析 Form 4 交易明细
 - 汇总 Form 4 报告、owner、签名、脚注、净买卖
+- 解析 Form 8-K 当前报告事件 item
 - 解析 13F-HR information table
 - 聚合 13F 持仓
 - 比较最近两期 13F 组合变化
@@ -67,6 +69,8 @@ sec forms --pretty
 | --- | --- |
 | 最近高管/董事买卖了什么？ | `sec form4 --ticker AAPL --latest 5 --pretty` |
 | 哪些 owner 提交了 Form 4，净买卖是多少？ | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
+| 公司最近提交了哪些 8-K 事件？ | `sec 8k --ticker AAPL --latest 5 --pretty` |
+| 公司有没有 earnings 相关 8-K？ | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
 | Berkshire 最新 13F 持仓是什么？ | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | 最近两期 13F 哪些仓位变化最大？ | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
 | 我只知道投资人名字，不知道 CIK？ | `sec resolve --query 段永平 --pretty`，然后 `sec 13f-diff --investor 段永平 --pretty` |
@@ -88,6 +92,7 @@ sec forms --pretty
 - `doc`
 - `form4`
 - `form4-summary`
+- `8k`
 - `parse`
 - `report --kind risk`
 - `report --kind insider`
@@ -141,6 +146,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | SEC CompanyFacts JSON | `facts` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度 | fact records |
 | SEC complete submission text / archive documents | `search`、`section`、`docs`、`doc` | 原始 filing 文本、HTML/XML 附件、exhibit、可引用片段 | snippet、section、document records |
 | Form 3/4/5 XML ownership report | `form4`、`form4-summary`、`report --kind insider` | 内部人、职位、交易代码、股数、价格、金额、脚注、签名 | transaction records、ownership report records |
+| Form 8-K primary document | `8k` | 当前报告事件 item，例如 2.02 业绩、5.02 高管变化、8.01 其他事件、9.01 附件 | 8-K event records |
 | Form 13F-HR information table | `13f`、`13f-aggregate`、`13f-diff`、`report --kind portfolio` | 机构多头持仓：issuer、class、CUSIP、市值、股数、投票权 | holding、aggregate holding、diff records |
 | Form 13F-HR primary document | `13f-summary` | filing manager、报告期、总持仓数、总市值、签名、included managers | 13F report summary records |
 | 10-K / 10-Q primary document | `section`、`report --kind risk` | Business、Risk Factors、Cybersecurity、MD&A、Financial Statements 等章节 | section records、Markdown report |
@@ -166,6 +172,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 | Document | `docs`、`doc` | `filename`、`document_type`、`description`、`content_type`、`content` | `accession`、`document_url`、`source_url` |
 | Form 4 transaction | `form4` | `reporting_owner`、`officer_title`、`transaction_code`、`shares`、`price`、`value` | `accession`、`source_url` |
 | Form 4 report summary | `form4-summary` | `owners`、`transaction_count`、`net_shares`、`total_value`、`footnotes` | `accession`、`source_url` |
+| 8-K event | `8k` | `item`、`item_title`、`category`、`is_furnished_item`、`content` | `accession`、`document_url`、`source_url` |
 | 13F holding | `13f` | `manager`、`issuer`、`class`、`cusip`、`value_usd`、`shares` | `accession`、`source_url` |
 | 13F aggregate holding | `13f-aggregate` | `issuer`、`cusip`、`value_usd`、`shares`、`rows` | `source_url` |
 | 13F diff row | `13f-diff` | `issuer`、`change_type`、`change_value_usd`、`change_shares` | `current_source_url`、`previous_source_url` |
@@ -327,6 +334,7 @@ cargo check
 cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 1 --pretty
 cargo run --bin sec -- facts --ticker AAPL --concept revenue --form 10-K --latest 3 --pretty
 cargo run --bin sec -- form4-summary --ticker AAPL --latest 2 --pretty
+cargo run --bin sec -- 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 
 cargo run --bin sec -- resolve --query 段永平 --pretty
 cargo run --bin sec -- resolve --manager "H&H International Investment LLC" --pretty
@@ -474,6 +482,29 @@ sec form4-summary --ticker TSLA --include-amends --latest 5 --pretty
 
 `form4-summary` 输出报告字段：`period_of_report`、`owners`、`signatures`、`footnotes`、`transaction_count`、`acquisition_count`、`disposition_count`、`total_shares_acquired`、`total_shares_disposed`、`net_shares`、`total_value`、`source_url`。
 
+### 8k
+
+解析 Form 8-K 当前报告事件 item，把原本自由文本的 8-K HTML 转成带官方 item 标题、事件分类和来源链接的结构化记录。
+
+```bash
+sec 8k --ticker AAPL --latest 5 --pretty
+sec 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
+sec 8k --ticker TSLA --item 5.02 --latest 10 --jsonl
+sec 8k --cik 320193 --item 9.01 --include-amends --pretty
+```
+
+常见 item：
+
+- `1.01`：重大协议
+- `2.02`：经营业绩和财务状况，常见于 earnings release
+- `4.02`：以前发布的财报不可依赖
+- `5.02`：董事/高管离任、任命或薪酬安排
+- `7.01`：Regulation FD Disclosure
+- `8.01`：其他事件
+- `9.01`：财务报表和附件
+
+输出字段：`accession`、`item`、`item_title`、`category`、`is_furnished_item`、`start_offset`、`end_offset`、`byte_length`、`returned_bytes`、`truncated`、`document`、`document_url`、`source_url`、`content`。
+
 ### 13F
 
 解析和分析机构 13F。
@@ -531,6 +562,7 @@ sec forms --pretty
 | `docs` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `doc` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--accession`、`--filename`、`--sequence`、`--primary`、`--limit-bytes`、`--raw`、`--text`、`--jsonl`、`--pretty` |
 | `form4` / `form4-summary` | `--ticker` 或 `--cik` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
+| `8k` | `--ticker` 或 `--cik` | `--item`、`--latest`、`--limit`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
 | `13f` / `13f-aggregate` / `13f-diff` / `13f-summary` | `--ticker`、`--cik`、`--manager` 或 `--investor` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `parse` | `--ticker` 或 `--cik`，`--form` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `forms` | 无 | `--jsonl`、`--pretty` |
@@ -550,6 +582,7 @@ sec forms --pretty
 
 ```bash
 sec form4-summary --ticker AAPL --latest 5 --pretty
+sec 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 sec 13f-diff --cik 1067983 --limit 20 --jsonl
 sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty

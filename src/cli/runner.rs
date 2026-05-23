@@ -4,8 +4,8 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
-    DocumentQuery, DocumentReadQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery,
-    ReportKind, ReportQuery, SearchQuery, SecClient, SectionQuery, ThirteenFQuery,
+    DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query, OutputMode,
+    ParseQuery, ReportKind, ReportQuery, SearchQuery, SecClient, SectionQuery, ThirteenFQuery,
     accession_text_url, find_matches,
     llm::{LlmConfig, LlmProvider},
     print_records,
@@ -214,6 +214,23 @@ pub(crate) async fn run() -> Result<()> {
                 reports.truncate(limit);
             }
             print_records(&reports, output)?;
+        }
+        Command::EightK(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let mut events = client
+                .eightk_events(EightKQuery {
+                    cik,
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                    item: args.item,
+                    limit_bytes: args.limit_bytes,
+                })
+                .await?;
+            if let Some(limit) = args.limit {
+                events.truncate(limit);
+            }
+            print_records(&events, output)?;
         }
         Command::ThirteenF(args) => {
             let output = output_mode(args.jsonl, args.pretty);

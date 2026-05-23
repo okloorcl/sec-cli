@@ -76,6 +76,15 @@ pub struct Form4Query {
 }
 
 #[derive(Debug, Clone)]
+pub struct EightKQuery {
+    pub cik: u64,
+    pub latest: usize,
+    pub include_amends: bool,
+    pub item: Option<String>,
+    pub limit_bytes: Option<usize>,
+}
+
+#[derive(Debug, Clone)]
 pub struct ThirteenFQuery {
     pub cik: u64,
     pub latest: usize,

@@ -14,7 +14,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 | --- | --- |
 | Insider activity | Form 4 owner, role, transaction code, shares, price, value, footnotes, signatures |
 | Institutional holdings | 13F holdings, portfolio summary, top positions, quarter-over-quarter changes |
-| Company disclosure | 10-K/10-Q risk factors, MD&A, filing search, exact source snippets |
+| Company disclosure | 8-K events, 10-K/10-Q risk factors, MD&A, filing search, exact source snippets |
 | Agent interface | Stable JSON/JSONL, LLM name resolution, source URLs, accession numbers |
 
 ```bash
@@ -30,6 +30,7 @@ sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
 sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000
 sec form4 --ticker AAPL --latest 3
 sec form4-summary --ticker AAPL --latest 3
+sec 8k --ticker AAPL --item 2.02 --latest 5
 sec 13f --cik 1067983 --latest 1
 sec 13f-aggregate --cik 1067983 --latest 1 --limit 20
 sec 13f-diff --cik 1067983 --limit 20
@@ -55,6 +56,7 @@ This is an early MVP. The first implementation focuses on:
 - Listing and reading individual SEC submission documents
 - Parsing Form 4 insider ownership transactions
 - Summarizing Form 4 reports, owners, signatures, footnotes, and net activity
+- Parsing Form 8-K current-report events by item
 - Parsing 13F-HR information-table holdings
 - Aggregating 13F-HR holdings by CUSIP/class/put-call
 - Comparing the latest two 13F-HR portfolios
@@ -74,6 +76,8 @@ These are useful, source-backed questions that work today:
 | --- | --- |
 | What did insiders recently buy or sell? | `sec form4 --ticker AAPL --latest 5 --pretty` |
 | Which executives/directors filed Form 4s and what was net activity? | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
+| Which 8-K events did a company recently report? | `sec 8k --ticker AAPL --latest 5 --pretty` |
+| Did a company file earnings-related 8-K events? | `sec 8k --ticker AAPL --item 2.02 --latest 5 --pretty` |
 | What is Berkshire Hathaway's latest 13F portfolio? | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | What changed between the latest two 13F filings? | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
 | What if I know the investor name but not the CIK? | `sec resolve --query 段永平 --pretty`, then `sec 13f-diff --investor 段永平 --pretty` |
@@ -95,6 +99,7 @@ Company-disclosure commands use `--ticker` or `--cik`:
 - `doc`
 - `form4`
 - `form4-summary`
+- `8k`
 - `parse`
 - `report --kind risk`
 - `report --kind insider`
@@ -149,6 +154,7 @@ Practical rule:
 | SEC CompanyFacts JSON | `facts` | XBRL facts such as revenue, net income, assets, units, periods | fact records |
 | SEC complete submission text and archive documents | `search`, `section`, `docs`, `doc` | Original filing text, HTML/XML attachments, exhibits, source snippets | snippet, section, document records |
 | Form 3/4/5 XML ownership reports | `form4`, `form4-summary`, `report --kind insider` | Insider owners, roles, transaction codes, shares, prices, footnotes, signatures | transaction and ownership-report records |
+| Form 8-K primary document | `8k` | Current-report event items such as 2.02 earnings, 5.02 management changes, 8.01 other events, 9.01 exhibits | 8-K event records |
 | Form 13F-HR information table | `13f`, `13f-aggregate`, `13f-diff`, `report --kind portfolio` | Institutional long holdings: issuer, class, CUSIP, value, shares, voting authority | holding, aggregate holding, diff records |
 | Form 13F-HR primary document | `13f-summary` | Manager identity, report period, total holdings/value, signature, included managers | 13F report summary records |
 | 10-K/10-Q primary document | `section`, `report --kind risk` | Business, risk factors, cybersecurity, MD&A, financial statement sections | section records and Markdown report |
@@ -169,6 +175,7 @@ Output record cheat sheet:
 | Document | `docs`, `doc` | `filename`, `document_type`, `description`, `content_type`, `content` | `accession`, `document_url`, `source_url` |
 | Form 4 transaction | `form4` | `reporting_owner`, `officer_title`, `transaction_code`, `shares`, `price`, `value` | `accession`, `source_url` |
 | Form 4 report summary | `form4-summary` | `owners`, `transaction_count`, `net_shares`, `total_value`, `footnotes` | `accession`, `source_url` |
+| 8-K event | `8k` | `item`, `item_title`, `category`, `is_furnished_item`, `content` | `accession`, `document_url`, `source_url` |
 | 13F holding | `13f` | `manager`, `issuer`, `class`, `cusip`, `value_usd`, `shares` | `accession`, `source_url` |
 | 13F aggregate holding | `13f-aggregate` | `issuer`, `cusip`, `value_usd`, `shares`, `rows` | `source_url` |
 | 13F diff row | `13f-diff` | `issuer`, `change_type`, `change_value_usd`, `change_shares` | `current_source_url`, `previous_source_url` |
@@ -350,6 +357,7 @@ cargo check
 cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 1 --pretty
 cargo run --bin sec -- facts --ticker AAPL --concept revenue --form 10-K --latest 3 --pretty
 cargo run --bin sec -- form4-summary --ticker AAPL --latest 2 --pretty
+cargo run --bin sec -- 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 
 cargo run --bin sec -- resolve --query 段永平 --pretty
 cargo run --bin sec -- resolve --manager "H&H International Investment LLC" --pretty
@@ -659,6 +667,46 @@ Each report summary includes:
 - `total_value`
 - `source_url`
 
+### 8k
+
+Parse Form 8-K current-report event items from the primary document. This turns
+the usual free-form 8-K HTML into event records with official item labels and
+source-backed excerpts.
+
+```bash
+sec 8k --ticker AAPL --latest 5 --pretty
+sec 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
+sec 8k --ticker TSLA --item 5.02 --latest 10 --jsonl
+sec 8k --cik 320193 --item 9.01 --include-amends --pretty
+```
+
+Common item filters:
+
+- `1.01`: material agreement
+- `2.02`: results of operations and financial condition
+- `4.02`: non-reliance on previously issued financial statements
+- `5.02`: director/officer departure, appointment, or compensation
+- `7.01`: Regulation FD disclosure
+- `8.01`: other events
+- `9.01`: financial statements and exhibits
+
+Each event includes:
+
+- `accession`
+- `item`
+- `item_title`
+- `category`
+- `is_furnished_item`
+- `start_offset`
+- `end_offset`
+- `byte_length`
+- `returned_bytes`
+- `truncated`
+- `document`
+- `document_url`
+- `source_url`
+- `content`
+
 ### 13f
 
 Parse 13F-HR information-table holdings. Values include both the SEC-reported
@@ -820,6 +868,7 @@ Command options:
 | `doc` | `--ticker` or `--cik` | `--form`, `--latest`, `--accession`, `--filename`, `--sequence`, `--primary`, `--limit-bytes`, `--raw`, `--text`, `--jsonl`, `--pretty` |
 | `form4` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `form4-summary` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `8k` | `--ticker` or `--cik` | `--item`, `--latest`, `--limit`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
 | `13f` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `13f-aggregate` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `13f-diff` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
@@ -857,6 +906,7 @@ Useful patterns:
 
 ```bash
 sec form4-summary --ticker AAPL --latest 5 --pretty
+sec 8k --ticker AAPL --item 2.02 --latest 5 --limit-bytes 600 --pretty
 sec 13f-diff --cik 1067983 --limit 20 --jsonl
 sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty

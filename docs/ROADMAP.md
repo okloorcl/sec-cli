@@ -18,13 +18,10 @@ real commands or modules in the repository.
 - [x] Form 13F-HR aggregate holdings.
 - [x] Form 13F-HR quarter-over-quarter diff.
 - [x] Form 13F-HR primary document summary parser.
+- [x] 8-K event parser.
 - [x] Investor/fund/person resolver with LLM fallback and SEC validation.
 - [x] Source-backed Markdown reports for insider activity, portfolio activity, and risk review.
 - [x] Cross-platform CI for Linux amd64/i686/arm64/arm32, Windows amd64, and macOS arm64.
-
-## In Progress
-
-- [ ] 8-K event parser.
 
 ## Planned
 
@@ -41,16 +38,15 @@ real commands or modules in the repository.
 
 ## Suggested Implementation Order
 
-1. 8-K event parser.
-2. 10-K / 10-Q financial statements builder.
-3. Schedule 13D / 13G parser.
-4. Inline XBRL streaming parser.
-5. HTML table extraction.
-6. DEF 14A proxy statement parser.
-7. S-1 / 424B parser.
-8. 20-F / 6-K / 40-F parser.
-9. N-PORT / N-CSR / N-CEN parser.
-10. Local HTTP API and MCP adapter.
+1. 10-K / 10-Q financial statements builder.
+2. Schedule 13D / 13G parser.
+3. Inline XBRL streaming parser.
+4. HTML table extraction.
+5. DEF 14A proxy statement parser.
+6. S-1 / 424B parser.
+7. 20-F / 6-K / 40-F parser.
+8. N-PORT / N-CSR / N-CEN parser.
+9. Local HTTP API and MCP adapter.
 
 ## Completion Rule
 

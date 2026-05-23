@@ -41,6 +41,9 @@ pub(crate) enum Command {
     /// Summarize Form 4 issuer, owners, signatures, footnotes, and net transactions.
     #[command(name = "form4-summary")]
     Form4Summary(Form4Args),
+    /// Parse Form 8-K current-report events by item.
+    #[command(name = "8k")]
+    EightK(EightKArgs),
     /// Parse 13F institutional holdings information tables.
     #[command(name = "13f")]
     ThirteenF(ThirteenFArgs),
@@ -268,6 +271,28 @@ pub(crate) struct Form4Args {
     pub(crate) latest: usize,
     #[arg(long)]
     pub(crate) limit: Option<usize>,
+    #[arg(long)]
+    pub(crate) include_amends: bool,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct EightKArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long)]
+    pub(crate) item: Option<String>,
+    #[arg(long, default_value_t = 5)]
+    pub(crate) latest: usize,
+    #[arg(long)]
+    pub(crate) limit: Option<usize>,
+    #[arg(long)]
+    pub(crate) limit_bytes: Option<usize>,
     #[arg(long)]
     pub(crate) include_amends: bool,
     #[arg(long)]

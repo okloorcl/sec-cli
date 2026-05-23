@@ -231,6 +231,30 @@ pub struct Form4FootnoteRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct EightKEventRecord {
+    pub accession: String,
+    pub cik: u64,
+    pub company: String,
+    pub filing_date: String,
+    pub report_date: Option<String>,
+    pub item: String,
+    pub item_title: String,
+    pub category: String,
+    pub is_furnished_item: bool,
+    pub start_offset: usize,
+    pub end_offset: usize,
+    pub byte_length: usize,
+    pub returned_bytes: usize,
+    pub truncated: bool,
+    pub document: Option<String>,
+    pub document_sequence: Option<String>,
+    pub document_description: Option<String>,
+    pub document_url: Option<String>,
+    pub source_url: String,
+    pub content: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ThirteenFHoldingRecord {
     pub accession: String,
     pub cik: u64,
@@ -346,5 +370,6 @@ pub struct ThirteenFOtherManagerRecord {
 #[serde(tag = "kind", content = "record", rename_all = "snake_case")]
 pub enum ParsedRecord {
     Form4Transaction(Form4TransactionRecord),
+    EightKEvent(EightKEventRecord),
     ThirteenfHolding(ThirteenFHoldingRecord),
 }
