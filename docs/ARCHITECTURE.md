@@ -33,7 +33,7 @@ submission/document layer
 form parsers / table parsers / XBRL parsers
         |
         v
-domain records -> JSON / JSONL / CSV / terminal tables / Markdown / future Arrow / Parquet
+domain records -> JSON / JSONL / CSV / terminal tables / Markdown / Arrow IPC / Parquet
 ```
 
 ## Current Modules
@@ -180,5 +180,4 @@ not talk directly to `reqwest`, file caches, or parser internals.
 
 ## Near-Term Build Order
 
-1. Add export layer for Arrow/Parquet.
-2. Add optional bulk archive / offline mode.
+1. Add optional bulk archive / offline mode.

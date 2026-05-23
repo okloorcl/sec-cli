@@ -2,10 +2,9 @@ use anyhow::{Result, bail};
 use clap::{CommandFactory, Parser};
 use clap_complete::generate;
 use sec_cli::sec::{
-    DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
-    HealthScoreQuery, MetricsQuery, OutputMode, ParseQuery, ReportKind, ReportQuery,
-    Schedule13Query, SearchQuery, SecClient, SectionQuery, StatementQuery, StatementStitchQuery,
-    ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
+    DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query, OutputMode,
+    ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery, SecClient, SectionQuery,
+    ThirteenFQuery,
     documents::read::{content_for_terminal, validate_doc_args},
     find_matches,
     llm::{LlmConfig, LlmProvider},
@@ -14,7 +13,6 @@ use sec_cli::sec::{
     supported_parsers,
 };
 
-use super::analysis_args::StatementPeriodArg;
 use super::args::{Cli, Command, LlmProviderArg, ReportKindArg, ResolveArgs};
 use super::common::{output_mode, resolve_cik, resolve_subject, set_output_override};
 use super::config::{config_path, read_config, set_identity};
@@ -76,129 +74,15 @@ pub(crate) async fn run() -> Result<()> {
                 .await?;
             print_records(&facts, output)?;
         }
-        Command::Statements(args) => {
-            let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
-            let records = client
-                .financial_statements(StatementQuery {
-                    cik,
-                    statement: args.statement,
-                    form: statement_period_form(args.period),
-                    unit: args.unit,
-                    latest: args.latest,
-                })
-                .await?;
-            print_records(&records, output)?;
-        }
-        Command::Stitch(args) => {
-            let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
-            let records = client
-                .stitched_statements(StatementStitchQuery {
-                    cik,
-                    statement: args.statement,
-                    unit: args.unit,
-                    latest: args.latest,
-                })
-                .await?;
-            print_records(&records, output)?;
-        }
-        Command::Metrics(args) => {
-            let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
-            let records = client
-                .financial_metrics(MetricsQuery {
-                    cik,
-                    form: statement_period_form(args.period),
-                    unit: args.unit,
-                    latest: args.latest,
-                })
-                .await?;
-            print_records(&records, output)?;
-        }
-        Command::Scores(args) => {
-            let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
-            let records = client
-                .health_scores(HealthScoreQuery {
-                    cik,
-                    form: statement_period_form(args.period),
-                    unit: args.unit,
-                    latest: args.latest,
-                })
-                .await?;
-            print_records(&records, output)?;
-        }
-        Command::XbrlLinks(args) => {
-            let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
-            let records = client
-                .xbrl_linkbases(XbrlLinkbaseQuery {
-                    cik,
-                    form: Some(args.form),
-                    latest: args.latest,
-                    include_amends: args.include_amends,
-                    linkbase: args.linkbase,
-                    role: args.role,
-                    concept: args.concept,
-                    limit: Some(args.limit),
-                })
-                .await?;
-            print_records(&records, output)?;
-        }
-        Command::XbrlTree(args) => {
-            let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
-            let records = client
-                .xbrl_presentation_tree(XbrlTreeQuery {
-                    cik,
-                    form: Some(args.form),
-                    latest: args.latest,
-                    include_amends: args.include_amends,
-                    role: args.role,
-                    concept: args.concept,
-                    limit: Some(args.limit),
-                })
-                .await?;
-            print_records(&records, output)?;
-        }
-        Command::XbrlCalc(args) => {
-            let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
-            let records = client
-                .xbrl_calculation_checks(XbrlCalculationQuery {
-                    cik,
-                    form: Some(args.form),
-                    latest: args.latest,
-                    include_amends: args.include_amends,
-                    role: args.role,
-                    concept: args.concept,
-                    unit: Some(args.unit),
-                    tolerance: args.tolerance,
-                    limit: Some(args.limit),
-                })
-                .await?;
-            print_records(&records, output)?;
-        }
-        Command::XbrlStatement(args) => {
-            let output = output_mode(args.jsonl, args.pretty);
-            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
-            let records = client
-                .xbrl_statement(XbrlStatementQuery {
-                    cik,
-                    form: Some(args.form),
-                    latest: args.latest,
-                    include_amends: args.include_amends,
-                    role: args.role,
-                    concept: args.concept,
-                    unit: Some(args.unit),
-                    tolerance: args.tolerance,
-                    values_only: args.values_only,
-                    limit: Some(args.limit),
-                })
-                .await?;
-            print_records(&records, output)?;
-        }
+        Command::Statements(args) => handlers::statements(&client, args).await?,
+        Command::Stitch(args) => handlers::stitch(&client, args).await?,
+        Command::Metrics(args) => handlers::metrics(&client, args).await?,
+        Command::Scores(args) => handlers::scores(&client, args).await?,
+        Command::Export(args) => handlers::export(&client, args).await?,
+        Command::XbrlLinks(args) => handlers::xbrl_links(&client, args).await?,
+        Command::XbrlTree(args) => handlers::xbrl_tree(&client, args).await?,
+        Command::XbrlCalc(args) => handlers::xbrl_calc(&client, args).await?,
+        Command::XbrlStatement(args) => handlers::xbrl_statement(&client, args).await?,
         Command::Ixbrl(args) => handlers::ixbrl(&client, args).await?,
         Command::Tables(args) => handlers::tables(&client, args).await?,
         Command::CompanyReport(args) => handlers::company_report(&client, args).await?,
@@ -532,14 +416,6 @@ fn report_kind(kind: ReportKindArg) -> ReportKind {
         ReportKindArg::Insider => ReportKind::Insider,
         ReportKindArg::Portfolio => ReportKind::Portfolio,
         ReportKindArg::Risk => ReportKind::Risk,
-    }
-}
-
-fn statement_period_form(period: StatementPeriodArg) -> Option<String> {
-    match period {
-        StatementPeriodArg::Annual => Some("10-K".to_string()),
-        StatementPeriodArg::Quarterly => Some("10-Q".to_string()),
-        StatementPeriodArg::All => None,
     }
 }
 

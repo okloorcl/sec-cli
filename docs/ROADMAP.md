@@ -52,6 +52,7 @@ real commands or modules in the repository.
 - [x] Expanded MCP tools for daily index, EFTS, documents, sections, iXBRL, tables, proxy, prospectus, foreign issuer, funds, Form 4, 8-K, Schedule 13D/G, 13F, and Markdown reports.
 - [x] Local SEC identity config and shell completion generation.
 - [x] Terminal table and CSV output modes.
+- [x] Arrow IPC / Parquet export layer for filings, facts, statements, stitched statements, metrics, and scores.
 - [x] Typed SEC submissions/companyfacts response DTOs.
 - [x] Mockable LLM resolver and cache-store abstractions.
 - [x] Centralized disclosure name patterns for auditors and underwriters.
@@ -59,13 +60,11 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] Arrow / Parquet export layer.
 - [ ] Optional bulk archive / offline mode.
 
 ## Suggested Implementation Order
 
-1. Arrow / Parquet export layer.
-2. Optional bulk archive / offline mode.
+1. Optional bulk archive / offline mode.
 
 ## Completion Rule
 

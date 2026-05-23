@@ -1,17 +1,25 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::Utc;
 use sec_cli::sec::{
-    CompanyReportQuery, DailyIndexQuery, EftsSearchQuery, EightKExhibitQuery, ForeignIssuerQuery,
-    FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, ProspectusQuery, ProxyQuery, SecClient,
+    CompanyReportQuery, DailyIndexQuery, EftsSearchQuery, EightKExhibitQuery, ExportFormat,
+    FactQuery, FilingQuery, ForeignIssuerQuery, FundDisclosureQuery, HealthScoreQuery,
+    HtmlTableQuery, InlineXbrlQuery, MetricsQuery, ProspectusQuery, ProxyQuery, SecClient,
+    StatementQuery, StatementStitchQuery, XbrlCalculationQuery, XbrlLinkbaseQuery,
+    XbrlStatementQuery, XbrlTreeQuery,
     daily::latest_sec_index_date,
     efts::{parse_forms, require_query},
-    print_records,
+    export_records, print_records,
 };
 
 use super::{
+    analysis_args::{
+        MetricsArgs, ScoresArgs, StatementsArgs, StitchArgs, XbrlCalcArgs, XbrlLinkbaseArgs,
+        XbrlStatementArgs, XbrlTreeArgs,
+    },
     args::{EightKExhibitsArgs, InlineXbrlArgs, TablesArgs},
-    common::{output_mode, resolve_cik},
+    common::{output_mode, resolve_cik, statement_period_form},
     disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs, ProxyArgs},
+    export_args::{ExportArgs, ExportFormatArg, ExportKindArg},
     monitoring_args::{DailyArgs, EftsArgs},
 };
 
@@ -42,6 +50,222 @@ pub(super) async fn efts(client: &SecClient, args: EftsArgs) -> Result<()> {
             forms: parse_forms(&args.form),
             from: args.from,
             to: args.to,
+            limit: Some(args.limit),
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn statements(client: &SecClient, args: StatementsArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .financial_statements(StatementQuery {
+            cik,
+            statement: args.statement,
+            form: statement_period_form(args.period),
+            unit: args.unit,
+            latest: args.latest,
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn stitch(client: &SecClient, args: StitchArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .stitched_statements(StatementStitchQuery {
+            cik,
+            statement: args.statement,
+            unit: args.unit,
+            latest: args.latest,
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn metrics(client: &SecClient, args: MetricsArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .financial_metrics(MetricsQuery {
+            cik,
+            form: statement_period_form(args.period),
+            unit: args.unit,
+            latest: args.latest,
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn scores(client: &SecClient, args: ScoresArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .health_scores(HealthScoreQuery {
+            cik,
+            form: statement_period_form(args.period),
+            unit: args.unit,
+            latest: args.latest,
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn export(client: &SecClient, args: ExportArgs) -> Result<()> {
+    let format = match args.format {
+        ExportFormatArg::Arrow => ExportFormat::Arrow,
+        ExportFormatArg::Parquet => ExportFormat::Parquet,
+    };
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let count = match args.kind {
+        ExportKindArg::Filings => {
+            let records = client
+                .filings(FilingQuery {
+                    cik,
+                    form: args.form,
+                    latest: args.latest,
+                    from: None,
+                    to: None,
+                    include_amends: args.include_amends,
+                })
+                .await?;
+            export_records(&records, format, &args.out)?
+        }
+        ExportKindArg::Facts => {
+            let concept = args
+                .concept
+                .context("--concept is required for --kind facts")?;
+            let records = client
+                .facts(FactQuery {
+                    cik,
+                    concept,
+                    form: args.form,
+                    unit: args.unit,
+                    latest: args.latest,
+                })
+                .await?;
+            export_records(&records, format, &args.out)?
+        }
+        ExportKindArg::Statements => {
+            let records = client
+                .financial_statements(StatementQuery {
+                    cik,
+                    statement: args.statement,
+                    form: statement_period_form(args.period),
+                    unit: args.unit,
+                    latest: args.latest,
+                })
+                .await?;
+            export_records(&records, format, &args.out)?
+        }
+        ExportKindArg::Stitch => {
+            let records = client
+                .stitched_statements(StatementStitchQuery {
+                    cik,
+                    statement: args.statement,
+                    unit: args.unit,
+                    latest: args.latest,
+                })
+                .await?;
+            export_records(&records, format, &args.out)?
+        }
+        ExportKindArg::Metrics => {
+            let records = client
+                .financial_metrics(MetricsQuery {
+                    cik,
+                    form: statement_period_form(args.period),
+                    unit: args.unit,
+                    latest: args.latest,
+                })
+                .await?;
+            export_records(&records, format, &args.out)?
+        }
+        ExportKindArg::Scores => {
+            let records = client
+                .health_scores(HealthScoreQuery {
+                    cik,
+                    form: statement_period_form(args.period),
+                    unit: args.unit,
+                    latest: args.latest,
+                })
+                .await?;
+            export_records(&records, format, &args.out)?
+        }
+    };
+    eprintln!("wrote {count} records to {}", args.out.display());
+    Ok(())
+}
+
+pub(super) async fn xbrl_links(client: &SecClient, args: XbrlLinkbaseArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .xbrl_linkbases(XbrlLinkbaseQuery {
+            cik,
+            form: Some(args.form),
+            latest: args.latest,
+            include_amends: args.include_amends,
+            linkbase: args.linkbase,
+            role: args.role,
+            concept: args.concept,
+            limit: Some(args.limit),
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn xbrl_tree(client: &SecClient, args: XbrlTreeArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .xbrl_presentation_tree(XbrlTreeQuery {
+            cik,
+            form: Some(args.form),
+            latest: args.latest,
+            include_amends: args.include_amends,
+            role: args.role,
+            concept: args.concept,
+            limit: Some(args.limit),
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn xbrl_calc(client: &SecClient, args: XbrlCalcArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .xbrl_calculation_checks(XbrlCalculationQuery {
+            cik,
+            form: Some(args.form),
+            latest: args.latest,
+            include_amends: args.include_amends,
+            role: args.role,
+            concept: args.concept,
+            unit: Some(args.unit),
+            tolerance: args.tolerance,
+            limit: Some(args.limit),
+        })
+        .await?;
+    print_records(&records, output)
+}
+
+pub(super) async fn xbrl_statement(client: &SecClient, args: XbrlStatementArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let records = client
+        .xbrl_statement(XbrlStatementQuery {
+            cik,
+            form: Some(args.form),
+            latest: args.latest,
+            include_amends: args.include_amends,
+            role: args.role,
+            concept: args.concept,
+            unit: Some(args.unit),
+            tolerance: args.tolerance,
+            values_only: args.values_only,
             limit: Some(args.limit),
         })
         .await?;

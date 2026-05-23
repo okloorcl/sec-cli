@@ -6,7 +6,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 [![CI](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml)
 [![Release](https://github.com/okloorcl/sec-cli/actions/workflows/release.yml/badge.svg)](https://github.com/okloorcl/sec-cli/actions/workflows/release.yml)
 [![SEC EDGAR](https://img.shields.io/badge/Data-SEC%20EDGAR-blue)](https://www.sec.gov/edgar)
-[![Output](https://img.shields.io/badge/Output-JSON%20%7C%20JSONL%20%7C%20Markdown-green)](#output-modes)
+[![Output](https://img.shields.io/badge/Output-JSON%20%7C%20CSV%20%7C%20Parquet-green)](#output-modes)
 [![Agent Ready](https://img.shields.io/badge/Agent-ready-111827)](#agent-workflows)
 [![LLM Resolver](https://img.shields.io/badge/LLM-OpenAI%20%7C%20Anthropic-7c3aed)](#llm-resolver)
 [![中文](https://img.shields.io/badge/README-中文-red)](README.zh-CN.md)
@@ -32,6 +32,7 @@ sec statements --ticker AAPL --statement income --period annual --latest 4
 sec stitch --ticker AAPL --statement income --latest 8 --pretty
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec scores --ticker AAPL --period annual --latest 1 --pretty
+sec export --kind metrics --ticker AAPL --period annual --latest 4 --format parquet --out aapl_metrics.parquet
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
@@ -112,8 +113,8 @@ This is an early MVP. The first implementation focuses on:
 - Serving the SEC query/parser/report surface through a stdio MCP adapter for agents
 
 Longer term, the project aims to grow into a Rust-powered SEC disclosure engine:
-Arrow/Parquet exports, optional bulk/offline archives, and deeper agent-native
-query workflows on top of the current CLI/HTTP/MCP surfaces.
+Optional bulk/offline archives and deeper agent-native query workflows on top
+of the current CLI/HTTP/MCP/export surfaces.
 
 ## What You Can Answer Accurately
 
@@ -221,10 +222,10 @@ Practical rule:
 
 | Data/source | Commands | What it contains | Main output table |
 | --- | --- | --- | --- |
-| SEC submissions JSON | `filings` | Filing list, dates, accession numbers, primary document names | filing records |
+| SEC submissions JSON | `filings`, `export --kind filings` | Filing list, dates, accession numbers, primary document names, and filing metadata exports | filing records, Arrow/Parquet filing tables |
 | SEC daily master index | `daily`, `monitor` | All-market daily filing feed: CIK, company, form, filing date, archive filename, accession, source URLs | daily filing records |
 | SEC EDGAR Full-Text Search / EFTS | `efts`, `full-text`, `global-search` | All-market text-search hits with score, company, CIK, form, dates, accession, document URL | EFTS search records |
-| SEC CompanyFacts JSON | `facts`, `statements`, `stitch`, `metrics`, `scores`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, de-duplicated 10-K/10-Q time series, derived margins/growth/returns/liquidity/leverage, Piotroski/Altman/Beneish health scores | fact records, financial statement rows, stitched statement rows, financial metric records, health score records, Markdown financial report |
+| SEC CompanyFacts JSON | `facts`, `statements`, `stitch`, `metrics`, `scores`, `export`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, de-duplicated 10-K/10-Q time series, derived margins/growth/returns/liquidity/leverage, Piotroski/Altman/Beneish health scores, and Arrow/Parquet exports | fact records, financial statement rows, stitched statement rows, financial metric records, health score records, Arrow/Parquet tables, Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | Filing-embedded `ix:nonFraction` and `ix:nonNumeric` facts, context refs, units, scale, decimals, raw value | Inline XBRL fact records |
 | XBRL linkbase attachments | `xbrl-links`, `linkbase`, `xbrl-tree`, `xbrl-calc`, `xbrl-statement` | EX-101.PRE/CAL/DEF/LAB/SCH relationships: presentation arcs, calculation weights, definition arcs, labels, schema elements, rendered statement rows with same-accession CompanyFacts values | XBRL linkbase relationship records, presentation tree rows, calculation checks, rendered XBRL statement rows |
 | Filing HTML tables | `tables` | Table rows from primary HTML documents: compensation tables, segment tables, registration tables, contract tables | HTML table records |
@@ -777,6 +778,28 @@ Each score includes: `score_name`, `score`, `max_score`, `rating`,
 `period_end`, `calculation`, `signals`, and `source_urls`. Missing components
 produce `insufficient_data` or null signal values instead of silently inventing
 inputs.
+
+### export
+
+Write structured query records to Arrow IPC or Parquet files for DuckDB,
+Polars, Spark, pandas, and data pipelines. The export command runs the same SEC
+queries as the interactive CLI, then flattens each record into a stable column
+set. Nested fields such as metric components or score signals are preserved as
+JSON strings so source provenance is not lost.
+
+```bash
+sec export --kind filings --ticker AAPL --form 10-K --latest 5 --format parquet --out data/aapl_10k.parquet
+sec export --kind facts --ticker AAPL --concept revenue --latest 20 --format arrow --out data/aapl_revenue.arrow
+sec export --kind statements --ticker AAPL --statement income --period annual --latest 4 --format parquet --out data/aapl_income.parquet
+sec export --kind stitch --ticker AAPL --statement all --latest 8 --format parquet --out data/aapl_stitch.parquet
+sec export --kind metrics --ticker AAPL --period annual --latest 4 --format parquet --out data/aapl_metrics.parquet
+sec export --kind scores --ticker AAPL --period annual --latest 1 --format arrow --out data/aapl_scores.arrow
+```
+
+Supported `--kind` values: `filings`, `facts`, `statements`, `stitch`,
+`metrics`, and `scores`. `--kind facts` requires `--concept`. `--format`
+accepts `arrow` or `parquet`. The command creates parent directories
+automatically and prints the record count to stderr.
 
 ### ixbrl
 
@@ -1695,6 +1718,7 @@ Command options:
 | `stitch` / `statement-stitch` | `--ticker` or `--cik` | `--statement`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `metrics` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `scores` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
+| `export` | `--ticker` or `--cik`, `--kind`, `--format`, `--out` | `--concept`, `--form`, `--statement`, `--period`, `--unit`, `--latest`, `--include-amends` |
 | `company-report` | `--ticker` or `--cik` | `--form`, `--topic`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `ixbrl` | `--ticker` or `--cik` | `--form`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `xbrl-links` / `linkbase` | `--ticker` or `--cik` | `--form`, `--linkbase`, `--role`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
@@ -1752,6 +1776,19 @@ CSV:
 
 ```bash
 sec --output csv filings --ticker AAPL --form 10-K --latest 3
+```
+
+Terminal table:
+
+```bash
+sec --output table metrics --ticker AAPL --period annual --latest 1
+```
+
+File exports for data engineering:
+
+```bash
+sec export --kind metrics --ticker AAPL --period annual --latest 4 --format parquet --out data/aapl_metrics.parquet
+sec export --kind scores --ticker AAPL --period annual --latest 1 --format arrow --out data/aapl_scores.arrow
 ```
 
 Terminal table:
@@ -1817,4 +1854,4 @@ SEC data tool for agents:
 - Fast on-demand fetching and parsing
 - Local caching by default
 - Future Rust streaming parsers for SGML/XBRL
-- Future Arrow/Parquet exports for data engineering
+- Arrow/Parquet exports for data engineering

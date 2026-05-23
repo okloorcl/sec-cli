@@ -6,7 +6,9 @@ use super::analysis_args::{
     XbrlStatementArgs, XbrlTreeArgs,
 };
 use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs, ProxyArgs};
+use super::export_args::ExportArgs;
 use super::monitoring_args::{DailyArgs, EftsArgs, McpArgs, OutputArg, ServeArgs};
+use super::parser_args::{OutputArgs, ParseArgs};
 use super::system_args::{CompletionsArgs, ConfigArgs};
 
 #[derive(Parser, Debug)]
@@ -49,6 +51,8 @@ pub(crate) enum Command {
     Metrics(MetricsArgs),
     /// Calculate SEC-derived financial-health scores.
     Scores(ScoresArgs),
+    /// Export query records to Arrow IPC or Parquet files.
+    Export(ExportArgs),
     /// Stream Inline XBRL facts from primary filing HTML.
     Ixbrl(InlineXbrlArgs),
     /// Parse XBRL linkbase relationships from EX-101 PRE/CAL/DEF/LAB/SCH documents.
@@ -471,34 +475,6 @@ pub(crate) struct ThirteenFArgs {
     pub(crate) limit: Option<usize>,
     #[arg(long)]
     pub(crate) include_amends: bool,
-    #[arg(long)]
-    pub(crate) jsonl: bool,
-    #[arg(long)]
-    pub(crate) pretty: bool,
-}
-
-#[derive(Args, Debug)]
-pub(crate) struct ParseArgs {
-    #[arg(long, conflicts_with = "cik")]
-    pub(crate) ticker: Option<String>,
-    #[arg(long)]
-    pub(crate) cik: Option<u64>,
-    #[arg(long)]
-    pub(crate) form: String,
-    #[arg(long, default_value_t = 1)]
-    pub(crate) latest: usize,
-    #[arg(long)]
-    pub(crate) include_amends: bool,
-    #[arg(long)]
-    pub(crate) limit: Option<usize>,
-    #[arg(long)]
-    pub(crate) jsonl: bool,
-    #[arg(long)]
-    pub(crate) pretty: bool,
-}
-
-#[derive(Args, Debug)]
-pub(crate) struct OutputArgs {
     #[arg(long)]
     pub(crate) jsonl: bool,
     #[arg(long)]

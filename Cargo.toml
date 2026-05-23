@@ -11,11 +11,15 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.98"
+arrow-array = "58.3.0"
+arrow-ipc = "58.3.0"
+arrow-schema = "58.3.0"
 axum = "0.8.4"
 chrono = { version = "0.4.41", features = ["serde"] }
 clap = { version = "4.5.38", features = ["derive"] }
 clap_complete = "4.5.50"
 dirs = "6.0.0"
+parquet = { version = "58.3.0", default-features = false, features = ["arrow"] }
 regex = "1.11.1"
 quick-xml = "0.40.1"
 reqwest = { version = "0.12.15", default-features = false, features = ["gzip", "json", "rustls-tls"] }

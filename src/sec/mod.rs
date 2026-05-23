@@ -5,6 +5,7 @@ pub mod daily;
 pub mod documents;
 pub mod edgar;
 pub mod efts;
+pub mod export;
 pub mod foreign;
 pub mod funds;
 pub mod http;
@@ -30,6 +31,7 @@ pub mod xbrl;
 
 pub use client::SecClient;
 pub use edgar::accession_text_url;
+pub use export::{ExportFormat, export_records};
 pub use models::StitchedStatementRecord;
 pub use models::{
     CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery, EftsSearchQuery,

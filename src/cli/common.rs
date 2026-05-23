@@ -6,6 +6,8 @@ use sec_cli::sec::{
     resolve::{resolve_verified_13f_cik, resolve_verified_13f_manager},
 };
 
+use super::analysis_args::StatementPeriodArg;
+
 static OUTPUT_OVERRIDE: OnceLock<Option<OutputMode>> = OnceLock::new();
 
 pub(super) fn set_output_override(mode: Option<OutputMode>) {
@@ -66,4 +68,12 @@ pub(super) async fn resolve_subject(
         return Ok((cik, ticker.to_ascii_uppercase()));
     }
     bail!("provide --ticker, --cik, --manager, or --investor");
+}
+
+pub(super) fn statement_period_form(period: StatementPeriodArg) -> Option<String> {
+    match period {
+        StatementPeriodArg::Annual => Some("10-K".to_string()),
+        StatementPeriodArg::Quarterly => Some("10-Q".to_string()),
+        StatementPeriodArg::All => None,
+    }
 }

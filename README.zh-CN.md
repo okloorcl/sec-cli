@@ -6,7 +6,7 @@
 [![CI](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml)
 [![Release](https://github.com/okloorcl/sec-cli/actions/workflows/release.yml/badge.svg)](https://github.com/okloorcl/sec-cli/actions/workflows/release.yml)
 [![SEC EDGAR](https://img.shields.io/badge/Data-SEC%20EDGAR-blue)](https://www.sec.gov/edgar)
-[![Output](https://img.shields.io/badge/Output-JSON%20%7C%20JSONL%20%7C%20Markdown-green)](#输出模式)
+[![Output](https://img.shields.io/badge/Output-JSON%20%7C%20CSV%20%7C%20Parquet-green)](#输出模式)
 [![Agent Ready](https://img.shields.io/badge/Agent-ready-111827)](#agent-工作流)
 [![LLM Resolver](https://img.shields.io/badge/LLM-OpenAI%20%7C%20Anthropic-7c3aed)](#llm-resolver)
 [![English](https://img.shields.io/badge/README-English-blue)](README.md)
@@ -32,6 +32,7 @@ sec statements --ticker AAPL --statement income --period annual --latest 4
 sec stitch --ticker AAPL --statement income --latest 8 --pretty
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec scores --ticker AAPL --period annual --latest 1 --pretty
+sec export --kind metrics --ticker AAPL --period annual --latest 4 --format parquet --out aapl_metrics.parquet
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
@@ -109,7 +110,7 @@ sec mcp
 - 通过本地 JSON HTTP API 对外提供同一套核心查询
 - 通过 stdio MCP adapter 给 Agent 暴露 SEC 查询、解析和报告工具
 
-长期目标：继续补强 Arrow/Parquet 导出、批量离线归档，以及基于当前 CLI/HTTP/MCP 的更深 Agent 查询工作流。
+长期目标：继续补强批量离线归档，以及基于当前 CLI/HTTP/MCP/export 的更深 Agent 查询工作流。
 
 ## 能准确回答什么
 
@@ -214,10 +215,10 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 
 | 数据源 | 对应命令 | 里面有什么 | 输出表 / record |
 | --- | --- | --- | --- |
-| SEC submissions JSON | `filings` | 公司提交过哪些 filing、日期、accession、主文档名 | filing records |
+| SEC submissions JSON | `filings`、`export --kind filings` | 公司提交过哪些 filing、日期、accession、主文档名，以及 filing 元数据导出 | filing records、Arrow/Parquet filing tables |
 | SEC daily master index | `daily`、`monitor` | 全市场某日新增 filing feed：CIK、公司、form、提交日期、archive 文件名、accession、来源 URL | daily filing records |
 | SEC EDGAR Full-Text Search / EFTS | `efts`、`full-text`、`global-search` | 全市场全文搜索命中：分数、公司、CIK、form、日期、accession、document URL | EFTS search records |
-| SEC CompanyFacts JSON | `facts`、`statements`、`stitch`、`metrics`、`scores`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行、去重拼接的 10-K/10-Q 时间序列、二次推导指标，以及 Piotroski/Altman/Beneish 健康评分 | fact records、financial statement rows、stitched statement rows、financial metric records、health score records、Markdown financial report |
+| SEC CompanyFacts JSON | `facts`、`statements`、`stitch`、`metrics`、`scores`、`export`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行、去重拼接的 10-K/10-Q 时间序列、二次推导指标、Piotroski/Altman/Beneish 健康评分，以及 Arrow/Parquet 导出 | fact records、financial statement rows、stitched statement rows、financial metric records、health score records、Arrow/Parquet tables、Markdown financial report |
 | Inline XBRL filing HTML | `ixbrl` | filing HTML 内嵌的 `ix:nonFraction` / `ix:nonNumeric`、context、unit、scale、decimals、原始值 | Inline XBRL fact records |
 | XBRL linkbase 附件 | `xbrl-links`、`linkbase`、`xbrl-tree`、`xbrl-calc`、`xbrl-statement` | EX-101.PRE/CAL/DEF/LAB/SCH 关系：presentation arcs、calculation weights、definition arcs、标签、schema elements，以及挂载同一 accession CompanyFacts 数值后的报表行 | XBRL linkbase relationship records、presentation tree rows、calculation checks、rendered XBRL statement rows |
 | Filing HTML tables | `tables` | 主 HTML 文档里的表格行，例如薪酬表、分部表、注册证券表、债务表、合同表 | HTML table records |
@@ -675,6 +676,21 @@ sec scores --cik 320193 --period annual --latest 1 --output table
 - `beneish_m_score`：Beneish M-Score 近似版，`watch` 表示分数高于 `-1.78` 的观察阈值。
 
 输出字段：`score_name`、`score`、`max_score`、`rating`、`period_end`、`calculation`、`signals`、`source_urls`。缺少底层 fact 时会输出 `insufficient_data` 或 null signal value，不会编造输入。
+
+### export
+
+把结构化查询结果写成 Arrow IPC 或 Parquet 文件，方便 DuckDB、Polars、Spark、pandas 和数据工程管道直接读取。`export` 会先执行和普通 CLI 完全相同的 SEC 查询，再把每条 record 扁平化成稳定列。像 `components`、`signals` 这种嵌套来源明细会保留成 JSON 字符串，不会丢掉溯源信息。
+
+```bash
+sec export --kind filings --ticker AAPL --form 10-K --latest 5 --format parquet --out data/aapl_10k.parquet
+sec export --kind facts --ticker AAPL --concept revenue --latest 20 --format arrow --out data/aapl_revenue.arrow
+sec export --kind statements --ticker AAPL --statement income --period annual --latest 4 --format parquet --out data/aapl_income.parquet
+sec export --kind stitch --ticker AAPL --statement all --latest 8 --format parquet --out data/aapl_stitch.parquet
+sec export --kind metrics --ticker AAPL --period annual --latest 4 --format parquet --out data/aapl_metrics.parquet
+sec export --kind scores --ticker AAPL --period annual --latest 1 --format arrow --out data/aapl_scores.arrow
+```
+
+支持的 `--kind`：`filings`、`facts`、`statements`、`stitch`、`metrics`、`scores`。其中 `--kind facts` 必须传 `--concept`。`--format` 支持 `arrow` 和 `parquet`。命令会自动创建输出目录，并把写入 record 数打印到 stderr。
 
 ### ixbrl
 
@@ -1148,6 +1164,7 @@ MCP tool 参数示例：
 | `stitch` / `statement-stitch` | `--ticker` 或 `--cik` | `--statement`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `metrics` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `scores` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
+| `export` | `--ticker` 或 `--cik`，`--kind`，`--format`，`--out` | `--concept`、`--form`、`--statement`、`--period`、`--unit`、`--latest`、`--include-amends` |
 | `company-report` | `--ticker` 或 `--cik` | `--form`、`--topic`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `ixbrl` | `--ticker` 或 `--cik` | `--form`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `xbrl-links` / `linkbase` | `--ticker` 或 `--cik` | `--form`、`--linkbase`、`--role`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
@@ -1193,6 +1210,8 @@ MCP tool 参数示例：
 ```bash
 sec --output csv filings --ticker AAPL --form 10-K --latest 3
 sec --output table filings --ticker AAPL --form 10-K --latest 3
+sec export --kind metrics --ticker AAPL --period annual --latest 4 --format parquet --out data/aapl_metrics.parquet
+sec export --kind scores --ticker AAPL --period annual --latest 1 --format arrow --out data/aapl_scores.arrow
 ```
 
 ## Agent 工作流
