@@ -67,6 +67,17 @@ pub struct DocumentReadQuery {
 }
 
 #[derive(Debug, Clone)]
+pub struct ArchiveQuery {
+    pub cik: u64,
+    pub form: Option<String>,
+    pub latest: usize,
+    pub include_amends: bool,
+    pub primary_only: bool,
+    pub limit_bytes: Option<usize>,
+    pub out_dir: std::path::PathBuf,
+}
+
+#[derive(Debug, Clone)]
 pub struct SectionQuery {
     pub cik: u64,
     pub form: Option<String>,

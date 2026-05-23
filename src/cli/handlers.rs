@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use sec_cli::sec::{
-    CompanyReportQuery, DailyIndexQuery, EftsSearchQuery, EightKExhibitQuery, ExportFormat,
-    FactQuery, FilingQuery, ForeignIssuerQuery, FundDisclosureQuery, HealthScoreQuery,
-    HtmlTableQuery, InlineXbrlQuery, MetricsQuery, ProspectusQuery, ProxyQuery, SecClient,
-    StatementQuery, StatementStitchQuery, XbrlCalculationQuery, XbrlLinkbaseQuery,
+    ArchiveQuery, CompanyReportQuery, DailyIndexQuery, EftsSearchQuery, EightKExhibitQuery,
+    ExportFormat, FactQuery, FilingQuery, ForeignIssuerQuery, FundDisclosureQuery,
+    HealthScoreQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery, ProspectusQuery, ProxyQuery,
+    SecClient, StatementQuery, StatementStitchQuery, XbrlCalculationQuery, XbrlLinkbaseQuery,
     XbrlStatementQuery, XbrlTreeQuery,
     daily::latest_sec_index_date,
     efts::{parse_forms, require_query},
@@ -16,6 +16,7 @@ use super::{
         MetricsArgs, ScoresArgs, StatementsArgs, StitchArgs, XbrlCalcArgs, XbrlLinkbaseArgs,
         XbrlStatementArgs, XbrlTreeArgs,
     },
+    archive_args::ArchiveArgs,
     args::{EightKExhibitsArgs, InlineXbrlArgs, TablesArgs},
     common::{output_mode, resolve_cik, statement_period_form},
     disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs, ProxyArgs},
@@ -196,6 +197,23 @@ pub(super) async fn export(client: &SecClient, args: ExportArgs) -> Result<()> {
     };
     eprintln!("wrote {count} records to {}", args.out.display());
     Ok(())
+}
+
+pub(super) async fn archive(client: &SecClient, args: ArchiveArgs) -> Result<()> {
+    let output = output_mode(args.jsonl, args.pretty);
+    let cik = resolve_cik(client, args.ticker.as_deref(), args.cik).await?;
+    let manifest = client
+        .archive_filings(ArchiveQuery {
+            cik,
+            form: args.form,
+            latest: args.latest,
+            include_amends: args.include_amends,
+            primary_only: args.primary_only,
+            limit_bytes: args.limit_bytes,
+            out_dir: args.out_dir,
+        })
+        .await?;
+    print_records(&[manifest], output)
 }
 
 pub(super) async fn xbrl_links(client: &SecClient, args: XbrlLinkbaseArgs) -> Result<()> {

@@ -5,6 +5,7 @@ use super::analysis_args::{
     MetricsArgs, ScoresArgs, StatementsArgs, StitchArgs, XbrlCalcArgs, XbrlLinkbaseArgs,
     XbrlStatementArgs, XbrlTreeArgs,
 };
+use super::archive_args::ArchiveArgs;
 use super::disclosure_args::{CompanyReportArgs, ForeignArgs, FundArgs, ProspectusArgs, ProxyArgs};
 use super::export_args::ExportArgs;
 use super::monitoring_args::{DailyArgs, EftsArgs, McpArgs, OutputArg, ServeArgs};
@@ -53,6 +54,8 @@ pub(crate) enum Command {
     Scores(ScoresArgs),
     /// Export query records to Arrow IPC or Parquet files.
     Export(ExportArgs),
+    /// Download filing documents into an offline archive directory.
+    Archive(ArchiveArgs),
     /// Stream Inline XBRL facts from primary filing HTML.
     Ixbrl(InlineXbrlArgs),
     /// Parse XBRL linkbase relationships from EX-101 PRE/CAL/DEF/LAB/SCH documents.

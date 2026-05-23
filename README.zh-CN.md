@@ -33,6 +33,7 @@ sec stitch --ticker AAPL --statement income --latest 8 --pretty
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec scores --ticker AAPL --period annual --latest 1 --pretty
 sec export --kind metrics --ticker AAPL --period annual --latest 4 --format parquet --out aapl_metrics.parquet
+sec archive --ticker AAPL --form 10-K --latest 2 --primary-only --out-dir ./archives/aapl
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
@@ -110,7 +111,7 @@ sec mcp
 - 通过本地 JSON HTTP API 对外提供同一套核心查询
 - 通过 stdio MCP adapter 给 Agent 暴露 SEC 查询、解析和报告工具
 
-长期目标：继续补强批量离线归档，以及基于当前 CLI/HTTP/MCP/export 的更深 Agent 查询工作流。
+长期目标：基于当前 CLI/HTTP/MCP/export/offline archive 继续补强更深 Agent 查询工作流。
 
 ## 能准确回答什么
 
@@ -215,7 +216,7 @@ sec 13f-diff --ticker BRK-B --limit 20 --pretty
 
 | 数据源 | 对应命令 | 里面有什么 | 输出表 / record |
 | --- | --- | --- | --- |
-| SEC submissions JSON | `filings`、`export --kind filings` | 公司提交过哪些 filing、日期、accession、主文档名，以及 filing 元数据导出 | filing records、Arrow/Parquet filing tables |
+| SEC submissions JSON | `filings`、`archive`、`export --kind filings` | 公司提交过哪些 filing、日期、accession、主文档名、filing 元数据导出，以及离线 filing 文档归档 | filing records、archive manifests、Arrow/Parquet filing tables |
 | SEC daily master index | `daily`、`monitor` | 全市场某日新增 filing feed：CIK、公司、form、提交日期、archive 文件名、accession、来源 URL | daily filing records |
 | SEC EDGAR Full-Text Search / EFTS | `efts`、`full-text`、`global-search` | 全市场全文搜索命中：分数、公司、CIK、form、日期、accession、document URL | EFTS search records |
 | SEC CompanyFacts JSON | `facts`、`statements`、`stitch`、`metrics`、`scores`、`export`、`report --kind financial` | XBRL 财务事实：营收、净利润、资产、单位、期间、财年/季度、标准化报表行、去重拼接的 10-K/10-Q 时间序列、二次推导指标、Piotroski/Altman/Beneish 健康评分，以及 Arrow/Parquet 导出 | fact records、financial statement rows、stitched statement rows、financial metric records、health score records、Arrow/Parquet tables、Markdown financial report |
@@ -692,6 +693,24 @@ sec export --kind scores --ticker AAPL --period annual --latest 1 --format arrow
 
 支持的 `--kind`：`filings`、`facts`、`statements`、`stitch`、`metrics`、`scores`。其中 `--kind facts` 必须传 `--concept`。`--format` 支持 `arrow` 和 `parquet`。命令会自动创建输出目录，并把写入 record 数打印到 stderr。
 
+### archive
+
+把 SEC complete submission 文档批量下载到离线目录。这个命令适合长时间 Agent 任务、CI、离线分析：归档根目录会写 `manifest.json`，每个 accession 子目录会写 `filing.json` 和对应 document 文件。
+
+```bash
+sec archive --ticker AAPL --form 10-K --latest 2 --primary-only --out-dir ./archives/aapl --pretty
+sec archive --cik 320193 --form 8-K --latest 5 --include-amends --out-dir ./archives/aapl_8k --jsonl
+sec archive --ticker MSFT --form 10-Q --latest 4 --limit-bytes 2000000 --out-dir ./archives/msft_10q
+```
+
+关键参数：
+
+- `--primary-only`：每个 filing 只保存 sequence 1 主文档。
+- `--limit-bytes`：按 UTF-8 边界限制每个 document 保存字节数。
+- `--include-amends`：包含 `10-K/A` 这类修正版。
+
+输出 manifest 包含 `filing_count`、`document_count`、`manifest_path`、每个 filing 的 SEC 来源 URL，以及每个 document 的本地路径。
+
 ### ixbrl
 
 直接从 filing 主 HTML 流式解析 Inline XBRL facts。这个命令适合你想看“某一份 10-K/10-Q HTML 里原样嵌入的事实”，而不是 SEC CompanyFacts 已经整理后的公司级事实库。
@@ -1165,6 +1184,7 @@ MCP tool 参数示例：
 | `metrics` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `scores` | `--ticker` 或 `--cik` | `--period`、`--unit`、`--latest`、`--jsonl`、`--pretty` |
 | `export` | `--ticker` 或 `--cik`，`--kind`，`--format`，`--out` | `--concept`、`--form`、`--statement`、`--period`、`--unit`、`--latest`、`--include-amends` |
+| `archive` | `--ticker` 或 `--cik`，`--out-dir` | `--form`、`--latest`、`--include-amends`、`--primary-only`、`--limit-bytes`、`--jsonl`、`--pretty` |
 | `company-report` | `--ticker` 或 `--cik` | `--form`、`--topic`、`--latest`、`--limit-tables`、`--limit-rows`、`--include-amends`、`--jsonl`、`--pretty` |
 | `ixbrl` | `--ticker` 或 `--cik` | `--form`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `xbrl-links` / `linkbase` | `--ticker` 或 `--cik` | `--form`、`--linkbase`、`--role`、`--concept`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |

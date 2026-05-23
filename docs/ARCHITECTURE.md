@@ -33,7 +33,7 @@ submission/document layer
 form parsers / table parsers / XBRL parsers
         |
         v
-domain records -> JSON / JSONL / CSV / terminal tables / Markdown / Arrow IPC / Parquet
+domain records -> JSON / JSONL / CSV / terminal tables / Markdown / Arrow IPC / Parquet / offline archives
 ```
 
 ## Current Modules
@@ -180,4 +180,4 @@ not talk directly to `reqwest`, file caches, or parser internals.
 
 ## Near-Term Build Order
 
-1. Add optional bulk archive / offline mode.
+1. Add higher-level agent workflows that combine archive, search, tables, sections, metrics, and reports.

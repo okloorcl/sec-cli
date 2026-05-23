@@ -22,19 +22,20 @@ pub use metrics::{
 pub use prospectus::{ProspectusExcerptRecord, ProspectusRecord, ProspectusTableRecord};
 pub use proxy::{ProxyProposalRecord, ProxyStatementRecord, ProxyTableRecord};
 pub use queries::{
-    CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery, EftsSearchQuery,
-    EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
-    FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery, ProspectusQuery,
-    ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery, StatementQuery,
-    StatementStitchQuery, ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery,
+    ArchiveQuery, CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery,
+    EftsSearchQuery, EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery,
+    Form4Query, FundDisclosureQuery, HtmlTableQuery, InlineXbrlQuery, OutputMode, ParseQuery,
+    ProspectusQuery, ProxyQuery, ReportQuery, Schedule13Query, SearchQuery, SectionQuery,
+    StatementQuery, StatementStitchQuery, ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery,
     XbrlStatementQuery, XbrlTreeQuery,
 };
 pub use records::{
-    DocumentContentRecord, DocumentRecord, EightKEventRecord, EightKExhibitRecord, FactRecord,
-    FilingRecord, FinancialStatementRecord, Form4FootnoteRecord, Form4OwnerRecord,
-    Form4ReportRecord, Form4SignatureRecord, Form4TransactionRecord, InlineXbrlFactRecord,
-    ParsedRecord, ResolveCandidateRecord, ResolveValidationRecord, Schedule13Record, SearchMatch,
-    SectionRecord, StitchedStatementRecord, ThirteenFAggregateHoldingRecord, ThirteenFDiffRecord,
+    ArchiveDocumentRecord, ArchiveFilingRecord, ArchiveManifestRecord, DocumentContentRecord,
+    DocumentRecord, EightKEventRecord, EightKExhibitRecord, FactRecord, FilingRecord,
+    FinancialStatementRecord, Form4FootnoteRecord, Form4OwnerRecord, Form4ReportRecord,
+    Form4SignatureRecord, Form4TransactionRecord, InlineXbrlFactRecord, ParsedRecord,
+    ResolveCandidateRecord, ResolveValidationRecord, Schedule13Record, SearchMatch, SectionRecord,
+    StitchedStatementRecord, ThirteenFAggregateHoldingRecord, ThirteenFDiffRecord,
     ThirteenFHoldingRecord, ThirteenFOtherManagerRecord, ThirteenFReportRecord,
     XbrlCalculationCheckRecord, XbrlLinkbaseRecord, XbrlPresentationTreeRecord,
     XbrlStatementRecord,

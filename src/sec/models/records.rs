@@ -120,6 +120,48 @@ pub struct DocumentContentRecord {
     pub content: String,
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct ArchiveManifestRecord {
+    pub cik: u64,
+    pub form: Option<String>,
+    pub latest: usize,
+    pub include_amends: bool,
+    pub primary_only: bool,
+    pub limit_bytes: Option<usize>,
+    pub filing_count: usize,
+    pub document_count: usize,
+    pub out_dir: String,
+    pub manifest_path: String,
+    pub filings: Vec<ArchiveFilingRecord>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct ArchiveFilingRecord {
+    pub accession: String,
+    pub company: String,
+    pub form: String,
+    pub filing_date: String,
+    pub source_url: String,
+    pub text_url: String,
+    pub directory: String,
+    pub documents: Vec<ArchiveDocumentRecord>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct ArchiveDocumentRecord {
+    pub document_type: Option<String>,
+    pub sequence: Option<String>,
+    pub filename: Option<String>,
+    pub description: Option<String>,
+    pub content_type: String,
+    pub byte_length: usize,
+    pub written_bytes: usize,
+    pub truncated: bool,
+    pub is_primary: bool,
+    pub path: String,
+    pub document_url: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct SectionRecord {
     pub accession: String,

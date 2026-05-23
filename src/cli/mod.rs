@@ -1,4 +1,5 @@
 mod analysis_args;
+mod archive_args;
 pub(crate) mod args;
 mod common;
 mod config;

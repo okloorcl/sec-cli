@@ -53,6 +53,7 @@ real commands or modules in the repository.
 - [x] Local SEC identity config and shell completion generation.
 - [x] Terminal table and CSV output modes.
 - [x] Arrow IPC / Parquet export layer for filings, facts, statements, stitched statements, metrics, and scores.
+- [x] Bulk filing document archive / offline mode with manifest files and primary-document filtering.
 - [x] Typed SEC submissions/companyfacts response DTOs.
 - [x] Mockable LLM resolver and cache-store abstractions.
 - [x] Centralized disclosure name patterns for auditors and underwriters.
@@ -60,11 +61,11 @@ real commands or modules in the repository.
 
 ## Planned
 
-- [ ] Optional bulk archive / offline mode.
+- [ ] Deeper agent-native workflows on top of the CLI, HTTP API, MCP adapter, exports, and offline archives.
 
 ## Suggested Implementation Order
 
-1. Optional bulk archive / offline mode.
+1. Add higher-level agent workflows that combine archive, search, tables, sections, metrics, and reports.
 
 ## Completion Rule
 

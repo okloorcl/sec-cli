@@ -33,6 +33,7 @@ sec stitch --ticker AAPL --statement income --latest 8 --pretty
 sec metrics --ticker AAPL --period annual --latest 4 --pretty
 sec scores --ticker AAPL --period annual --latest 1 --pretty
 sec export --kind metrics --ticker AAPL --period annual --latest 4 --format parquet --out aapl_metrics.parquet
+sec archive --ticker AAPL --form 10-K --latest 2 --primary-only --out-dir ./archives/aapl
 sec ixbrl --ticker AAPL --form 10-K --concept RevenueFromContractWithCustomerExcludingAssessedTax
 sec xbrl-links --ticker AAPL --form 10-K --linkbase presentation --concept Revenue --limit 20 --pretty
 sec xbrl-tree --ticker AAPL --form 10-K --role OPERATIONS --limit 30 --pretty
@@ -113,8 +114,8 @@ This is an early MVP. The first implementation focuses on:
 - Serving the SEC query/parser/report surface through a stdio MCP adapter for agents
 
 Longer term, the project aims to grow into a Rust-powered SEC disclosure engine:
-Optional bulk/offline archives and deeper agent-native query workflows on top
-of the current CLI/HTTP/MCP/export surfaces.
+Deeper agent-native query workflows on top of the current CLI/HTTP/MCP/export
+and offline archive surfaces.
 
 ## What You Can Answer Accurately
 
@@ -222,7 +223,7 @@ Practical rule:
 
 | Data/source | Commands | What it contains | Main output table |
 | --- | --- | --- | --- |
-| SEC submissions JSON | `filings`, `export --kind filings` | Filing list, dates, accession numbers, primary document names, and filing metadata exports | filing records, Arrow/Parquet filing tables |
+| SEC submissions JSON | `filings`, `archive`, `export --kind filings` | Filing list, dates, accession numbers, primary document names, filing metadata exports, and offline filing document archives | filing records, archive manifests, Arrow/Parquet filing tables |
 | SEC daily master index | `daily`, `monitor` | All-market daily filing feed: CIK, company, form, filing date, archive filename, accession, source URLs | daily filing records |
 | SEC EDGAR Full-Text Search / EFTS | `efts`, `full-text`, `global-search` | All-market text-search hits with score, company, CIK, form, dates, accession, document URL | EFTS search records |
 | SEC CompanyFacts JSON | `facts`, `statements`, `stitch`, `metrics`, `scores`, `export`, `report --kind financial` | XBRL facts such as revenue, net income, assets, units, periods, standardized statement lines, de-duplicated 10-K/10-Q time series, derived margins/growth/returns/liquidity/leverage, Piotroski/Altman/Beneish health scores, and Arrow/Parquet exports | fact records, financial statement rows, stitched statement rows, financial metric records, health score records, Arrow/Parquet tables, Markdown financial report |
@@ -800,6 +801,28 @@ Supported `--kind` values: `filings`, `facts`, `statements`, `stitch`,
 `metrics`, and `scores`. `--kind facts` requires `--concept`. `--format`
 accepts `arrow` or `parquet`. The command creates parent directories
 automatically and prints the record count to stderr.
+
+### archive
+
+Download complete SEC submission documents into an offline directory. This is
+useful before a long agent run, CI job, or airplane-mode analysis session: the
+archive contains document files plus `manifest.json` at the archive root and
+`filing.json` inside each accession directory.
+
+```bash
+sec archive --ticker AAPL --form 10-K --latest 2 --primary-only --out-dir ./archives/aapl --pretty
+sec archive --cik 320193 --form 8-K --latest 5 --include-amends --out-dir ./archives/aapl_8k --jsonl
+sec archive --ticker MSFT --form 10-Q --latest 4 --limit-bytes 2000000 --out-dir ./archives/msft_10q
+```
+
+Important options:
+
+- `--primary-only`: save only the primary sequence 1 document for each filing.
+- `--limit-bytes`: cap each saved document on a UTF-8 boundary.
+- `--include-amends`: include amended forms such as `10-K/A`.
+
+The returned manifest includes `filing_count`, `document_count`, `manifest_path`,
+per-filing source URLs, and per-document local paths.
 
 ### ixbrl
 
@@ -1719,6 +1742,7 @@ Command options:
 | `metrics` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `scores` | `--ticker` or `--cik` | `--period`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `export` | `--ticker` or `--cik`, `--kind`, `--format`, `--out` | `--concept`, `--form`, `--statement`, `--period`, `--unit`, `--latest`, `--include-amends` |
+| `archive` | `--ticker` or `--cik`, `--out-dir` | `--form`, `--latest`, `--include-amends`, `--primary-only`, `--limit-bytes`, `--jsonl`, `--pretty` |
 | `company-report` | `--ticker` or `--cik` | `--form`, `--topic`, `--latest`, `--limit-tables`, `--limit-rows`, `--include-amends`, `--jsonl`, `--pretty` |
 | `ixbrl` | `--ticker` or `--cik` | `--form`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `xbrl-links` / `linkbase` | `--ticker` or `--cik` | `--form`, `--linkbase`, `--role`, `--concept`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |

@@ -1,3 +1,4 @@
+pub mod archive;
 pub mod client;
 pub mod company;
 pub mod concepts;
@@ -34,12 +35,12 @@ pub use edgar::accession_text_url;
 pub use export::{ExportFormat, export_records};
 pub use models::StitchedStatementRecord;
 pub use models::{
-    CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery, EftsSearchQuery,
-    EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
-    FundDisclosureQuery, HealthScoreQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery,
-    OutputMode, ParseQuery, ProspectusQuery, ProxyQuery, ReportQuery, Schedule13Query, SearchQuery,
-    SectionQuery, StatementQuery, StatementStitchQuery, ThirteenFQuery, XbrlCalculationQuery,
-    XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
+    ArchiveManifestRecord, ArchiveQuery, CompanyReportQuery, DailyIndexQuery, DocumentQuery,
+    DocumentReadQuery, EftsSearchQuery, EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery,
+    ForeignIssuerQuery, Form4Query, FundDisclosureQuery, HealthScoreQuery, HtmlTableQuery,
+    InlineXbrlQuery, MetricsQuery, OutputMode, ParseQuery, ProspectusQuery, ProxyQuery,
+    ReportQuery, Schedule13Query, SearchQuery, SectionQuery, StatementQuery, StatementStitchQuery,
+    ThirteenFQuery, XbrlCalculationQuery, XbrlLinkbaseQuery, XbrlStatementQuery, XbrlTreeQuery,
 };
 pub use models::{DailyFilingRecord, EftsSearchRecord};
 pub use models::{

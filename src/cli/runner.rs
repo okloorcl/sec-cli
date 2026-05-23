@@ -79,6 +79,7 @@ pub(crate) async fn run() -> Result<()> {
         Command::Metrics(args) => handlers::metrics(&client, args).await?,
         Command::Scores(args) => handlers::scores(&client, args).await?,
         Command::Export(args) => handlers::export(&client, args).await?,
+        Command::Archive(args) => handlers::archive(&client, args).await?,
         Command::XbrlLinks(args) => handlers::xbrl_links(&client, args).await?,
         Command::XbrlTree(args) => handlers::xbrl_tree(&client, args).await?,
         Command::XbrlCalc(args) => handlers::xbrl_calc(&client, args).await?,
