@@ -62,6 +62,13 @@ pub fn tools() -> Vec<Value> {
             ),
         ),
         tool(
+            "sec_agent_pack",
+            "Build a source-backed research packet with filings, sections, metrics, scores, source URLs, and next commands.",
+            company_schema(
+                json!({"form":{"type":"string"},"latest":{"type":"integer"},"sections":{"type":["string","array"],"items":{"type":"string"}},"section_limit_bytes":{"type":"integer"},"metrics_latest":{"type":"integer"}}),
+            ),
+        ),
+        tool(
             "sec_ixbrl",
             "Stream Inline XBRL facts from primary filing HTML.",
             company_schema(
@@ -259,6 +266,7 @@ mod tests {
             "sec_daily",
             "sec_efts",
             "sec_scores",
+            "sec_agent_pack",
             "sec_stitch",
             "sec_ixbrl",
             "sec_tables",

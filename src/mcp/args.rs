@@ -3,11 +3,12 @@ use chrono::{NaiveDate, Utc};
 use serde_json::Value;
 
 use crate::sec::{
-    CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery, EftsSearchQuery,
-    EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery, Form4Query,
-    FundDisclosureQuery, HealthScoreQuery, HtmlTableQuery, InlineXbrlQuery, MetricsQuery,
-    ParseQuery, ProspectusQuery, ProxyQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery,
-    SecClient, SectionQuery, StatementQuery, StatementStitchQuery, ThirteenFQuery,
+    AgentPackQuery, CompanyReportQuery, DailyIndexQuery, DocumentQuery, DocumentReadQuery,
+    EftsSearchQuery, EightKExhibitQuery, EightKQuery, FactQuery, FilingQuery, ForeignIssuerQuery,
+    Form4Query, FundDisclosureQuery, HealthScoreQuery, HtmlTableQuery, InlineXbrlQuery,
+    MetricsQuery, ParseQuery, ProspectusQuery, ProxyQuery, ReportKind, ReportQuery,
+    Schedule13Query, SearchQuery, SecClient, SectionQuery, StatementQuery, StatementStitchQuery,
+    ThirteenFQuery,
     daily::latest_sec_index_date,
     efts::{parse_forms, require_query},
 };
@@ -90,6 +91,17 @@ pub async fn health_score_query(client: &SecClient, args: &Value) -> Result<Heal
         form: period_form(optional_string(args, "period").as_deref()),
         unit: optional_string(args, "unit"),
         latest: optional_usize(args, "latest").unwrap_or(1),
+    })
+}
+
+pub async fn agent_pack_query(client: &SecClient, args: &Value) -> Result<AgentPackQuery> {
+    Ok(AgentPackQuery {
+        cik: resolve_cik(client, args).await?,
+        form: optional_string(args, "form").unwrap_or_else(|| "10-K".to_string()),
+        latest: optional_usize(args, "latest").unwrap_or(1),
+        sections: sections(args),
+        section_limit_bytes: optional_usize(args, "section_limit_bytes").or(Some(20_000)),
+        metrics_latest: optional_usize(args, "metrics_latest").unwrap_or(4),
     })
 }
 
@@ -333,6 +345,37 @@ fn forms(args: &Value) -> Vec<String> {
     optional_string(args, "form")
         .map(|value| parse_forms(&[value]))
         .unwrap_or_default()
+}
+
+fn sections(args: &Value) -> Vec<String> {
+    let sections = string_array_or_csv(args, "sections");
+    if sections.is_empty() {
+        vec!["risk-factors".to_string(), "mda".to_string()]
+    } else {
+        sections
+    }
+}
+
+fn string_array_or_csv(args: &Value, key: &str) -> Vec<String> {
+    if let Some(values) = args.get(key).and_then(Value::as_array) {
+        return values
+            .iter()
+            .filter_map(Value::as_str)
+            .flat_map(split_csv)
+            .collect();
+    }
+    optional_string(args, key)
+        .map(|value| split_csv(&value))
+        .unwrap_or_default()
+}
+
+fn split_csv(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+        .map(str::to_string)
+        .collect()
 }
 
 fn period_form(period: Option<&str>) -> Option<String> {

@@ -70,6 +70,17 @@ pub(super) struct MetricsParams {
 }
 
 #[derive(Deserialize)]
+pub(super) struct AgentPackParams {
+    pub(super) ticker: Option<String>,
+    pub(super) cik: Option<u64>,
+    pub(super) form: Option<String>,
+    pub(super) latest: Option<usize>,
+    pub(super) sections: Option<String>,
+    pub(super) section_limit_bytes: Option<usize>,
+    pub(super) metrics_latest: Option<usize>,
+}
+
+#[derive(Deserialize)]
 pub(super) struct CompanyReportParams {
     pub(super) ticker: Option<String>,
     pub(super) cik: Option<u64>,
@@ -175,4 +186,22 @@ pub(super) struct ParseParams {
     pub(super) latest: Option<usize>,
     pub(super) include_amends: Option<bool>,
     pub(super) limit: Option<usize>,
+}
+
+pub(super) fn sections_list(value: Option<String>) -> Vec<String> {
+    let sections = value
+        .map(|value| {
+            value
+                .split(',')
+                .map(str::trim)
+                .filter(|part| !part.is_empty())
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    if sections.is_empty() {
+        vec!["risk-factors".to_string(), "mda".to_string()]
+    } else {
+        sections
+    }
 }

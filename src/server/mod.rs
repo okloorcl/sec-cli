@@ -1,5 +1,6 @@
 use std::{net::SocketAddr, sync::Arc};
 
+mod agent;
 mod errors;
 mod helpers;
 mod params;
@@ -12,6 +13,7 @@ use axum::{
 };
 use serde_json::json;
 
+use agent::agent_pack;
 use errors::ApiResult;
 use helpers::*;
 use params::*;
@@ -27,7 +29,7 @@ use crate::sec::{
 };
 
 #[derive(Clone)]
-struct AppState {
+pub(super) struct AppState {
     client: Arc<SecClient>,
 }
 
@@ -56,6 +58,7 @@ fn router() -> Router<AppState> {
         .route("/v1/stitch", get(stitch))
         .route("/v1/metrics", get(metrics))
         .route("/v1/scores", get(scores))
+        .route("/v1/agent-pack", get(agent_pack))
         .route("/v1/company-report", get(company_report))
         .route("/v1/ixbrl", get(ixbrl))
         .route("/v1/sections", get(sections))

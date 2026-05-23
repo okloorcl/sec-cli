@@ -55,6 +55,7 @@ real commands or modules in the repository.
 - [x] Arrow IPC / Parquet export layer for filings, facts, statements, stitched statements, metrics, and scores.
 - [x] Bulk filing document archive / offline mode with manifest files and primary-document filtering.
 - [x] Agent-ready research packet workflow combining filings, sections, metrics, scores, sources, and next commands.
+- [x] Agent-pack exposed through CLI, local HTTP API, and stdio MCP.
 - [x] Typed SEC submissions/companyfacts response DTOs.
 - [x] Mockable LLM resolver and cache-store abstractions.
 - [x] Centralized disclosure name patterns for auditors and underwriters.

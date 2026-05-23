@@ -1636,6 +1636,7 @@ curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=an
 curl "http://127.0.0.1:8716/v1/stitch?ticker=AAPL&statement=income&latest=8"
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
 curl "http://127.0.0.1:8716/v1/scores?ticker=AAPL&period=annual&latest=1"
+curl "http://127.0.0.1:8716/v1/agent-pack?ticker=AAPL&sections=risk-factors,mda&metrics_latest=4"
 curl "http://127.0.0.1:8716/v1/company-report?ticker=AAPL&form=10-K&topic=segment"
 curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
 curl "http://127.0.0.1:8716/v1/8k-exhibits?ticker=AAPL&category=earnings_release&latest=5"
@@ -1661,6 +1662,7 @@ Available endpoints:
 | `/v1/stitch` | `sec stitch` |
 | `/v1/metrics` | `sec metrics` |
 | `/v1/scores` | `sec scores` |
+| `/v1/agent-pack` | `sec agent-pack` |
 | `/v1/company-report` | `sec company-report` |
 | `/v1/ixbrl` | `sec ixbrl` |
 | `/v1/sections` | `sec section` |
@@ -1700,6 +1702,7 @@ Available MCP tools:
 | `sec_stitch` | `sec stitch` equivalent |
 | `sec_metrics` | `sec metrics` equivalent |
 | `sec_scores` | `sec scores` equivalent |
+| `sec_agent_pack` | `sec agent-pack` equivalent |
 | `sec_ixbrl` | `sec ixbrl` equivalent |
 | `sec_tables` | `sec tables` equivalent |
 | `sec_company_report` | `sec company-report` equivalent |

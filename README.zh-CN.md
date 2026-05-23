@@ -1075,6 +1075,7 @@ curl "http://127.0.0.1:8716/v1/statements?ticker=AAPL&statement=income&period=an
 curl "http://127.0.0.1:8716/v1/stitch?ticker=AAPL&statement=income&latest=8"
 curl "http://127.0.0.1:8716/v1/metrics?ticker=AAPL&period=annual&latest=4"
 curl "http://127.0.0.1:8716/v1/scores?ticker=AAPL&period=annual&latest=1"
+curl "http://127.0.0.1:8716/v1/agent-pack?ticker=AAPL&sections=risk-factors,mda&metrics_latest=4"
 curl "http://127.0.0.1:8716/v1/company-report?ticker=AAPL&form=10-K&topic=segment"
 curl "http://127.0.0.1:8716/v1/8k?ticker=AAPL&item=2.02&latest=5&limit_bytes=600"
 curl "http://127.0.0.1:8716/v1/8k-exhibits?ticker=AAPL&category=earnings_release&latest=5"
@@ -1100,6 +1101,7 @@ curl "http://127.0.0.1:8716/v1/parse?ticker=AAPL&form=4&latest=1&limit=5"
 | `/v1/stitch` | `sec stitch` |
 | `/v1/metrics` | `sec metrics` |
 | `/v1/scores` | `sec scores` |
+| `/v1/agent-pack` | `sec agent-pack` |
 | `/v1/company-report` | `sec company-report` |
 | `/v1/ixbrl` | `sec ixbrl` |
 | `/v1/sections` | `sec section` |
@@ -1137,6 +1139,7 @@ sec mcp
 | `sec_stitch` | 等价于 `sec stitch` |
 | `sec_metrics` | 等价于 `sec metrics` |
 | `sec_scores` | 等价于 `sec scores` |
+| `sec_agent_pack` | 等价于 `sec agent-pack` |
 | `sec_ixbrl` | 等价于 `sec ixbrl` |
 | `sec_tables` | 等价于 `sec tables` |
 | `sec_company_report` | 等价于 `sec company-report` |
