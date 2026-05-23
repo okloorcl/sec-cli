@@ -1,3 +1,4 @@
+pub mod aggregate;
 pub mod holdings;
 pub mod summary;
 
@@ -6,7 +7,8 @@ use anyhow::Result;
 use crate::sec::{
     client::SecClient,
     models::{
-        FilingQuery, FilingRecord, ThirteenFHoldingRecord, ThirteenFQuery, ThirteenFReportRecord,
+        FilingQuery, FilingRecord, ThirteenFAggregateHoldingRecord, ThirteenFHoldingRecord,
+        ThirteenFQuery, ThirteenFReportRecord,
     },
 };
 
@@ -24,6 +26,14 @@ impl SecClient {
             records.extend(holdings::parse_13f_documents(&filing, &docs)?);
         }
         Ok(records)
+    }
+
+    pub async fn thirteenf_aggregate_holdings(
+        &self,
+        query: ThirteenFQuery,
+    ) -> Result<Vec<ThirteenFAggregateHoldingRecord>> {
+        let holdings = self.thirteenf_holdings(query).await?;
+        Ok(aggregate::aggregate_holdings(holdings))
     }
 
     pub async fn thirteenf_reports(

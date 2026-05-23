@@ -9,6 +9,7 @@ sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
 sec form4 --ticker AAPL --latest 3
 sec 13f --cik 1067983 --latest 1
+sec 13f-aggregate --cik 1067983 --latest 1 --limit 20
 sec 13f-summary --cik 1067983 --latest 1
 sec parse --ticker AAPL --form 4 --latest 1
 sec forms --pretty
@@ -230,6 +231,33 @@ Each holding includes:
 - `voting_sole`
 - `voting_shared`
 - `voting_none`
+- `source_url`
+
+### 13f-aggregate
+
+Aggregate 13F information-table rows by accession, CUSIP, class, and put/call.
+This is usually the portfolio view analysts want when a consolidated 13F filing
+contains multiple included managers.
+
+```bash
+sec 13f-aggregate --cik 1067983 --latest 1 --limit 20 --pretty
+sec 13f-aggregate --ticker BRK-B --latest 4 --jsonl
+```
+
+Each aggregate holding includes:
+
+- `issuer`
+- `class`
+- `cusip`
+- `put_call`
+- `value_reported`
+- `value_scale`
+- `value_usd`
+- `shares`
+- `voting_sole`
+- `voting_shared`
+- `voting_none`
+- `rows`
 - `source_url`
 
 ### 13f-summary

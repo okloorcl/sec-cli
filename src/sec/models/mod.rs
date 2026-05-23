@@ -7,5 +7,6 @@ pub use queries::{
 };
 pub use records::{
     DocumentRecord, FactRecord, FilingRecord, Form4TransactionRecord, ParsedRecord, SearchMatch,
-    ThirteenFHoldingRecord, ThirteenFOtherManagerRecord, ThirteenFReportRecord,
+    ThirteenFAggregateHoldingRecord, ThirteenFHoldingRecord, ThirteenFOtherManagerRecord,
+    ThirteenFReportRecord,
 };

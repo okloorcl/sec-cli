@@ -140,6 +140,28 @@ pub struct ThirteenFHoldingRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct ThirteenFAggregateHoldingRecord {
+    pub accession: String,
+    pub cik: u64,
+    pub manager: String,
+    pub filing_date: String,
+    pub report_date: Option<String>,
+    pub issuer: Option<String>,
+    pub class: Option<String>,
+    pub cusip: Option<String>,
+    pub put_call: Option<String>,
+    pub value_reported: u64,
+    pub value_scale: String,
+    pub value_usd: u64,
+    pub shares: f64,
+    pub voting_sole: u64,
+    pub voting_shared: u64,
+    pub voting_none: u64,
+    pub rows: usize,
+    pub source_url: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ThirteenFReportRecord {
     pub accession: String,
     pub cik: u64,

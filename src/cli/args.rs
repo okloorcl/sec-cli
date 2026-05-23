@@ -32,6 +32,9 @@ pub(crate) enum Command {
     /// Parse 13F institutional holdings information tables.
     #[command(name = "13f")]
     ThirteenF(ThirteenFArgs),
+    /// Parse and aggregate 13F holdings by CUSIP/class/put-call.
+    #[command(name = "13f-aggregate")]
+    ThirteenFAggregate(ThirteenFArgs),
     /// Parse 13F cover, summary, signature, and manager metadata.
     #[command(name = "13f-summary")]
     ThirteenFSummary(ThirteenFArgs),
