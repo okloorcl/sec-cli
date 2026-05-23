@@ -10,7 +10,7 @@ use crate::sec::{
     models::{
         FilingQuery, FilingRecord, ForeignExcerptRecord, ForeignIssuerQuery, ForeignIssuerRecord,
     },
-    parsers::text_helpers,
+    parsers::{disclosure_patterns, text_helpers},
 };
 
 const FOREIGN_FORMS: &[&str] = &["20-F", "20-F/A", "6-K", "6-K/A", "40-F", "40-F/A"];
@@ -132,17 +132,7 @@ fn ticker_or_symbol(text: &str) -> Option<String> {
 }
 
 fn auditor(text: &str) -> Option<String> {
-    for pattern in [
-        r"(?i)(Ernst\s*&\s*Young\s+LLP)",
-        r"(?i)(Deloitte\s*&\s*Touche\s+LLP)",
-        r"(?i)(PricewaterhouseCoopers\s+LLP|PwC)",
-        r"(?i)(KPMG\s+LLP)",
-    ] {
-        if let Some(value) = capture_first(text, pattern) {
-            return Some(value);
-        }
-    }
-    None
+    disclosure_patterns::known_auditor(text)
 }
 
 fn event_signals(text: &str) -> Vec<String> {

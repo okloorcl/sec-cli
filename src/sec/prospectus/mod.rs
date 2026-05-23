@@ -11,7 +11,7 @@ use crate::sec::{
         FilingQuery, FilingRecord, HtmlTableRecord, ProspectusExcerptRecord, ProspectusQuery,
         ProspectusRecord, ProspectusTableRecord,
     },
-    parsers::text_helpers,
+    parsers::{disclosure_patterns, text_helpers},
     tables::extract_html_tables,
 };
 
@@ -198,41 +198,11 @@ fn offering_amount(text: &str) -> Option<String> {
 }
 
 fn underwriters(text: &str) -> Vec<String> {
-    let known = [
-        "Morgan Stanley",
-        "Goldman Sachs",
-        "J.P. Morgan",
-        "JP Morgan",
-        "BofA Securities",
-        "Barclays",
-        "Citigroup",
-        "Deutsche Bank",
-        "Evercore",
-        "Jefferies",
-        "RBC Capital Markets",
-        "UBS",
-        "Wells Fargo",
-    ];
-    known
-        .iter()
-        .filter(|name| contains_ci(text, name))
-        .map(|name| (*name).to_string())
-        .collect()
+    disclosure_patterns::known_underwriters(text)
 }
 
 fn auditor(text: &str) -> Option<String> {
-    for pattern in [
-        r"(?i)(Ernst\s*&\s*Young\s+LLP)",
-        r"(?i)(Deloitte\s*&\s*Touche\s+LLP)",
-        r"(?i)(PricewaterhouseCoopers\s+LLP|PwC)",
-        r"(?i)(KPMG\s+LLP)",
-        r"(?i)(BDO\s+USA,\s+P\.?C\.?)",
-    ] {
-        if let Some(value) = capture_first(text, pattern) {
-            return Some(value);
-        }
-    }
-    None
+    disclosure_patterns::known_auditor(text)
 }
 
 fn excerpt(text: &str, title: &str, limit_bytes: Option<usize>) -> Option<ProspectusExcerptRecord> {

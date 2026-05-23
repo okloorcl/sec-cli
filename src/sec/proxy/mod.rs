@@ -11,7 +11,7 @@ use crate::sec::{
         FilingQuery, FilingRecord, HtmlTableRecord, ProxyProposalRecord, ProxyQuery,
         ProxyStatementRecord, ProxyTableRecord,
     },
-    parsers::text_helpers,
+    parsers::{disclosure_patterns, text_helpers},
     tables::extract_html_tables,
 };
 
@@ -331,15 +331,7 @@ fn meeting_date(text: &str) -> Option<String> {
 }
 
 fn auditor(text: &str) -> Option<String> {
-    capture_first(
-        text,
-        &[
-            r"(?i)(Ernst\s*&\s*Young\s+LLP)",
-            r"(?i)(Deloitte\s*&\s*Touche\s+LLP)",
-            r"(?i)(PricewaterhouseCoopers\s+LLP|PwC)",
-            r"(?i)(KPMG\s+LLP)",
-        ],
-    )
+    disclosure_patterns::known_auditor(text)
 }
 
 fn proposal_category(title: &str) -> &'static str {
