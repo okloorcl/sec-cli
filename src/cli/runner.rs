@@ -6,11 +6,14 @@ use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
     DocumentQuery, DocumentReadQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery,
     ReportKind, ReportQuery, SearchQuery, SecClient, SectionQuery, ThirteenFQuery,
-    accession_text_url, find_matches, print_records, resolve_investor, search_investors,
+    accession_text_url, find_matches,
+    llm::{LlmConfig, LlmProvider},
+    print_records,
+    resolve::resolve_verified_13f_cik,
     supported_parsers,
 };
 
-use super::args::{Cli, Command, ReportKindArg};
+use super::args::{Cli, Command, LlmProviderArg, ReportKindArg, ResolveArgs};
 
 pub(crate) async fn run() -> Result<()> {
     let cli = Cli::parse();
@@ -123,9 +126,11 @@ pub(crate) async fn run() -> Result<()> {
                 .await?;
             println!("{report}");
         }
-        Command::Investor(args) => {
+        Command::Resolve(args) => {
             let output = output_mode(args.jsonl, args.pretty);
-            let records = search_investors(&args.query);
+            let records = client
+                .resolve_query(&args.query, !args.no_verify, llm_overrides(&args))
+                .await?;
             print_records(&records, output)?;
         }
         Command::Docs(args) => {
@@ -344,9 +349,7 @@ async fn resolve_subject(
     investor: Option<&str>,
 ) -> Result<(u64, String)> {
     if let Some(investor) = investor {
-        let record = resolve_investor(investor)
-            .with_context(|| format!("unknown investor alias '{}'", investor))?;
-        return Ok((record.cik, record.investor));
+        return resolve_verified_13f_cik(client, investor).await;
     }
     if let Some(cik) = cik {
         return Ok((cik, cik.to_string()));
@@ -359,4 +362,25 @@ async fn resolve_subject(
         return Ok((cik, ticker.to_ascii_uppercase()));
     }
     bail!("provide --ticker, --cik, or --investor");
+}
+
+fn llm_overrides(args: &ResolveArgs) -> Option<LlmConfig> {
+    if args.llm_provider.is_none()
+        && args.llm_base_url.is_none()
+        && args.llm_model.is_none()
+        && args.llm_api_key_env.is_none()
+    {
+        return None;
+    }
+    Some(LlmConfig {
+        provider: args.llm_provider.as_ref().map(|provider| match provider {
+            LlmProviderArg::Openai => LlmProvider::OpenAi,
+            LlmProviderArg::Anthropic => LlmProvider::Anthropic,
+        }),
+        base_url: args.llm_base_url.clone(),
+        model: args.llm_model.clone(),
+        api_key: None,
+        api_key_env: args.llm_api_key_env.clone(),
+        max_tokens: None,
+    })
 }

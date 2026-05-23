@@ -51,6 +51,8 @@ src/sec/storage/                    local cache/store abstraction
 src/sec/edgar/                      SEC data sources and URL builders
 src/sec/edgar/filings.rs            submissions index -> FilingRecord
 src/sec/edgar/facts.rs              CompanyFacts -> FactRecord
+src/sec/llm/                        OpenAI/Anthropic-compatible model clients
+src/sec/resolve/                    LLM name resolution plus SEC verification
 src/sec/documents/                  submission and attachment/document selection
 src/sec/documents/submission.rs     complete-submission.txt -> SubmissionDocument[]
 src/sec/documents/selectors.rs      primary XML, ownership XML, 13F table selectors
@@ -101,6 +103,14 @@ Primary SEC sources:
 - Future bulk archives: companyfacts/submissions zip for offline mode.
 - Future EFTS/full-text search: global text search.
 
+Optional model sources:
+
+- OpenAI-compatible chat completions endpoint for name resolution.
+- Anthropic-compatible messages endpoint for name resolution.
+
+The model is never the final authority. It proposes candidate filing managers;
+SEC submissions and 13F filings validate whether the candidate is usable.
+
 ## Pipeline Contracts
 
 Every parsed record should include enough provenance for agents and audits:
@@ -135,6 +145,8 @@ The current codebase already has these boundaries in place:
 - `client`: EDGAR domain facade. It combines HTTP/storage and exposes operations.
 - `edgar`: source-specific API handling for submissions, facts, and archive URLs.
 - `documents`: SEC SGML container scanning and attachment selection.
+- `llm`: protocol adapters for OpenAI-compatible and Anthropic-compatible models.
+- `resolve`: public-name resolution that turns model candidates into SEC-verified records.
 - `parsers`: reusable XML parser helpers and form-specific regulatory parsers.
 - `models`: query DTOs and stable output record schemas.
 - `registry`: parser discovery and supported form families.

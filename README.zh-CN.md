@@ -6,6 +6,7 @@
 [![SEC EDGAR](https://img.shields.io/badge/Data-SEC%20EDGAR-blue)](https://www.sec.gov/edgar)
 [![Output](https://img.shields.io/badge/Output-JSON%20%7C%20JSONL%20%7C%20Markdown-green)](#输出模式)
 [![Agent Ready](https://img.shields.io/badge/Agent-ready-111827)](#agent-工作流)
+[![LLM Resolver](https://img.shields.io/badge/LLM-OpenAI%20%7C%20Anthropic-7c3aed)](#llm-resolver)
 [![English](https://img.shields.io/badge/README-English-blue)](README.md)
 
 | 核心能力 | 能拿到什么 |
@@ -21,7 +22,7 @@ sec facts --ticker AAPL --concept revenue
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
-sec investor --query 段永平 --pretty
+sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty
 sec report --cik 1067983 --kind portfolio --limit 10
 sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
@@ -47,6 +48,7 @@ sec forms --pretty
 - 搜索 filing 原文并返回 snippet
 - 抽取 10-K/10-Q 常用 section：Business、Risk Factors、MD&A 等
 - 生成 Markdown 专业汇报：insider、portfolio、risk
+- 用 LLM 解析投资人/基金/公众人物名称，再用 SEC 13F filing 验证候选 CIK
 - 列出和读取 complete submission 内的 documents
 - 解析 Form 4 交易明细
 - 汇总 Form 4 报告、owner、签名、脚注、净买卖
@@ -66,7 +68,7 @@ sec forms --pretty
 | 哪些 owner 提交了 Form 4，净买卖是多少？ | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
 | Berkshire 最新 13F 持仓是什么？ | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | 最近两期 13F 哪些仓位变化最大？ | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
-| 我只知道投资人名字，不知道 CIK？ | `sec investor --query 段永平 --pretty`，然后 `sec 13f-diff --investor 段永平 --pretty` |
+| 我只知道投资人名字，不知道 CIK？ | `sec resolve --query 段永平 --pretty`，然后 `sec 13f-diff --investor 段永平 --pretty` |
 | 公司最新 10-K 风险因素是什么？ | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
 | 生成能直接给人看的分析摘要？ | `sec report --ticker AAPL --kind risk` |
 | 答案来源在哪里？ | 结构化结果包含 `source_url`，document 结果还包含 `document_url` |
@@ -81,6 +83,8 @@ sec forms --pretty
 | `storage` | 本地缓存 |
 | `edgar` | SEC submissions、facts、archive URL |
 | `documents` | complete submission 拆分、document 选择、读取 |
+| `llm` | OpenAI-compatible / Anthropic-compatible 模型客户端 |
+| `resolve` | LLM 候选解析 + SEC 13F 验证 |
 | `parsers` | XML helper、form-specific parsers |
 | `sections` | 10-K/10-Q section 抽取 |
 | `reports` | Markdown 汇报生成 |
@@ -113,6 +117,62 @@ export SEC_IDENTITY="Your Name your.email@example.com"
 ```bash
 sec --identity "Your Name your.email@example.com" filings --ticker AAPL
 ```
+
+## LLM Resolver
+
+`sec resolve` 不再依赖硬编码别名表。流程是：LLM 先根据自然语言名字提出 SEC 13F filing manager / CIK 候选，然后 `sec-cli` 再去 SEC `13F-HR` filing 验证。LLM 负责理解名字，SEC 文件才是事实来源。
+
+OpenAI 兼容配置，比如 GLM / BigModel：
+
+```bash
+mkdir -p ~/.config/sec-cli
+cat > ~/.config/sec-cli/llm.json <<'JSON'
+{
+  "provider": "openai",
+  "base_url": "https://open.bigmodel.cn/api/coding/paas/v4",
+  "model": "GLM-4.7",
+  "api_key_env": "BIGMODEL_API_KEY"
+}
+JSON
+
+export BIGMODEL_API_KEY="your-api-key"
+sec resolve --query 段永平 --pretty
+```
+
+Anthropic 兼容配置：
+
+```json
+{
+  "provider": "anthropic",
+  "base_url": "https://open.bigmodel.cn/api/anthropic",
+  "model": "GLM-4.7",
+  "api_key_env": "BIGMODEL_API_KEY"
+}
+```
+
+环境变量覆盖：
+
+| 变量 | 含义 |
+| --- | --- |
+| `SEC_CLI_LLM_CONFIG` | 指定配置文件路径 |
+| `SEC_CLI_LLM_PROVIDER` | `openai` 或 `anthropic` |
+| `SEC_CLI_LLM_BASE_URL` | provider base URL |
+| `SEC_CLI_LLM_MODEL` | 模型名 |
+| `SEC_CLI_LLM_API_KEY_ENV` | 保存 API key 的环境变量名 |
+| `SEC_CLI_LLM_API_KEY` | 直接 API key fallback；更推荐 `api_key_env` |
+
+也可以单次命令覆盖：
+
+```bash
+sec resolve --query "Warren Buffett" \
+  --llm-provider openai \
+  --llm-base-url https://open.bigmodel.cn/api/coding/paas/v4 \
+  --llm-model GLM-4.7 \
+  --llm-api-key-env BIGMODEL_API_KEY \
+  --pretty
+```
+
+不要把 API key 提交进仓库。建议把 key 放在环境变量里，配置文件只写 `api_key_env`。
 
 ## 命令
 
@@ -179,16 +239,19 @@ sec report --ticker AAPL --kind risk --limit-bytes 4000
 - `portfolio`：13F 摘要、Top holdings、可视化条、最大仓位变化
 - `risk`：10-K Risk Factors 和 MD&A 摘要
 
-### investor
+### resolve
 
-把投资人别名解析到 SEC 13F filing manager 和 CIK。SEC 文件通常由法律实体提交，不一定直接用公众熟悉的投资人姓名。
+把投资人、基金、公众人物名称解析到 SEC 13F filing manager 候选。SEC 文件通常由法律实体提交，不一定直接用公众熟悉的名字，所以这里用 LLM 做名字理解，再用 SEC filing 验证。
 
 ```bash
-sec investor --query 段永平 --pretty
-sec investor --query "Warren Buffett" --pretty
+sec resolve --query 段永平 --pretty
+sec resolve --query "Warren Buffett" --pretty
+sec resolve --query "Seth Klarman" --no-verify --pretty
 ```
 
-输出字段：`investor`、`manager`、`cik`、`relationship`、`aliases`、`confidence`、`note`。
+输出字段：`query`、`candidate_type`、`investor`、`manager`、`cik`、`confidence`、`relationship`、`evidence_queries`、`notes`、`validation`、`next_commands`。
+
+只有 `validation.status` 为 `verified_13f` 时，才代表候选 CIK 有 SEC `13F-HR` filing。`sec 13f-diff --investor <NAME>` 这类命令会要求验证通过。
 
 ### docs / doc
 
@@ -266,7 +329,7 @@ sec forms --pretty
 | `search` | `--ticker` 或 `--cik`，`--query` | `--form`、`--latest`、`--context`、`--include-amends`、`--jsonl`、`--pretty` |
 | `section` | `--ticker` 或 `--cik`，`--item` | `--form`、`--latest`、`--accession`、`--limit-bytes`、`--include-amends`、`--jsonl`、`--pretty` |
 | `report` | `--ticker`、`--cik` 或 `--investor`，`--kind` | `--latest`、`--limit`、`--limit-bytes`、`--include-amends` |
-| `investor` | `--query` | `--jsonl`、`--pretty` |
+| `resolve` | `--query` | `--no-verify`、`--llm-provider`、`--llm-base-url`、`--llm-model`、`--llm-api-key-env`、`--jsonl`、`--pretty` |
 | `docs` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
 | `doc` | `--ticker` 或 `--cik` | `--form`、`--latest`、`--accession`、`--filename`、`--sequence`、`--primary`、`--limit-bytes`、`--raw`、`--text`、`--jsonl`、`--pretty` |
 | `form4` / `form4-summary` | `--ticker` 或 `--cik` | `--latest`、`--limit`、`--include-amends`、`--jsonl`、`--pretty` |
@@ -290,6 +353,7 @@ sec forms --pretty
 ```bash
 sec form4-summary --ticker AAPL --latest 5 --pretty
 sec 13f-diff --cik 1067983 --limit 20 --jsonl
+sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 12000 --pretty
 sec report --ticker AAPL --kind risk > aapl-risk.md

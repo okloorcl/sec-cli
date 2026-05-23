@@ -29,8 +29,9 @@ pub(crate) enum Command {
     Section(SectionArgs),
     /// Generate a source-backed Markdown report.
     Report(ReportArgs),
-    /// Resolve an investor alias to the SEC filing manager and CIK.
-    Investor(InvestorArgs),
+    /// Resolve an investor/fund/person name to SEC 13F manager candidates.
+    #[command(name = "resolve", alias = "investor")]
+    Resolve(ResolveArgs),
     /// List documents and attachments inside SEC complete submissions.
     Docs(DocsArgs),
     /// Read one document from a complete SEC submission.
@@ -174,13 +175,29 @@ pub(crate) enum ReportKindArg {
 }
 
 #[derive(Args, Debug)]
-pub(crate) struct InvestorArgs {
+pub(crate) struct ResolveArgs {
     #[arg(long)]
     pub(crate) query: String,
+    #[arg(long)]
+    pub(crate) no_verify: bool,
+    #[arg(long, value_enum)]
+    pub(crate) llm_provider: Option<LlmProviderArg>,
+    #[arg(long)]
+    pub(crate) llm_base_url: Option<String>,
+    #[arg(long)]
+    pub(crate) llm_model: Option<String>,
+    #[arg(long)]
+    pub(crate) llm_api_key_env: Option<String>,
     #[arg(long)]
     pub(crate) jsonl: bool,
     #[arg(long)]
     pub(crate) pretty: bool,
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub(crate) enum LlmProviderArg {
+    Openai,
+    Anthropic,
 }
 
 #[derive(Args, Debug)]

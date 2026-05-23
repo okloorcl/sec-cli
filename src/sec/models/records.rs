@@ -53,15 +53,27 @@ pub struct SearchMatch {
 }
 
 #[derive(Debug, Serialize, Clone)]
-pub struct InvestorAliasRecord {
+pub struct ResolveCandidateRecord {
     pub query: String,
-    pub investor: String,
-    pub manager: String,
-    pub cik: u64,
-    pub relationship: String,
-    pub aliases: Vec<String>,
-    pub confidence: String,
-    pub note: String,
+    pub candidate_type: String,
+    pub investor: Option<String>,
+    pub manager: Option<String>,
+    pub cik: Option<u64>,
+    pub confidence: Option<String>,
+    pub relationship: Option<String>,
+    pub evidence_queries: Vec<String>,
+    pub notes: Option<String>,
+    pub validation: ResolveValidationRecord,
+    pub next_commands: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct ResolveValidationRecord {
+    pub status: String,
+    pub latest_accession: Option<String>,
+    pub latest_report_date: Option<String>,
+    pub latest_filing_date: Option<String>,
+    pub source_url: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

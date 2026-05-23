@@ -6,6 +6,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 [![SEC EDGAR](https://img.shields.io/badge/Data-SEC%20EDGAR-blue)](https://www.sec.gov/edgar)
 [![Output](https://img.shields.io/badge/Output-JSON%20%7C%20JSONL%20%7C%20Markdown-green)](#output-modes)
 [![Agent Ready](https://img.shields.io/badge/Agent-ready-111827)](#agent-workflows)
+[![LLM Resolver](https://img.shields.io/badge/LLM-OpenAI%20%7C%20Anthropic-7c3aed)](#llm-resolver)
 [![中文](https://img.shields.io/badge/README-中文-red)](README.zh-CN.md)
 
 | Core | What it gives you |
@@ -13,7 +14,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 | Insider activity | Form 4 owner, role, transaction code, shares, price, value, footnotes, signatures |
 | Institutional holdings | 13F holdings, portfolio summary, top positions, quarter-over-quarter changes |
 | Company disclosure | 10-K/10-Q risk factors, MD&A, filing search, exact source snippets |
-| Agent interface | Stable JSON/JSONL, source URLs, accession numbers, document metadata |
+| Agent interface | Stable JSON/JSONL, LLM name resolution, source URLs, accession numbers |
 
 ```bash
 sec filings --ticker AAPL --form 10-K
@@ -21,7 +22,7 @@ sec facts --ticker AAPL --concept revenue
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000
 sec report --ticker AAPL --kind risk
-sec investor --query 段永平 --pretty
+sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty
 sec report --cik 1067983 --kind portfolio --limit 10
 sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
@@ -49,6 +50,7 @@ This is an early MVP. The first implementation focuses on:
 - Searching filing submission text with snippets
 - Extracting common 10-K/10-Q sections such as business, risk factors, and MD&A
 - Generating source-backed Markdown reports for insider activity, 13F portfolios, and risk review
+- Resolving public investor/fund/person names through an LLM, then validating candidates against SEC 13F filings
 - Listing and reading individual SEC submission documents
 - Parsing Form 4 insider ownership transactions
 - Summarizing Form 4 reports, owners, signatures, footnotes, and net activity
@@ -72,7 +74,7 @@ These are useful, source-backed questions that work today:
 | Which executives/directors filed Form 4s and what was net activity? | `sec form4-summary --ticker AAPL --latest 5 --pretty` |
 | What is Berkshire Hathaway's latest 13F portfolio? | `sec 13f-aggregate --cik 1067983 --limit 20 --pretty` |
 | What changed between the latest two 13F filings? | `sec 13f-diff --cik 1067983 --limit 20 --pretty` |
-| What if I know the investor name but not the CIK? | `sec investor --query 段永平 --pretty`, then `sec 13f-diff --investor 段永平 --pretty` |
+| What if I know the investor name but not the CIK? | `sec resolve --query 段永平 --pretty`, then `sec 13f-diff --investor 段永平 --pretty` |
 | What are a company's latest 10-K risk factors? | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
 | Where did the answer come from? | Every structured result includes `source_url`; document results also include `document_url` |
 
@@ -94,6 +96,8 @@ The code is intentionally split by responsibility:
 - `client`: SEC domain facade, ticker-to-CIK lookup
 - `edgar`: SEC data sources, submissions, facts, archive URLs
 - `documents`: complete-submission `.txt` splitting and attachment selection
+- `llm`: OpenAI-compatible and Anthropic-compatible model clients
+- `resolve`: LLM candidate resolution plus SEC 13F validation
 - `parsers`: shared XML helpers and form-specific parsers
 - `models`: query DTOs and stable output records
 - `registry`: supported parser discovery
@@ -130,6 +134,66 @@ You can also pass it per command:
 ```bash
 sec --identity "Your Name your.email@example.com" filings --ticker AAPL
 ```
+
+## LLM Resolver
+
+`sec resolve` does not use a hardcoded investor map. It asks an LLM for candidate
+SEC 13F filing managers, then verifies each candidate by checking SEC
+`13F-HR` filings. The LLM is used for name understanding; SEC data remains the
+source of truth.
+
+OpenAI-compatible config, including GLM/BigModel-compatible endpoints:
+
+```bash
+mkdir -p ~/.config/sec-cli
+cat > ~/.config/sec-cli/llm.json <<'JSON'
+{
+  "provider": "openai",
+  "base_url": "https://open.bigmodel.cn/api/coding/paas/v4",
+  "model": "GLM-4.7",
+  "api_key_env": "BIGMODEL_API_KEY"
+}
+JSON
+
+export BIGMODEL_API_KEY="your-api-key"
+sec resolve --query 段永平 --pretty
+```
+
+Anthropic-compatible config:
+
+```json
+{
+  "provider": "anthropic",
+  "base_url": "https://open.bigmodel.cn/api/anthropic",
+  "model": "GLM-4.7",
+  "api_key_env": "BIGMODEL_API_KEY"
+}
+```
+
+Environment overrides:
+
+| Variable | Meaning |
+| --- | --- |
+| `SEC_CLI_LLM_CONFIG` | Override config file path |
+| `SEC_CLI_LLM_PROVIDER` | `openai` or `anthropic` |
+| `SEC_CLI_LLM_BASE_URL` | Provider base URL |
+| `SEC_CLI_LLM_MODEL` | Model name |
+| `SEC_CLI_LLM_API_KEY_ENV` | Name of the environment variable containing the API key |
+| `SEC_CLI_LLM_API_KEY` | Direct API key fallback; prefer `api_key_env` for shells and repos |
+
+Per-command overrides are also available:
+
+```bash
+sec resolve --query "Warren Buffett" \
+  --llm-provider openai \
+  --llm-base-url https://open.bigmodel.cn/api/coding/paas/v4 \
+  --llm-model GLM-4.7 \
+  --llm-api-key-env BIGMODEL_API_KEY \
+  --pretty
+```
+
+Do not commit API keys. Keep local config files private and prefer environment
+variables for secrets.
 
 ## Commands
 
@@ -248,26 +312,35 @@ Report kinds:
 - `portfolio`: 13F summary, top holdings, visual bars, and largest position changes
 - `risk`: 10-K risk factor and MD&A excerpts with source links
 
-### investor
+### resolve
 
-Resolve a known investor alias to the SEC filing manager and CIK used by 13F
-commands. SEC filings are filed by legal entities, so a public investor name
-often needs to be mapped to a filing manager.
+Resolve an investor, fund, or public person name to SEC 13F filing manager
+candidates. SEC filings are filed by legal entities, so a public name often
+needs model-assisted interpretation before SEC validation.
 
 ```bash
-sec investor --query 段永平 --pretty
-sec investor --query "Warren Buffett" --pretty
+sec resolve --query 段永平 --pretty
+sec resolve --query "Warren Buffett" --pretty
+sec resolve --query "Seth Klarman" --no-verify --pretty
 ```
 
-Each mapping includes:
+Each candidate includes:
 
+- `query`
+- `candidate_type`
 - `investor`
 - `manager`
 - `cik`
-- `relationship`
-- `aliases`
 - `confidence`
-- `note`
+- `relationship`
+- `evidence_queries`
+- `notes`
+- `validation`
+- `next_commands`
+
+`validation.status` is `verified_13f` only when the candidate has a SEC
+`13F-HR` filing. Commands such as `sec 13f-diff --investor <NAME>` require a
+verified 13F candidate.
 
 ### docs
 
@@ -544,7 +617,7 @@ Command options:
 | `search` | `--ticker` or `--cik`, `--query` | `--form`, `--latest`, `--context`, `--include-amends`, `--jsonl`, `--pretty` |
 | `section` | `--ticker` or `--cik`, `--item` | `--form`, `--latest`, `--accession`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
 | `report` | `--ticker`, `--cik`, or `--investor`; `--kind` | `--latest`, `--limit`, `--limit-bytes`, `--include-amends` |
-| `investor` | `--query` | `--jsonl`, `--pretty` |
+| `resolve` | `--query` | `--no-verify`, `--llm-provider`, `--llm-base-url`, `--llm-model`, `--llm-api-key-env`, `--jsonl`, `--pretty` |
 | `docs` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `doc` | `--ticker` or `--cik` | `--form`, `--latest`, `--accession`, `--filename`, `--sequence`, `--primary`, `--limit-bytes`, `--raw`, `--text`, `--jsonl`, `--pretty` |
 | `form4` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
@@ -587,6 +660,7 @@ Useful patterns:
 ```bash
 sec form4-summary --ticker AAPL --latest 5 --pretty
 sec 13f-diff --cik 1067983 --limit 20 --jsonl
+sec resolve --query 段永平 --pretty
 sec 13f-diff --investor 段永平 --pretty
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 12000 --pretty
 sec report --ticker AAPL --kind risk > aapl-risk.md
