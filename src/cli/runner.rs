@@ -4,9 +4,9 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use sec_cli::sec::documents::read::{content_for_terminal, validate_doc_args};
 use sec_cli::sec::{
-    DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query, OutputMode,
-    ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery, SecClient, SectionQuery,
-    StatementQuery, ThirteenFQuery, accession_text_url, find_matches,
+    DocumentQuery, DocumentReadQuery, EightKQuery, FactQuery, FilingQuery, Form4Query,
+    InlineXbrlQuery, OutputMode, ParseQuery, ReportKind, ReportQuery, Schedule13Query, SearchQuery,
+    SecClient, SectionQuery, StatementQuery, ThirteenFQuery, accession_text_url, find_matches,
     llm::{LlmConfig, LlmProvider},
     print_records,
     resolve::{ResolveInput, resolve_verified_13f_cik, resolve_verified_13f_manager},
@@ -65,6 +65,21 @@ pub(crate) async fn run() -> Result<()> {
                     form: statement_period_form(args.period),
                     unit: args.unit,
                     latest: args.latest,
+                })
+                .await?;
+            print_records(&records, output)?;
+        }
+        Command::Ixbrl(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let records = client
+                .inline_xbrl_facts(InlineXbrlQuery {
+                    cik,
+                    form: Some(args.form),
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                    concept: args.concept,
+                    limit: Some(args.limit),
                 })
                 .await?;
             print_records(&records, output)?;

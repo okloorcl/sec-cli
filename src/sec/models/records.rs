@@ -316,6 +316,35 @@ pub struct Schedule13Record {
 }
 
 #[derive(Debug, Serialize)]
+pub struct InlineXbrlFactRecord {
+    pub accession: String,
+    pub cik: u64,
+    pub company: String,
+    pub form: String,
+    pub filing_date: String,
+    pub report_date: Option<String>,
+    pub fact_type: String,
+    pub name: String,
+    pub namespace: Option<String>,
+    pub local_name: String,
+    pub context_ref: Option<String>,
+    pub unit_ref: Option<String>,
+    pub decimals: Option<String>,
+    pub scale: Option<i32>,
+    pub format: Option<String>,
+    pub sign: Option<String>,
+    pub id: Option<String>,
+    pub raw_value: String,
+    pub value: String,
+    pub numeric_value: Option<f64>,
+    pub document: Option<String>,
+    pub document_sequence: Option<String>,
+    pub document_description: Option<String>,
+    pub document_url: Option<String>,
+    pub source_url: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ThirteenFHoldingRecord {
     pub accession: String,
     pub cik: u64,
@@ -433,5 +462,6 @@ pub enum ParsedRecord {
     Form4Transaction(Form4TransactionRecord),
     EightKEvent(EightKEventRecord),
     Schedule13(Schedule13Record),
+    InlineXbrlFact(InlineXbrlFactRecord),
     ThirteenfHolding(ThirteenFHoldingRecord),
 }

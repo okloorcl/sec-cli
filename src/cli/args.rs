@@ -25,6 +25,8 @@ pub(crate) enum Command {
     Facts(FactsArgs),
     /// Build standardized financial statement rows from SEC CompanyFacts.
     Statements(StatementsArgs),
+    /// Stream Inline XBRL facts from primary filing HTML.
+    Ixbrl(InlineXbrlArgs),
     /// Search filing submission text and return source-backed snippets.
     Search(SearchArgs),
     /// Extract a named 10-K/10-Q section from a primary filing document.
@@ -134,6 +136,28 @@ pub(crate) enum StatementPeriodArg {
     Annual,
     Quarterly,
     All,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct InlineXbrlArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long, default_value = "10-K")]
+    pub(crate) form: String,
+    #[arg(long)]
+    pub(crate) concept: Option<String>,
+    #[arg(long, default_value_t = 1)]
+    pub(crate) latest: usize,
+    #[arg(long, default_value_t = 100)]
+    pub(crate) limit: usize,
+    #[arg(long)]
+    pub(crate) include_amends: bool,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
 }
 
 #[derive(Args, Debug)]
