@@ -54,6 +54,7 @@ src/sec/edgar/facts.rs              CompanyFacts -> FactRecord
 src/sec/documents/                  submission and attachment/document selection
 src/sec/documents/submission.rs     complete-submission.txt -> SubmissionDocument[]
 src/sec/documents/selectors.rs      primary XML, ownership XML, 13F table selectors
+src/sec/documents/records.rs        document inventory records for CLI/API use
 src/sec/parsers/                    shared parser machinery and form parsers
 src/sec/parsers/xml.rs              streaming XML helpers
 src/sec/parsers/forms/              form-specific parsers

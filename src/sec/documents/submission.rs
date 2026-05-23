@@ -25,6 +25,51 @@ impl SubmissionDocument {
     pub fn html_content(&self) -> Option<&str> {
         extract_tag(&self.content, "HTML")
     }
+
+    pub fn content_type(&self) -> &'static str {
+        if let Some(filename) = self.filename.as_deref() {
+            if let Some(kind) = content_type_from_filename(filename) {
+                return kind;
+            }
+        }
+
+        let content = self.content.trim_start();
+        if extract_tag(content, "XML").is_some() || content.starts_with("<?xml") {
+            "xml"
+        } else if extract_tag(content, "HTML").is_some()
+            || content
+                .get(..128)
+                .unwrap_or(content)
+                .to_ascii_lowercase()
+                .contains("<html")
+        {
+            "html"
+        } else {
+            "text"
+        }
+    }
+
+    pub fn is_primary(&self) -> bool {
+        self.sequence
+            .as_deref()
+            .map(|value| value.trim() == "1")
+            .unwrap_or(false)
+    }
+}
+
+fn content_type_from_filename(filename: &str) -> Option<&'static str> {
+    let ext = filename.rsplit('.').next()?.to_ascii_lowercase();
+    match ext.as_str() {
+        "htm" | "html" => Some("html"),
+        "xml" | "xsd" => Some("xml"),
+        "json" => Some("json"),
+        "css" => Some("css"),
+        "js" => Some("javascript"),
+        "txt" => Some("text"),
+        "jpg" | "jpeg" | "png" | "gif" => Some("image"),
+        "zip" => Some("zip"),
+        _ => None,
+    }
 }
 
 impl SecClient {

@@ -19,6 +19,15 @@ pub fn accession_text_url(cik: u64, accession: &str) -> String {
     )
 }
 
+pub fn accession_document_url(cik: u64, accession: &str, filename: &str) -> String {
+    format!(
+        "{SEC_BASE_URL}/Archives/edgar/data/{}/{}/{}",
+        cik,
+        accession.replace('-', ""),
+        filename.trim_start_matches('/')
+    )
+}
+
 pub(crate) fn company_tickers_url() -> String {
     format!("{SEC_BASE_URL}/files/company_tickers.json")
 }

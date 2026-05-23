@@ -25,6 +25,8 @@ pub(crate) enum Command {
     Facts(FactsArgs),
     /// Search filing submission text and return source-backed snippets.
     Search(SearchArgs),
+    /// List documents and attachments inside SEC complete submissions.
+    Docs(DocsArgs),
     /// Parse Form 4 insider ownership transactions.
     Form4(Form4Args),
     /// Parse 13F institutional holdings information tables.
@@ -94,6 +96,26 @@ pub(crate) struct SearchArgs {
     pub(crate) include_amends: bool,
     #[arg(long, default_value_t = 220)]
     pub(crate) context: usize,
+    #[arg(long)]
+    pub(crate) jsonl: bool,
+    #[arg(long)]
+    pub(crate) pretty: bool,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct DocsArgs {
+    #[arg(long, conflicts_with = "cik")]
+    pub(crate) ticker: Option<String>,
+    #[arg(long)]
+    pub(crate) cik: Option<u64>,
+    #[arg(long)]
+    pub(crate) form: Option<String>,
+    #[arg(long, default_value_t = 1)]
+    pub(crate) latest: usize,
+    #[arg(long)]
+    pub(crate) include_amends: bool,
+    #[arg(long)]
+    pub(crate) limit: Option<usize>,
     #[arg(long)]
     pub(crate) jsonl: bool,
     #[arg(long)]

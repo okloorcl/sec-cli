@@ -3,8 +3,8 @@ use std::env;
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use sec_cli::sec::{
-    FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery, SearchQuery, SecClient,
-    ThirteenFQuery, accession_text_url, find_matches, print_records, supported_parsers,
+    DocumentQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery, SearchQuery,
+    SecClient, ThirteenFQuery, accession_text_url, find_matches, print_records, supported_parsers,
 };
 
 use super::args::{Cli, Command};
@@ -80,6 +80,20 @@ pub(crate) async fn run() -> Result<()> {
                 ));
             }
             print_records(&matches, output)?;
+        }
+        Command::Docs(args) => {
+            let output = output_mode(args.jsonl, args.pretty);
+            let cik = resolve_cik(&client, args.ticker.as_deref(), args.cik).await?;
+            let documents = client
+                .document_records(DocumentQuery {
+                    cik,
+                    form: args.form,
+                    latest: args.latest,
+                    include_amends: args.include_amends,
+                    limit: args.limit,
+                })
+                .await?;
+            print_records(&documents, output)?;
         }
         Command::Form4(args) => {
             let output = output_mode(args.jsonl, args.pretty);

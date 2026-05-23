@@ -13,7 +13,8 @@ pub mod storage;
 pub use client::SecClient;
 pub use edgar::accession_text_url;
 pub use models::{
-    FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery, SearchQuery, ThirteenFQuery,
+    DocumentQuery, FactQuery, FilingQuery, Form4Query, OutputMode, ParseQuery, SearchQuery,
+    ThirteenFQuery,
 };
 pub use output::print_records;
 pub use registry::supported_parsers;

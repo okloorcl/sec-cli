@@ -6,6 +6,7 @@ Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 sec filings --ticker AAPL --form 10-K
 sec facts --ticker AAPL --concept revenue
 sec search --ticker TSLA --form 10-K --query "supply chain risk"
+sec docs --ticker AAPL --form 10-K --latest 1 --limit 20
 sec form4 --ticker AAPL --latest 3
 sec 13f --cik 1067983 --latest 1
 sec parse --ticker AAPL --form 4 --latest 1
@@ -141,6 +142,28 @@ sec search --ticker NVDA --form 10-K --query "export controls" --jsonl
 
 Search first tries an exact case-insensitive phrase match, then falls back to a
 token-window match so agent queries are more robust against SEC HTML markup.
+
+### docs
+
+List documents and attachments inside complete SEC submissions.
+
+```bash
+sec docs --ticker AAPL --form 10-K --latest 1 --limit 20 --pretty
+sec docs --cik 320193 --form 8-K --latest 2 --limit 50 --jsonl
+```
+
+Each document includes:
+
+- `accession`
+- `document_type`
+- `sequence`
+- `filename`
+- `description`
+- `content_type`
+- `byte_length`
+- `is_primary`
+- `document_url`
+- `source_url`
 
 ### form4
 
