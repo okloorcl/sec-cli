@@ -11,6 +11,10 @@ pub struct LlmClient {
     config: LlmConfig,
 }
 
+pub(crate) trait LlmResolver {
+    async fn complete(&self, system: &str, user: &str) -> Result<String>;
+}
+
 impl LlmClient {
     pub fn new(config: LlmConfig) -> Self {
         Self {
@@ -97,6 +101,12 @@ impl LlmClient {
             .await
             .context("failed to call Anthropic-compatible LLM")?;
         parse_response(value).await.and_then(parse_anthropic_text)
+    }
+}
+
+impl LlmResolver for LlmClient {
+    async fn complete(&self, system: &str, user: &str) -> Result<String> {
+        LlmClient::complete(self, system, user).await
     }
 }
 

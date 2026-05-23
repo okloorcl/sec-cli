@@ -2,7 +2,7 @@ use anyhow::{Context, Result, anyhow};
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::sec::llm::LlmClient;
+use crate::sec::llm::LlmResolver;
 
 pub(super) const SYSTEM_PROMPT: &str = r#"You resolve public investor or fund names to SEC EDGAR Form 13F filing managers.
 Return JSON only. Do not use markdown fences. Do not invent facts.
@@ -42,7 +42,7 @@ pub(super) struct RawResolveCandidate {
 }
 
 pub(super) async fn parse_or_repair(
-    llm: &LlmClient,
+    llm: &impl LlmResolver,
     query: &str,
     raw: &str,
 ) -> Result<Vec<RawResolveCandidate>> {
@@ -172,6 +172,15 @@ fn extract_json(raw: &str) -> Result<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sec::llm::LlmResolver;
+
+    struct MockResolver;
+
+    impl LlmResolver for MockResolver {
+        async fn complete(&self, _system: &str, _user: &str) -> Result<String> {
+            Ok(r#"{"candidates":[{"manager":"B","cik":123}]}"#.to_string())
+        }
+    }
 
     #[test]
     fn extracts_candidate_array_from_fenced_json() {
@@ -198,5 +207,14 @@ mod tests {
         assert!(prompt.contains("&lt;/query&gt;"));
         assert!(!prompt.contains("</query><ignore>"));
         assert!(prompt.contains("untrusted data"));
+    }
+
+    #[tokio::test]
+    async fn repair_accepts_mock_llm_resolver() {
+        let records = parse_or_repair(&MockResolver, "B", "not json")
+            .await
+            .unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(cik_value(records[0].cik.as_ref().unwrap()), Some(123));
     }
 }
