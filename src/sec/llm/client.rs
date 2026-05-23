@@ -1,3 +1,5 @@
+use std::{sync::LazyLock, time::Duration};
+
 use anyhow::{Context, Result, anyhow, bail};
 use reqwest::Client;
 use serde_json::{Value, json};
@@ -12,7 +14,7 @@ pub struct LlmClient {
 impl LlmClient {
     pub fn new(config: LlmConfig) -> Self {
         Self {
-            http: Client::new(),
+            http: shared_http_client(),
             config,
         }
     }
@@ -96,6 +98,17 @@ impl LlmClient {
             .context("failed to call Anthropic-compatible LLM")?;
         parse_response(value).await.and_then(parse_anthropic_text)
     }
+}
+
+fn shared_http_client() -> Client {
+    static CLIENT: LazyLock<Client> = LazyLock::new(|| {
+        Client::builder()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(60))
+            .build()
+            .expect("valid LLM reqwest client")
+    });
+    CLIENT.clone()
 }
 
 fn endpoint(base_url: Option<&str>, default_base: &str, suffix: &str) -> String {
