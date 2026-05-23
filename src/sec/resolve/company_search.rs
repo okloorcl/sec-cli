@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use crate::sec::{SecClient, parsers::forms::XmlEvent, parsers::forms::read_xml};
 
-pub(super) async fn find_13f_manager_cik(client: &SecClient, name: &str) -> Result<Option<u64>> {
+pub async fn find_13f_manager_cik(client: &SecClient, name: &str) -> Result<Option<u64>> {
     for query in search_variants(name) {
         if let Some(cik) = find_exact_13f_manager_cik(client, &query).await? {
             return Ok(Some(cik));
@@ -21,16 +21,24 @@ async fn find_exact_13f_manager_cik(client: &SecClient, name: &str) -> Result<Op
 }
 
 fn search_variants(name: &str) -> Vec<String> {
+    let compact_ampersand = compact_ampersand(name);
     let mut variants = vec![name.trim().to_string()];
-    let suffix_stripped = strip_legal_suffixes(name);
+    if compact_ampersand != name.trim() {
+        variants.push(compact_ampersand.clone());
+    }
+    let suffix_stripped = strip_legal_suffixes(&compact_ampersand);
     if !suffix_stripped.is_empty() && !variants.iter().any(|value| value == &suffix_stripped) {
         variants.push(suffix_stripped);
     }
-    let simplified = simplify_company_name(name);
+    let simplified = simplify_company_name(&compact_ampersand);
     if !simplified.is_empty() && !variants.iter().any(|value| value == &simplified) {
         variants.push(simplified);
     }
     variants
+}
+
+fn compact_ampersand(name: &str) -> String {
+    name.split('&').map(str::trim).collect::<Vec<_>>().join("&")
 }
 
 fn strip_legal_suffixes(name: &str) -> String {
@@ -88,7 +96,6 @@ fn simplify_company_name(name: &str) -> String {
 fn parse_atom_13f_cik(xml: &str) -> Option<u64> {
     let mut path = Vec::new();
     let mut company_cik = None;
-    let mut has_13f = false;
     read_xml(xml, |event| {
         match event {
             XmlEvent::Start(tag) => path.push(tag),
@@ -98,17 +105,13 @@ fn parse_atom_13f_cik(xml: &str) -> Option<u64> {
             XmlEvent::Text(text) => {
                 if path_ends_with(&path, &["company-info", "cik"]) {
                     company_cik = text.parse::<u64>().ok();
-                } else if path_ends_with(&path, &["entry", "content", "filing-type"])
-                    && text.eq_ignore_ascii_case("13F-HR")
-                {
-                    has_13f = true;
                 }
             }
         }
         Ok(())
     })
     .ok()?;
-    has_13f.then_some(company_cik).flatten()
+    company_cik
 }
 
 fn form_encode(value: &str) -> String {
@@ -167,6 +170,10 @@ mod tests {
         assert_eq!(
             strip_legal_suffixes("H&H INTERNATIONAL INVESTMENT GROUP, LTD."),
             "H&H INTERNATIONAL INVESTMENT"
+        );
+        assert_eq!(
+            search_variants("H & H International Investment LLC")[1],
+            "H&H International Investment LLC"
         );
     }
 }

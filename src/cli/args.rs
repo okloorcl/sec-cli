@@ -149,12 +149,14 @@ pub(crate) struct SectionArgs {
 
 #[derive(Args, Debug)]
 pub(crate) struct ReportArgs {
-    #[arg(long, conflicts_with_all = ["cik", "investor"])]
+    #[arg(long, conflicts_with_all = ["cik", "investor", "manager"])]
     pub(crate) ticker: Option<String>,
-    #[arg(long, conflicts_with_all = ["ticker", "investor"])]
+    #[arg(long, conflicts_with_all = ["ticker", "investor", "manager"])]
     pub(crate) cik: Option<u64>,
-    #[arg(long, conflicts_with_all = ["ticker", "cik"])]
+    #[arg(long, conflicts_with_all = ["ticker", "cik", "manager"])]
     pub(crate) investor: Option<String>,
+    #[arg(long, conflicts_with_all = ["ticker", "cik", "investor"])]
+    pub(crate) manager: Option<String>,
     #[arg(long, value_enum)]
     pub(crate) kind: ReportKindArg,
     #[arg(long, default_value_t = 5)]
@@ -176,8 +178,12 @@ pub(crate) enum ReportKindArg {
 
 #[derive(Args, Debug)]
 pub(crate) struct ResolveArgs {
-    #[arg(long)]
-    pub(crate) query: String,
+    #[arg(long, conflicts_with_all = ["cik", "manager"])]
+    pub(crate) query: Option<String>,
+    #[arg(long, conflicts_with_all = ["query", "manager"])]
+    pub(crate) cik: Option<u64>,
+    #[arg(long, conflicts_with_all = ["query", "cik"])]
+    pub(crate) manager: Option<String>,
     #[arg(long)]
     pub(crate) no_verify: bool,
     #[arg(long, value_enum)]
@@ -272,12 +278,14 @@ pub(crate) struct Form4Args {
 
 #[derive(Args, Debug)]
 pub(crate) struct ThirteenFArgs {
-    #[arg(long, conflicts_with_all = ["cik", "investor"])]
+    #[arg(long, conflicts_with_all = ["cik", "investor", "manager"])]
     pub(crate) ticker: Option<String>,
-    #[arg(long, conflicts_with_all = ["ticker", "investor"])]
+    #[arg(long, conflicts_with_all = ["ticker", "investor", "manager"])]
     pub(crate) cik: Option<u64>,
-    #[arg(long, conflicts_with_all = ["ticker", "cik"])]
+    #[arg(long, conflicts_with_all = ["ticker", "cik", "manager"])]
     pub(crate) investor: Option<String>,
+    #[arg(long, conflicts_with_all = ["ticker", "cik", "investor"])]
+    pub(crate) manager: Option<String>,
     #[arg(long, default_value_t = 1)]
     pub(crate) latest: usize,
     #[arg(long)]

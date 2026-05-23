@@ -9,7 +9,7 @@ use sec_cli::sec::{
     accession_text_url, find_matches,
     llm::{LlmConfig, LlmProvider},
     print_records,
-    resolve::resolve_verified_13f_cik,
+    resolve::{ResolveInput, resolve_verified_13f_cik, resolve_verified_13f_manager},
     supported_parsers,
 };
 
@@ -109,6 +109,7 @@ pub(crate) async fn run() -> Result<()> {
                 args.ticker.as_deref(),
                 args.cik,
                 args.investor.as_deref(),
+                args.manager.as_deref(),
             )
             .await?;
             let report = client
@@ -128,9 +129,19 @@ pub(crate) async fn run() -> Result<()> {
         }
         Command::Resolve(args) => {
             let output = output_mode(args.jsonl, args.pretty);
-            let records = client
-                .resolve_query(&args.query, !args.no_verify, llm_overrides(&args))
-                .await?;
+            let records = if let Some(cik) = args.cik {
+                client.resolve_input(ResolveInput::Cik(cik)).await?
+            } else if let Some(manager) = args.manager.as_deref() {
+                client
+                    .resolve_input(ResolveInput::Manager(manager.to_string()))
+                    .await?
+            } else if let Some(query) = args.query.as_deref() {
+                client
+                    .resolve_query(query, !args.no_verify, llm_overrides(&args))
+                    .await?
+            } else {
+                bail!("provide --query, --cik, or --manager");
+            };
             print_records(&records, output)?;
         }
         Command::Docs(args) => {
@@ -211,6 +222,7 @@ pub(crate) async fn run() -> Result<()> {
                 args.ticker.as_deref(),
                 args.cik,
                 args.investor.as_deref(),
+                args.manager.as_deref(),
             )
             .await?;
             let mut holdings = client
@@ -232,6 +244,7 @@ pub(crate) async fn run() -> Result<()> {
                 args.ticker.as_deref(),
                 args.cik,
                 args.investor.as_deref(),
+                args.manager.as_deref(),
             )
             .await?;
             let mut holdings = client
@@ -253,6 +266,7 @@ pub(crate) async fn run() -> Result<()> {
                 args.ticker.as_deref(),
                 args.cik,
                 args.investor.as_deref(),
+                args.manager.as_deref(),
             )
             .await?;
             let mut changes = client
@@ -274,6 +288,7 @@ pub(crate) async fn run() -> Result<()> {
                 args.ticker.as_deref(),
                 args.cik,
                 args.investor.as_deref(),
+                args.manager.as_deref(),
             )
             .await?;
             let mut reports = client
@@ -347,9 +362,13 @@ async fn resolve_subject(
     ticker: Option<&str>,
     cik: Option<u64>,
     investor: Option<&str>,
+    manager: Option<&str>,
 ) -> Result<(u64, String)> {
     if let Some(investor) = investor {
         return resolve_verified_13f_cik(client, investor).await;
+    }
+    if let Some(manager) = manager {
+        return resolve_verified_13f_manager(client, manager).await;
     }
     if let Some(cik) = cik {
         return Ok((cik, cik.to_string()));
@@ -361,7 +380,7 @@ async fn resolve_subject(
             .with_context(|| format!("unknown ticker '{}'", ticker))?;
         return Ok((cik, ticker.to_ascii_uppercase()));
     }
-    bail!("provide --ticker, --cik, or --investor");
+    bail!("provide --ticker, --cik, --manager, or --investor");
 }
 
 fn llm_overrides(args: &ResolveArgs) -> Option<LlmConfig> {

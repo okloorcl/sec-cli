@@ -1,16 +1,28 @@
-mod company_search;
+mod cache;
+pub mod company_search;
+mod prompt;
 
 use anyhow::{Context, Result, anyhow, bail};
-use serde::Deserialize;
-use serde_json::Value;
 
+use cache::{read_cached_resolve, write_cached_resolve};
 use company_search::find_13f_manager_cik;
+use prompt::{
+    RawResolveCandidate, SYSTEM_PROMPT, cik_value, expanded_prompt, parse_or_repair, user_prompt,
+    value_to_string,
+};
 
 use crate::sec::{
     client::SecClient,
     llm::{LlmClient, LlmConfig},
     models::{FilingQuery, ResolveCandidateRecord, ResolveValidationRecord},
 };
+
+#[derive(Debug, Clone)]
+pub enum ResolveInput {
+    Query(String),
+    Cik(u64),
+    Manager(String),
+}
 
 struct CheckedValidation {
     record: ResolveValidationRecord,
@@ -25,17 +37,92 @@ impl SecClient {
         verify: bool,
         overrides: Option<LlmConfig>,
     ) -> Result<Vec<ResolveCandidateRecord>> {
+        if verify
+            && let Some(cached) = read_cached_resolve(self.cache_dir(), query)?
+            && cached.validation_status == "verified_13f"
+            && cached.latest_accession.is_some()
+        {
+            return Ok(vec![cached.to_record()]);
+        }
         let llm = LlmClient::new(LlmConfig::load_with_overrides(overrides)?);
         let raw = llm
             .complete(SYSTEM_PROMPT, &user_prompt(query))
             .await
             .with_context(|| format!("failed to resolve '{}'", query))?;
-        let candidates = parse_candidates(query, &raw)?;
+        let mut candidates = parse_or_repair(&llm, query, &raw).await?;
+        if candidates.is_empty() {
+            let retry = llm
+                .complete(SYSTEM_PROMPT, &expanded_prompt(query))
+                .await
+                .with_context(|| format!("failed to retry empty LLM response for '{}'", query))?;
+            candidates = parse_or_repair(&llm, query, &retry).await?;
+        }
         let mut records = Vec::new();
         for candidate in candidates.into_iter().take(5) {
             records.push(self.materialize_candidate(query, candidate, verify).await?);
         }
+        if verify {
+            for record in &records {
+                if record.validation.status == "verified_13f" {
+                    write_cached_resolve(self.cache_dir(), record)?;
+                }
+            }
+        }
         Ok(records)
+    }
+
+    pub async fn resolve_input(&self, input: ResolveInput) -> Result<Vec<ResolveCandidateRecord>> {
+        match input {
+            ResolveInput::Query(query) => self.resolve_query(&query, true, None).await,
+            ResolveInput::Cik(cik) => self.resolve_known_cik(cik, cik.to_string()).await,
+            ResolveInput::Manager(manager) => self.resolve_manager(&manager).await,
+        }
+    }
+
+    pub async fn resolve_manager(&self, manager: &str) -> Result<Vec<ResolveCandidateRecord>> {
+        let Some(cik) = find_13f_manager_cik(self, manager).await? else {
+            return Ok(vec![ResolveCandidateRecord {
+                query: manager.to_string(),
+                candidate_type: "filing_manager".to_string(),
+                investor: None,
+                manager: Some(manager.to_string()),
+                cik: None,
+                confidence: Some("rule".to_string()),
+                relationship: Some("SEC company search did not find a 13F manager CIK".to_string()),
+                evidence_queries: vec![manager.to_string()],
+                notes: None,
+                validation: validation("missing_cik", None),
+                next_commands: Vec::new(),
+            }]);
+        };
+        self.resolve_known_cik(cik, manager.to_string()).await
+    }
+
+    async fn resolve_known_cik(
+        &self,
+        cik: u64,
+        query: String,
+    ) -> Result<Vec<ResolveCandidateRecord>> {
+        let checked = self.validate_13f_candidate(Some(cik)).await?;
+        let validation = checked.record;
+        let manager = checked.company.clone().unwrap_or_else(|| query.clone());
+        let record = ResolveCandidateRecord {
+            query,
+            candidate_type: "filing_manager".to_string(),
+            investor: None,
+            manager: Some(manager),
+            cik: Some(cik),
+            confidence: Some("rule".to_string()),
+            relationship: Some("Resolved from standard CIK/manager input".to_string()),
+            evidence_queries: Vec::new(),
+            notes: None,
+            next_commands: next_commands(Some(cik)),
+            validation,
+        };
+        if record.validation.status == "verified_13f" {
+            write_cached_resolve(self.cache_dir(), &record)?;
+        }
+        Ok(vec![record])
     }
 
     async fn materialize_candidate(
@@ -179,96 +266,6 @@ impl SecClient {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct RawResolveCandidate {
-    #[serde(default)]
-    candidate_type: Option<String>,
-    #[serde(default)]
-    investor: Option<String>,
-    #[serde(default)]
-    manager: Option<String>,
-    #[serde(default)]
-    cik: Option<Value>,
-    #[serde(default)]
-    confidence: Option<Value>,
-    #[serde(default)]
-    relationship: Option<String>,
-    #[serde(default)]
-    evidence_queries: Option<Vec<String>>,
-    #[serde(default)]
-    notes: Option<String>,
-}
-
-const SYSTEM_PROMPT: &str = r#"You resolve public investor or fund names to SEC EDGAR Form 13F filing managers.
-Return JSON only. Do not use markdown. Do not invent facts.
-The answer must be either an array, or an object with a candidates array.
-Each candidate must include:
-candidate_type, investor, manager, cik, confidence, relationship, evidence_queries, notes.
-Use cik only when you believe it is the SEC registrant/filing manager CIK.
-If the query is ambiguous or unsupported, return [].
-Prefer legal filing managers that submit Form 13F-HR."#;
-
-fn user_prompt(query: &str) -> String {
-    format!("Resolve this investor/fund/person name to SEC 13F filing manager candidates: {query}")
-}
-
-fn parse_candidates(query: &str, raw: &str) -> Result<Vec<RawResolveCandidate>> {
-    let value =
-        extract_json(raw).with_context(|| format!("LLM returned non-JSON for '{query}'"))?;
-    let candidates = if value.is_array() {
-        value
-    } else {
-        value
-            .get("candidates")
-            .cloned()
-            .ok_or_else(|| anyhow!("LLM JSON missing candidates array"))?
-    };
-    serde_json::from_value(candidates).context("failed to parse resolve candidates")
-}
-
-fn extract_json(raw: &str) -> Result<Value> {
-    let trimmed = raw.trim();
-    if let Ok(value) = serde_json::from_str(trimmed) {
-        return Ok(value);
-    }
-    let without_fence = trimmed
-        .strip_prefix("```json")
-        .or_else(|| trimmed.strip_prefix("```"))
-        .and_then(|text| text.strip_suffix("```"))
-        .map(str::trim)
-        .unwrap_or(trimmed);
-    if let Ok(value) = serde_json::from_str(without_fence) {
-        return Ok(value);
-    }
-    let start = without_fence
-        .find(['[', '{'])
-        .ok_or_else(|| anyhow!("no JSON object or array found"))?;
-    let end = without_fence
-        .rfind([']', '}'])
-        .ok_or_else(|| anyhow!("no JSON object or array end found"))?;
-    serde_json::from_str(&without_fence[start..=end]).context("failed to parse extracted JSON")
-}
-
-fn cik_value(value: &Value) -> Option<u64> {
-    value.as_u64().or_else(|| {
-        value
-            .as_str()
-            .map(|text| {
-                text.chars()
-                    .filter(|ch| ch.is_ascii_digit())
-                    .collect::<String>()
-            })
-            .and_then(|digits| digits.parse::<u64>().ok())
-    })
-}
-
-fn value_to_string(value: Value) -> String {
-    value
-        .as_str()
-        .map(str::to_string)
-        .unwrap_or_else(|| value.to_string())
-}
-
 fn next_commands(cik: Option<u64>) -> Vec<String> {
     let Some(cik) = cik else {
         return Vec::new();
@@ -337,6 +334,11 @@ fn comparable_name(name: &str) -> String {
 }
 
 pub async fn resolve_verified_13f_cik(client: &SecClient, query: &str) -> Result<(u64, String)> {
+    if let Some(cached) = read_cached_resolve(client.cache_dir(), query)? {
+        if cached.validation_status == "verified_13f" {
+            return Ok((cached.cik, cached.subject));
+        }
+    }
     let records = client.resolve_query(query, true, None).await?;
     let best = records
         .iter()
@@ -361,27 +363,24 @@ pub async fn resolve_verified_13f_cik(client: &SecClient, query: &str) -> Result
     ))
 }
 
+pub async fn resolve_verified_13f_manager(
+    client: &SecClient,
+    manager: &str,
+) -> Result<(u64, String)> {
+    let records = client.resolve_manager(manager).await?;
+    let best = records
+        .iter()
+        .find(|record| record.validation.status == "verified_13f" && record.cik.is_some())
+        .ok_or_else(|| anyhow!("SEC did not find a verified 13F manager for '{}'", manager))?;
+    Ok((
+        best.cik.ok_or_else(|| anyhow!("candidate missing CIK"))?,
+        best.manager.clone().unwrap_or_else(|| manager.to_string()),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn extracts_candidate_array_from_fenced_json() {
-        let raw = r#"```json
-        [{"candidate_type":"person","investor":"A","manager":"B","cik":"0001234567","confidence":0.8}]
-        ```"#;
-        let records = parse_candidates("A", raw).unwrap();
-        assert_eq!(records.len(), 1);
-        assert_eq!(cik_value(records[0].cik.as_ref().unwrap()), Some(1234567));
-    }
-
-    #[test]
-    fn extracts_candidates_object() {
-        let raw = r#"{"candidates":[{"manager":"B","cik":123}]}"#;
-        let records = parse_candidates("B", raw).unwrap();
-        assert_eq!(records.len(), 1);
-        assert_eq!(cik_value(records[0].cik.as_ref().unwrap()), Some(123));
-    }
 
     #[test]
     fn compares_company_names_without_legal_suffixes() {

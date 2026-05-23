@@ -55,6 +55,7 @@ This is an early MVP. The first implementation focuses on:
 - Parsing Form 4 insider ownership transactions
 - Summarizing Form 4 reports, owners, signatures, footnotes, and net activity
 - Parsing 13F-HR information-table holdings
+- Aggregating 13F-HR holdings by CUSIP/class/put-call
 - Comparing the latest two 13F-HR portfolios
 - Parsing 13F-HR cover, summary, signature, and manager metadata
 - Returning JSON arrays or JSONL records
@@ -77,6 +78,101 @@ These are useful, source-backed questions that work today:
 | What if I know the investor name but not the CIK? | `sec resolve --query 段永平 --pretty`, then `sec 13f-diff --investor 段永平 --pretty` |
 | What are a company's latest 10-K risk factors? | `sec section --ticker AAPL --form 10-K --item risk-factors --pretty` |
 | Where did the answer come from? | Every structured result includes `source_url`; document results also include `document_url` |
+
+## How To Choose Selectors
+
+`sec-cli` has two broad query families: company disclosure and 13F investment
+manager disclosure.
+
+Company-disclosure commands use `--ticker` or `--cik`:
+
+- `filings`
+- `facts`
+- `search`
+- `section`
+- `docs`
+- `doc`
+- `form4`
+- `form4-summary`
+- `parse`
+- `report --kind risk`
+- `report --kind insider`
+
+13F investment-manager commands can use four selector styles:
+
+- `--cik`: most precise. Use it when you already know the SEC CIK.
+- `--manager`: deterministic SEC company search by legal filing-manager name; no LLM.
+- `--investor`: public person/fund name. Uses verified cache first, then LLM if needed, then SEC validation.
+- `--ticker`: useful when the 13F manager is also a public company and the ticker maps to the 13F filer, such as `BRK-B`.
+
+The same subject can be queried several ways; all paths should converge on the
+same verified SEC CIK:
+
+```bash
+# Duan Yongping / H&H: natural-language input for people and agents
+sec resolve --query 段永平 --pretty
+sec 13f-diff --investor 段永平 --limit 10 --pretty
+sec report --investor 段永平 --kind portfolio --limit 10
+
+# Duan Yongping / H&H: legal entity, deterministic, no LLM
+sec resolve --manager "H&H International Investment LLC" --pretty
+sec 13f-summary --manager "H&H International Investment LLC" --latest 2 --pretty
+sec 13f-diff --manager "H&H International Investment LLC" --limit 10 --pretty
+
+# Duan Yongping / H&H: CIK, best for scripts and production jobs
+sec resolve --cik 1759760 --pretty
+sec 13f-aggregate --cik 1759760 --latest 1 --limit 20 --pretty
+sec 13f-diff --cik 1759760 --limit 10 --jsonl
+
+# Warren Buffett / Berkshire: public name, manager, CIK, and ticker all work
+sec resolve --query "Warren Buffett" --pretty
+sec 13f-summary --manager "BERKSHIRE HATHAWAY INC" --latest 1 --pretty
+sec 13f-diff --cik 1067983 --limit 20 --pretty
+sec 13f-diff --ticker BRK-B --limit 20 --pretty
+```
+
+Practical rule:
+
+- For a person or agent prompt, start with `--investor` or `--query`.
+- For repeatable scripts, prefer `--cik`.
+- For known SEC legal entities, prefer `--manager`.
+- For operating-company filings and insider activity, prefer `--ticker`, then `--cik`.
+
+## Data Sources And Output Tables
+
+`sec-cli` uses SEC public data directly. It does not call paid market-data APIs.
+
+| Data/source | Commands | What it contains | Main output table |
+| --- | --- | --- | --- |
+| SEC submissions JSON | `filings` | Filing list, dates, accession numbers, primary document names | filing records |
+| SEC CompanyFacts JSON | `facts` | XBRL facts such as revenue, net income, assets, units, periods | fact records |
+| SEC complete submission text and archive documents | `search`, `section`, `docs`, `doc` | Original filing text, HTML/XML attachments, exhibits, source snippets | snippet, section, document records |
+| Form 3/4/5 XML ownership reports | `form4`, `form4-summary`, `report --kind insider` | Insider owners, roles, transaction codes, shares, prices, footnotes, signatures | transaction and ownership-report records |
+| Form 13F-HR information table | `13f`, `13f-aggregate`, `13f-diff`, `report --kind portfolio` | Institutional long holdings: issuer, class, CUSIP, value, shares, voting authority | holding, aggregate holding, diff records |
+| Form 13F-HR primary document | `13f-summary` | Manager identity, report period, total holdings/value, signature, included managers | 13F report summary records |
+| 10-K/10-Q primary document | `section`, `report --kind risk` | Business, risk factors, cybersecurity, MD&A, financial statement sections | section records and Markdown report |
+| LLM resolver plus SEC validation | `resolve`, 13F commands with `--investor` | Public name to legal SEC filing manager/CIK candidate | resolve candidate records |
+
+Every serious output carries source metadata. For citations and audit trails,
+look for `source_url`, `document_url`, `accession`, `document`, `section`, and
+`fact_id` depending on the command.
+
+Output record cheat sheet:
+
+| Output record | Produced by | Read this first | Source fields |
+| --- | --- | --- | --- |
+| Filing | `filings` | `company`, `form`, `filing_date`, `report_date`, `primary_document` | `accession`, `source_url`, `text_url` |
+| Fact | `facts` | `concept`, `label`, `value`, `unit`, `fy`, `fp`, `filed` | `accession`, `source_url`, `fact_id` |
+| Search snippet | `search` | `query`, `snippet`, `offset`, `form`, `filing_date` | `accession`, `source_url`, `document`, `section` |
+| Section | `section` | `item`, `title`, `content`, `truncated` | `accession`, `document_url`, `source_url` |
+| Document | `docs`, `doc` | `filename`, `document_type`, `description`, `content_type`, `content` | `accession`, `document_url`, `source_url` |
+| Form 4 transaction | `form4` | `reporting_owner`, `officer_title`, `transaction_code`, `shares`, `price`, `value` | `accession`, `source_url` |
+| Form 4 report summary | `form4-summary` | `owners`, `transaction_count`, `net_shares`, `total_value`, `footnotes` | `accession`, `source_url` |
+| 13F holding | `13f` | `manager`, `issuer`, `class`, `cusip`, `value_usd`, `shares` | `accession`, `source_url` |
+| 13F aggregate holding | `13f-aggregate` | `issuer`, `cusip`, `value_usd`, `shares`, `rows` | `source_url` |
+| 13F diff row | `13f-diff` | `issuer`, `change_type`, `change_value_usd`, `change_shares` | `current_source_url`, `previous_source_url` |
+| 13F report summary | `13f-summary` | `manager`, `report_date`, `total_holdings_reported`, `total_value_usd`, `signature_name` | `accession`, `source_url` |
+| Resolve candidate | `resolve` | `investor`, `manager`, `cik`, `confidence`, `validation.status` | `validation.source_url`, `validation.latest_accession` |
 
 `edgartools` already has Python objects, rich displays, DataFrame exports, AI
 context helpers, and many filing-type parsers. `sec-cli` is deliberately
@@ -137,10 +233,20 @@ sec --identity "Your Name your.email@example.com" filings --ticker AAPL
 
 ## LLM Resolver
 
-`sec resolve` does not use a hardcoded investor map. It asks an LLM for candidate
-SEC 13F filing managers, then verifies each candidate by checking SEC
-`13F-HR` filings. The LLM is used for name understanding; SEC data remains the
-source of truth.
+`sec resolve` does not use a hardcoded investor map. Resolution is layered:
+standard inputs are handled by deterministic SEC lookups first, and the LLM is
+only used when the input is a non-standard public name.
+
+- `--cik` validates the CIK directly against SEC `13F-HR` filings.
+- `--manager` searches SEC company records for the legal 13F filing manager.
+- `--query` checks the verified local cache, asks the LLM for likely legal
+  filing managers, then validates/corrects candidates against SEC filings.
+
+The LLM is used for name understanding; SEC data remains the source of truth.
+
+Verified resolutions are cached under the local sec-cli cache directory, so
+commands such as `sec 13f-diff --investor <NAME>` can reuse the last SEC-verified
+CIK instead of depending on a fresh LLM answer every time.
 
 OpenAI-compatible config, including GLM/BigModel-compatible endpoints:
 
@@ -150,13 +256,15 @@ cat > ~/.config/sec-cli/llm.json <<'JSON'
 {
   "provider": "openai",
   "base_url": "https://open.bigmodel.cn/api/coding/paas/v4",
-  "model": "GLM-4.7",
+  "model": "GLM-5.1",
   "api_key_env": "BIGMODEL_API_KEY"
 }
 JSON
 
 export BIGMODEL_API_KEY="your-api-key"
 sec resolve --query 段永平 --pretty
+sec resolve --manager "H&H International Investment LLC" --pretty
+sec resolve --cik 1759760 --pretty
 ```
 
 Anthropic-compatible config:
@@ -165,7 +273,7 @@ Anthropic-compatible config:
 {
   "provider": "anthropic",
   "base_url": "https://open.bigmodel.cn/api/anthropic",
-  "model": "GLM-4.7",
+  "model": "GLM-5.1",
   "api_key_env": "BIGMODEL_API_KEY"
 }
 ```
@@ -187,13 +295,70 @@ Per-command overrides are also available:
 sec resolve --query "Warren Buffett" \
   --llm-provider openai \
   --llm-base-url https://open.bigmodel.cn/api/coding/paas/v4 \
-  --llm-model GLM-4.7 \
+  --llm-model GLM-5.1 \
   --llm-api-key-env BIGMODEL_API_KEY \
   --pretty
 ```
 
 Do not commit API keys. Keep local config files private and prefer environment
 variables for secrets.
+
+## Local Full Test
+
+Copy this block to build, configure GLM, run unit tests, and validate live SEC
+queries plus live LLM resolution. Replace the two exported values with your real
+identity and API key before running.
+
+```bash
+cd /Users/w0x7ce/Downloads/AACC/sec-cli
+
+export SEC_IDENTITY="Your Name your.email@example.com"
+export BIGMODEL_API_KEY="paste-your-bigmodel-key-here"
+
+mkdir -p ~/.config/sec-cli
+cat > ~/.config/sec-cli/llm.json <<'JSON'
+{
+  "provider": "openai",
+  "base_url": "https://open.bigmodel.cn/api/coding/paas/v4",
+  "model": "GLM-5.1",
+  "api_key_env": "BIGMODEL_API_KEY"
+}
+JSON
+
+cargo build
+cargo test
+cargo check
+
+cargo run --bin sec -- filings --ticker AAPL --form 10-K --latest 1 --pretty
+cargo run --bin sec -- facts --ticker AAPL --concept revenue --form 10-K --latest 3 --pretty
+cargo run --bin sec -- form4-summary --ticker AAPL --latest 2 --pretty
+
+cargo run --bin sec -- resolve --query 段永平 --pretty
+cargo run --bin sec -- resolve --manager "H&H International Investment LLC" --pretty
+cargo run --bin sec -- resolve --cik 1759760 --pretty
+cargo run --bin sec -- 13f-summary --investor 段永平 --latest 2 --pretty
+cargo run --bin sec -- 13f-diff --manager "H&H International Investment LLC" --limit 10 --pretty
+cargo run --bin sec -- 13f-diff --investor 段永平 --limit 10 --pretty
+cargo run --bin sec -- report --investor 段永平 --kind portfolio --limit 10
+
+cargo run --bin sec -- resolve --query 巴菲特 --pretty
+cargo run --bin sec -- 13f-summary --investor 巴菲特 --latest 1 --pretty
+
+cargo run --bin sec -- resolve --query Bridgewater --pretty
+cargo run --bin sec -- report --investor Bridgewater --kind portfolio --limit 5
+```
+
+Expected smoke-test signals:
+
+- `cargo test` should pass all tests.
+- `resolve --query 段永平` should end with `validation.status = verified_13f`
+  and CIK `1759760`.
+- `resolve --manager "H&H International Investment LLC"` and `resolve --cik
+  1759760` should return the same verified CIK without using the LLM.
+- `13f-diff --investor 段永平` should show H&H International Investment, LLC
+  and recent changes such as Apple, Tesla, Nvidia, Berkshire, and PDD.
+- `resolve --query 巴菲特` should resolve to Berkshire Hathaway Inc, CIK
+  `1067983`.
 
 ## Commands
 
@@ -204,7 +369,8 @@ Find recent filings by ticker or CIK.
 ```bash
 sec filings --ticker AAPL --form 10-K --latest 3 --pretty
 sec filings --cik 320193 --form 10-Q --from 2023-01-01 --to 2025-12-31
-sec filings --ticker TSLA --form 10-K --include-amends --jsonl
+sec filings --ticker TSLA --form 8-K --latest 5 --jsonl
+sec filings --ticker NVDA --form 10-K --include-amends --latest 2 --pretty
 ```
 
 Each result includes:
@@ -225,7 +391,7 @@ Query SEC CompanyFacts by concept alias or XBRL concept name.
 ```bash
 sec facts --ticker AAPL --concept revenue --form 10-K --latest 5 --pretty
 sec facts --ticker MSFT --concept us-gaap:NetIncomeLoss --latest 10 --jsonl
-sec facts --cik 320193 --concept assets --unit USD
+sec facts --cik 320193 --concept us-gaap:RevenueFromContractWithCustomerExcludingAssessedTax --unit USD --latest 8 --pretty
 ```
 
 Each fact includes:
@@ -250,8 +416,8 @@ Search filing submission text and return source-backed snippets.
 
 ```bash
 sec search --ticker TSLA --form 10-K --query "risk factors" --latest 1 --pretty
-sec search --ticker AAPL --form 10-K --query "supply chain risk" --context 300
 sec search --ticker NVDA --form 10-K --query "export controls" --jsonl
+sec search --cik 320193 --form 10-K --query "supply chain" --context 300 --latest 2 --pretty
 ```
 
 Search first tries an exact case-insensitive phrase match, then falls back to a
@@ -266,7 +432,8 @@ matching body over table-of-contents hits, and returns source-backed JSON.
 ```bash
 sec section --ticker AAPL --form 10-K --item risk-factors --limit-bytes 8000 --pretty
 sec section --ticker MSFT --form 10-K --item mda --latest 1 --pretty
-sec section --cik 320193 --form 10-K --item 7 --jsonl
+sec section --cik 320193 --form 10-K --item 1A --latest 1 --jsonl
+sec section --ticker TSLA --form 10-Q --item market-risk --limit-bytes 6000 --pretty
 ```
 
 Supported item aliases include:
@@ -302,8 +469,10 @@ Reports reuse the same structured parsers used by the JSON commands.
 ```bash
 sec report --ticker AAPL --kind insider --latest 5 --limit 10
 sec report --investor 段永平 --kind portfolio --limit 10
+sec report --manager "H&H International Investment LLC" --kind portfolio --limit 10
 sec report --cik 1067983 --kind portfolio --limit 10
 sec report --ticker AAPL --kind risk --limit-bytes 4000
+sec report --ticker AAPL --kind risk --latest 1 --limit-bytes 12000 > aapl-risk.md
 ```
 
 Report kinds:
@@ -314,14 +483,19 @@ Report kinds:
 
 ### resolve
 
-Resolve an investor, fund, or public person name to SEC 13F filing manager
-candidates. SEC filings are filed by legal entities, so a public name often
-needs model-assisted interpretation before SEC validation.
+Resolve an investor, fund, public person, known manager, or CIK to SEC 13F
+filing manager candidates. Standard selectors are deterministic; natural
+language `--query` can use the LLM and is always checked against SEC data when
+verification is enabled.
 
 ```bash
 sec resolve --query 段永平 --pretty
+sec resolve --manager "H&H International Investment LLC" --pretty
+sec resolve --cik 1759760 --pretty
 sec resolve --query "Warren Buffett" --pretty
+sec resolve --query Bridgewater --pretty
 sec resolve --query "Seth Klarman" --no-verify --pretty
+sec resolve --query 段永平 --llm-provider openai --llm-model GLM-5.1 --pretty
 ```
 
 Each candidate includes:
@@ -374,6 +548,7 @@ document content or `--text` for compact plain text.
 sec doc --ticker AAPL --form 10-K --primary --limit-bytes 4000 --pretty
 sec doc --ticker AAPL --form 10-K --sequence 1 --text --limit-bytes 12000
 sec doc --cik 320193 --accession 0000320193-25-000079 --filename aapl-20250927.htm --raw
+sec doc --ticker AAPL --form 10-K --filename a10-kexhibit21109272025.htm --limit-bytes 4000 --pretty
 ```
 
 Selectors:
@@ -404,7 +579,8 @@ Parse Form 4 ownership transactions.
 
 ```bash
 sec form4 --ticker AAPL --latest 3 --limit 10 --pretty
-sec form4 --cik 320193 --include-amends --jsonl
+sec form4 --cik 320193 --latest 10 --jsonl
+sec form4-summary --ticker TSLA --include-amends --latest 5 --pretty
 ```
 
 Each transaction includes:
@@ -474,6 +650,7 @@ thousands while modern XML filings report dollars.
 ```bash
 sec 13f --cik 1067983 --latest 1 --limit 20 --pretty
 sec 13f --ticker BRK-B --limit 50 --jsonl
+sec 13f --manager "H&H International Investment LLC" --latest 1 --limit 20 --pretty
 ```
 
 Each holding includes:
@@ -503,6 +680,7 @@ contains multiple included managers.
 ```bash
 sec 13f-aggregate --cik 1067983 --latest 1 --limit 20 --pretty
 sec 13f-aggregate --ticker BRK-B --latest 4 --jsonl
+sec 13f-aggregate --investor "Warren Buffett" --latest 1 --limit 20 --pretty
 ```
 
 Each aggregate holding includes:
@@ -529,6 +707,7 @@ positions by share-count movement as `new`, `increased`, `reduced`,
 
 ```bash
 sec 13f-diff --cik 1067983 --limit 20 --pretty
+sec 13f-diff --manager "H&H International Investment LLC" --limit 20 --pretty
 sec 13f-diff --investor 段永平 --pretty
 sec 13f-diff --ticker BRK-B --jsonl
 ```
@@ -561,6 +740,7 @@ included manager information.
 ```bash
 sec 13f-summary --cik 1067983 --latest 1 --pretty
 sec 13f-summary --ticker BRK-B --latest 4 --jsonl
+sec 13f-summary --manager "H&H International Investment LLC" --latest 2 --pretty
 ```
 
 Each report summary includes:
@@ -616,16 +796,16 @@ Command options:
 | `facts` | `--ticker` or `--cik`, `--concept` | `--form`, `--unit`, `--latest`, `--jsonl`, `--pretty` |
 | `search` | `--ticker` or `--cik`, `--query` | `--form`, `--latest`, `--context`, `--include-amends`, `--jsonl`, `--pretty` |
 | `section` | `--ticker` or `--cik`, `--item` | `--form`, `--latest`, `--accession`, `--limit-bytes`, `--include-amends`, `--jsonl`, `--pretty` |
-| `report` | `--ticker`, `--cik`, or `--investor`; `--kind` | `--latest`, `--limit`, `--limit-bytes`, `--include-amends` |
-| `resolve` | `--query` | `--no-verify`, `--llm-provider`, `--llm-base-url`, `--llm-model`, `--llm-api-key-env`, `--jsonl`, `--pretty` |
+| `report` | `--ticker`, `--cik`, `--manager`, or `--investor`; `--kind` | `--latest`, `--limit`, `--limit-bytes`, `--include-amends` |
+| `resolve` | `--query`, `--manager`, or `--cik` | `--no-verify`, `--llm-provider`, `--llm-base-url`, `--llm-model`, `--llm-api-key-env`, `--jsonl`, `--pretty` |
 | `docs` | `--ticker` or `--cik` | `--form`, `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `doc` | `--ticker` or `--cik` | `--form`, `--latest`, `--accession`, `--filename`, `--sequence`, `--primary`, `--limit-bytes`, `--raw`, `--text`, `--jsonl`, `--pretty` |
 | `form4` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `form4-summary` | `--ticker` or `--cik` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
-| `13f` | `--ticker`, `--cik`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
-| `13f-aggregate` | `--ticker`, `--cik`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
-| `13f-diff` | `--ticker`, `--cik`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
-| `13f-summary` | `--ticker`, `--cik`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f-aggregate` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f-diff` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
+| `13f-summary` | `--ticker`, `--cik`, `--manager`, or `--investor` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `parse` | `--ticker` or `--cik`, `--form` | `--latest`, `--limit`, `--include-amends`, `--jsonl`, `--pretty` |
 | `forms` | none | `--jsonl`, `--pretty` |
 

@@ -52,15 +52,17 @@ impl LlmConfig {
     }
 
     fn load_file() -> Result<Option<Self>> {
-        let path = config_path();
-        if !path.exists() {
-            return Ok(None);
+        for path in config_paths() {
+            if !path.exists() {
+                continue;
+            }
+            let bytes = fs::read(&path)
+                .with_context(|| format!("failed to read LLM config {}", path.display()))?;
+            let config = serde_json::from_slice(&bytes)
+                .with_context(|| format!("failed to parse LLM config {}", path.display()))?;
+            return Ok(Some(config));
         }
-        let bytes = fs::read(&path)
-            .with_context(|| format!("failed to read LLM config {}", path.display()))?;
-        let config = serde_json::from_slice(&bytes)
-            .with_context(|| format!("failed to parse LLM config {}", path.display()))?;
-        Ok(Some(config))
+        Ok(None)
     }
 
     fn apply_env(&mut self) {
@@ -74,12 +76,22 @@ impl LlmConfig {
     }
 }
 
-fn config_path() -> PathBuf {
-    env::var("SEC_CLI_LLM_CONFIG")
-        .map(PathBuf::from)
-        .ok()
-        .or_else(|| dirs::config_dir().map(|dir| dir.join("sec-cli").join("llm.json")))
-        .unwrap_or_else(|| PathBuf::from("llm.json"))
+fn config_paths() -> Vec<PathBuf> {
+    if let Ok(path) = env::var("SEC_CLI_LLM_CONFIG") {
+        return vec![PathBuf::from(path)];
+    }
+    let mut paths = Vec::new();
+    if let Some(home) = dirs::home_dir() {
+        paths.push(home.join(".config").join("sec-cli").join("llm.json"));
+    }
+    if let Some(dir) = dirs::config_dir() {
+        let path = dir.join("sec-cli").join("llm.json");
+        if !paths.iter().any(|existing| existing == &path) {
+            paths.push(path);
+        }
+    }
+    paths.push(PathBuf::from("llm.json"));
+    paths
 }
 
 fn set_from_env(target: &mut Option<String>, name: &str) {
@@ -107,5 +119,11 @@ mod tests {
         assert_eq!(parse_provider("openai"), Some(LlmProvider::OpenAi));
         assert_eq!(parse_provider("anthropic"), Some(LlmProvider::Anthropic));
         assert_eq!(parse_provider("other"), None);
+    }
+
+    #[test]
+    fn prefers_xdg_style_config_path() {
+        let paths = config_paths();
+        assert!(paths.iter().any(|path| path.ends_with("sec-cli/llm.json")));
     }
 }
