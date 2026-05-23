@@ -421,6 +421,30 @@ pub struct XbrlPresentationTreeRecord {
 }
 
 #[derive(Debug, Serialize)]
+pub struct XbrlCalculationCheckRecord {
+    pub accession: String,
+    pub cik: u64,
+    pub company: String,
+    pub form: String,
+    pub filing_date: String,
+    pub report_date: Option<String>,
+    pub role: String,
+    pub parent_concept: String,
+    pub parent_value: Option<f64>,
+    pub calculated_value: Option<f64>,
+    pub difference: Option<f64>,
+    pub relative_difference: Option<f64>,
+    pub status: String,
+    pub children_count: usize,
+    pub matched_children: usize,
+    pub missing_children: Vec<String>,
+    pub unit: String,
+    pub document: Option<String>,
+    pub document_url: Option<String>,
+    pub source_url: String,
+}
+
+#[derive(Debug, Serialize)]
 pub struct ThirteenFHoldingRecord {
     pub accession: String,
     pub cik: u64,

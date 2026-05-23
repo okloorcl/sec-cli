@@ -18,6 +18,7 @@ real commands or modules in the repository.
 - [x] Inline XBRL streaming parser.
 - [x] XBRL linkbase parser for presentation, calculation, definition, label, and schema attachments.
 - [x] Filing-specific XBRL presentation tree renderer with depth, path, and role filters.
+- [x] XBRL calculation-linkbase checks against same-accession CompanyFacts values.
 - [x] HTML table extraction.
 - [x] SEC complete submission document listing and document reading.
 - [x] SEC filing text search with source snippets.
@@ -56,7 +57,7 @@ real commands or modules in the repository.
 
 - [ ] Presentation-tree financial statement rendering with filing fact values.
 - [ ] Standard taxonomy label fallback for US-GAAP/DEI/SRT concepts not defined in filing extension labels.
-- [ ] Calculation-linkbase validation for rendered statements.
+- [ ] Calculation-linkbase validation integrated into rendered statement values.
 - [ ] Expanded standard concept mapping toward 100+ financial statement concepts.
 - [ ] Financial metrics expansion toward 50+ ratios and financial-health scores.
 - [ ] Cross-form 10-K / 10-Q financial statement stitching.

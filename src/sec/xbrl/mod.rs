@@ -11,6 +11,7 @@ use crate::sec::{
 };
 
 pub mod tree;
+pub mod validation;
 
 impl SecClient {
     pub async fn xbrl_linkbases(
