@@ -682,7 +682,7 @@ sec report --ticker AAPL --kind risk --latest 1 --limit-bytes 12000 > aapl-risk.
 
 `--kind`：
 
-- `financial`：SEC 原始财务指标表 + 多期趋势快照
+- `financial`：SEC 原始财务指标表 + 多期趋势快照 + 规则型信号
 - `insider`：Form 4 owner、role、净股数、交易金额、SEC 来源
 - `portfolio`：13F 摘要、Top holdings、可视化条、最大仓位变化
 - `risk`：10-K Risk Factors 和 MD&A 摘要

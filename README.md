@@ -905,7 +905,7 @@ sec report --ticker AAPL --kind risk --latest 1 --limit-bytes 12000 > aapl-risk.
 
 Report kinds:
 
-- `financial`: SEC-derived metric table and multi-period trend snapshot
+- `financial`: SEC-derived metric table, multi-period trend snapshot, and rule-based signals
 - `insider`: Form 4 summary table with owner, role, net shares, value, and SEC source
 - `portfolio`: 13F summary, top holdings, visual bars, and largest position changes
 - `risk`: 10-K risk factor and MD&A excerpts with source links

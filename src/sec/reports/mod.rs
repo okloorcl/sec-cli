@@ -73,6 +73,7 @@ impl SecClient {
                 metric_cell(&metrics, &period, "liabilities_to_assets")
             ));
         }
+        push_financial_signals(&mut out, &metrics);
         out.push_str("\nUse `sec metrics` for stable JSON with component facts and source URLs.\n");
         Ok(out)
     }
@@ -294,6 +295,105 @@ fn metric_cell(metrics: &[FinancialMetricRecord], period: &str, metric_name: &st
         .find(|metric| metric.metric == metric_name && metric.period_end.as_deref() == Some(period))
         .map(metric_display)
         .unwrap_or_else(|| "-".to_string())
+}
+
+fn push_financial_signals(out: &mut String, metrics: &[FinancialMetricRecord]) {
+    out.push_str("\n## Rule-based signals\n\n");
+    let periods = metric_periods(metrics);
+    let Some(latest_period) = periods.first() else {
+        out.push_str("- No comparable metric periods were available.\n");
+        return;
+    };
+    let previous_period = periods.get(1).map(String::as_str);
+    let mut signals = Vec::new();
+
+    push_change_signal(
+        &mut signals,
+        metrics,
+        latest_period,
+        previous_period,
+        "revenue_growth",
+        "Revenue growth",
+        0.03,
+    );
+    push_change_signal(
+        &mut signals,
+        metrics,
+        latest_period,
+        previous_period,
+        "net_margin",
+        "Net margin",
+        0.02,
+    );
+    push_change_signal(
+        &mut signals,
+        metrics,
+        latest_period,
+        previous_period,
+        "free_cash_flow_margin",
+        "Free cash flow margin",
+        0.02,
+    );
+
+    if metric_value(metrics, latest_period, "current_ratio").is_some_and(|value| value < 1.0) {
+        signals.push(format!(
+            "Current ratio is below 1.0x at {}.",
+            metric_cell(metrics, latest_period, "current_ratio")
+        ));
+    }
+    if metric_value(metrics, latest_period, "liabilities_to_assets")
+        .is_some_and(|value| value > 0.7)
+    {
+        signals.push(format!(
+            "Liabilities/assets is elevated at {}.",
+            metric_cell(metrics, latest_period, "liabilities_to_assets")
+        ));
+    }
+
+    if signals.is_empty() {
+        out.push_str("- No threshold-based signals fired for the latest period.\n");
+    } else {
+        for signal in signals {
+            out.push_str(&format!("- {signal}\n"));
+        }
+    }
+}
+
+fn push_change_signal(
+    signals: &mut Vec<String>,
+    metrics: &[FinancialMetricRecord],
+    latest_period: &str,
+    previous_period: Option<&str>,
+    metric_name: &str,
+    label: &str,
+    threshold: f64,
+) {
+    let Some(previous_period) = previous_period else {
+        return;
+    };
+    let Some(current) = metric_value(metrics, latest_period, metric_name) else {
+        return;
+    };
+    let Some(previous) = metric_value(metrics, previous_period, metric_name) else {
+        return;
+    };
+    let delta = current - previous;
+    if delta.abs() < threshold {
+        return;
+    }
+    let direction = if delta > 0.0 { "improved" } else { "weakened" };
+    signals.push(format!(
+        "{label} {direction}: {} vs {} in the prior period.",
+        metric_cell(metrics, latest_period, metric_name),
+        metric_cell(metrics, previous_period, metric_name)
+    ));
+}
+
+fn metric_value(metrics: &[FinancialMetricRecord], period: &str, metric_name: &str) -> Option<f64> {
+    metrics
+        .iter()
+        .find(|metric| metric.metric == metric_name && metric.period_end.as_deref() == Some(period))
+        .and_then(|metric| metric.value)
 }
 
 fn metric_display(metric: &FinancialMetricRecord) -> String {
