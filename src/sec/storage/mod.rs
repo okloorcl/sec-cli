@@ -15,7 +15,7 @@ pub struct FileStore {
 impl FileStore {
     pub fn new(root: Option<PathBuf>) -> Result<Self> {
         let root = root.unwrap_or_else(default_cache_dir);
-        fs::create_dir_all(&root)
+        create_dir_all_private(&root)
             .with_context(|| format!("failed to create cache directory {}", root.display()))?;
         Ok(Self { root })
     }
@@ -57,11 +57,44 @@ fn default_cache_dir() -> PathBuf {
 
 fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
+        create_dir_all_private(parent)?;
     }
     let tmp = path.with_extension("tmp");
     fs::write(&tmp, bytes)?;
+    restrict_file_permissions(&tmp)?;
     fs::rename(tmp, path)?;
+    restrict_file_permissions(path)?;
+    Ok(())
+}
+
+fn create_dir_all_private(path: &Path) -> Result<()> {
+    fs::create_dir_all(path)?;
+    restrict_dir_permissions(path)
+}
+
+#[cfg(unix)]
+fn restrict_dir_permissions(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::set_permissions(path, fs::Permissions::from_mode(0o700))
+        .with_context(|| format!("failed to restrict cache directory {}", path.display()))
+}
+
+#[cfg(not(unix))]
+fn restrict_dir_permissions(_path: &Path) -> Result<()> {
+    Ok(())
+}
+
+#[cfg(unix)]
+fn restrict_file_permissions(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+        .with_context(|| format!("failed to restrict cache file {}", path.display()))
+}
+
+#[cfg(not(unix))]
+fn restrict_file_permissions(_path: &Path) -> Result<()> {
     Ok(())
 }
 
@@ -117,6 +150,27 @@ mod tests {
             .read_url("https://example.com/a", "txt", Some(Duration::ZERO))
             .unwrap();
         assert!(miss.is_none());
+
+        fs::remove_dir_all(dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn cache_files_and_dirs_are_private() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = temp_cache_dir();
+        let store = FileStore::new(Some(dir.clone())).unwrap();
+        store
+            .write_url("https://example.com/private", "json", b"{}")
+            .unwrap();
+
+        let dir_mode = fs::metadata(&dir).unwrap().permissions().mode() & 0o777;
+        assert_eq!(dir_mode, 0o700);
+
+        let entry = fs::read_dir(&dir).unwrap().next().unwrap().unwrap().path();
+        let file_mode = fs::metadata(entry).unwrap().permissions().mode() & 0o777;
+        assert_eq!(file_mode, 0o600);
 
         fs::remove_dir_all(dir).ok();
     }

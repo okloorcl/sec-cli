@@ -398,7 +398,7 @@ pub struct ThirteenFHoldingRecord {
     pub source_url: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ThirteenFAggregateHoldingRecord {
     pub accession: String,
     pub cik: u64,

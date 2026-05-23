@@ -5,6 +5,14 @@ use crate::sec::{
     models::{
         FinancialMetricRecord, Form4Query, MetricsQuery, ReportQuery, SectionQuery, ThirteenFQuery,
     },
+    parsers::forms::thirteenf::{aggregate, diff, holdings, summary},
+};
+
+mod format;
+
+use format::{
+    bar, cell, compact_float, dollars, first_source_link, metric_display, opt, push_header,
+    push_section_excerpt, signed_dollars, signed_number,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -125,33 +133,15 @@ impl SecClient {
     }
 
     async fn portfolio_report(&self, query: ReportQuery) -> Result<String> {
-        let mut summaries = self
-            .thirteenf_reports(ThirteenFQuery {
-                cik: query.cik,
-                latest: 1,
-                include_amends: query.include_amends,
-            })
-            .await?;
-        let mut holdings = self
-            .thirteenf_aggregate_holdings(ThirteenFQuery {
-                cik: query.cik,
-                latest: 1,
-                include_amends: query.include_amends,
-            })
-            .await?;
-        let mut changes = self
-            .thirteenf_diff_holdings(ThirteenFQuery {
-                cik: query.cik,
-                latest: 2,
-                include_amends: query.include_amends,
-            })
-            .await?;
-        holdings.truncate(query.limit);
+        let portfolio = self.portfolio_report_data(&query).await?;
+        let mut holdings = portfolio.current_holdings;
+        let mut changes = portfolio.changes;
         changes.truncate(query.limit);
+        holdings.truncate(query.limit);
 
         let mut out = String::new();
         push_header(&mut out, "13F Portfolio Report", &query.subject, query.cik);
-        if let Some(summary) = summaries.pop() {
+        if let Some(summary) = portfolio.summary {
             out.push_str("## Latest 13F summary\n\n");
             out.push_str(&format!(
                 "- Report date: {}\n- Report type: {}\n- Total holdings: {}\n- Total value: {}\n- Source: [SEC]({})\n\n",
@@ -201,6 +191,45 @@ impl SecClient {
         Ok(out)
     }
 
+    async fn portfolio_report_data(&self, query: &ReportQuery) -> Result<PortfolioReportData> {
+        let filings = self
+            .thirteenf_filings(&ThirteenFQuery {
+                cik: query.cik,
+                latest: 2,
+                include_amends: query.include_amends,
+            })
+            .await?;
+        let mut parsed = self
+            .filing_documents_batch(filings)
+            .await?
+            .into_iter()
+            .map(|(filing, docs)| {
+                let summary = summary::parse_13f_report_documents(&filing, &docs)?
+                    .into_iter()
+                    .next();
+                let aggregate =
+                    aggregate::aggregate_holdings(holdings::parse_13f_documents(&filing, &docs)?);
+                Ok::<_, anyhow::Error>((summary, aggregate))
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        if parsed.is_empty() {
+            return Ok(PortfolioReportData::default());
+        }
+        let (summary, current_holdings) = parsed.remove(0);
+        let previous_holdings = parsed
+            .into_iter()
+            .next()
+            .map(|(_, holdings)| holdings)
+            .unwrap_or_default();
+        let changes = diff::diff_holdings(current_holdings.clone(), previous_holdings);
+        Ok(PortfolioReportData {
+            summary,
+            current_holdings,
+            changes,
+        })
+    }
+
     async fn risk_report(&self, query: ReportQuery) -> Result<String> {
         let risk = self
             .sections(SectionQuery {
@@ -239,32 +268,11 @@ impl SecClient {
     }
 }
 
-fn push_header(out: &mut String, title: &str, subject: &str, cik: u64) {
-    out.push_str(&format!("# {}\n\n", title));
-    out.push_str(&format!("- Subject: {}\n- CIK: {}\n\n", subject, cik));
-}
-
-fn push_section_excerpt(
-    out: &mut String,
-    title: &str,
-    section: Option<&crate::sec::models::SectionRecord>,
-) {
-    out.push_str(&format!("## {}\n\n", title));
-    if let Some(section) = section {
-        out.push_str(&format!(
-            "- Filing: {} {}\n- Source: [SEC]({})\n- Returned bytes: {} / {}\n\n",
-            section.form,
-            section.filing_date,
-            section.source_url,
-            section.returned_bytes,
-            section.byte_length
-        ));
-        out.push_str("> ");
-        out.push_str(&section.content.replace('\n', " "));
-        out.push_str("\n\n");
-    } else {
-        out.push_str("No section was extracted for the selected filing.\n\n");
-    }
+#[derive(Default)]
+struct PortfolioReportData {
+    summary: Option<crate::sec::models::ThirteenFReportRecord>,
+    current_holdings: Vec<crate::sec::models::ThirteenFAggregateHoldingRecord>,
+    changes: Vec<crate::sec::models::ThirteenFDiffRecord>,
 }
 
 fn latest_metrics(metrics: &[FinancialMetricRecord]) -> Vec<&FinancialMetricRecord> {
@@ -396,115 +404,13 @@ fn metric_value(metrics: &[FinancialMetricRecord], period: &str, metric_name: &s
         .and_then(|metric| metric.value)
 }
 
-fn metric_display(metric: &FinancialMetricRecord) -> String {
-    match (metric.unit.as_str(), metric.value) {
-        ("USD", Some(value)) => dollars_f64(value),
-        _ => metric.display_value.clone().unwrap_or_else(|| {
-            metric
-                .value
-                .map_or_else(|| "-".to_string(), |value| format!("{value:.4}"))
-        }),
-    }
-}
-
-fn first_source_link(metric: &FinancialMetricRecord) -> String {
-    metric
-        .source_urls
-        .first()
-        .map(|url| format!("[SEC]({url})"))
-        .unwrap_or_else(|| "-".to_string())
-}
-
-fn opt(value: Option<&str>) -> &str {
-    value.filter(|v| !v.is_empty()).unwrap_or("-")
-}
-
-fn cell(value: &str) -> String {
-    value.replace('|', "\\|").replace('\n', " ")
-}
-
-fn dollars(value: u64) -> String {
-    format!("${}", grouped(value))
-}
-
-fn dollars_f64(value: f64) -> String {
-    if value < 0.0 {
-        format!("-${}", grouped(value.abs().round() as u64))
-    } else {
-        dollars(value.round() as u64)
-    }
-}
-
-fn signed_dollars(value: i128) -> String {
-    if value < 0 {
-        format!("-${}", grouped(value.unsigned_abs() as u64))
-    } else {
-        format!("+${}", grouped(value as u64))
-    }
-}
-
-fn grouped(value: u64) -> String {
-    let raw = value.to_string();
-    let first_group = raw.len() % 3;
-    let mut out = String::with_capacity(raw.len() + raw.len() / 3);
-    for (idx, ch) in raw.chars().enumerate() {
-        if idx > 0 && (idx + 3 - first_group) % 3 == 0 {
-            out.push(',');
-        }
-        out.push(ch);
-    }
-    out
-}
-
-fn compact_float(value: f64) -> String {
-    let sign = if value < 0.0 { "-" } else { "" };
-    let abs = value.abs();
-    if abs.fract().abs() < f64::EPSILON {
-        format!("{}{}", sign, grouped(abs as u64))
-    } else {
-        format!("{value:.2}")
-    }
-}
-
-fn signed_number(value: f64) -> String {
-    if value > 0.0 {
-        format!("+{}", compact_float(value))
-    } else {
-        compact_float(value)
-    }
-}
-
-fn bar(value: u64, max_value: u64) -> String {
-    let width = if max_value == 0 {
-        0
-    } else {
-        ((value as f64 / max_value as f64) * 12.0).round() as usize
-    };
-    format!(
-        "{}{}",
-        "#".repeat(width),
-        ".".repeat(12usize.saturating_sub(width))
-    )
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
-    fn formats_grouped_numbers_and_dollars() {
-        assert_eq!(grouped(0), "0");
-        assert_eq!(grouped(123), "123");
-        assert_eq!(grouped(1234), "1,234");
-        assert_eq!(dollars(1_234_567), "$1,234,567");
-        assert_eq!(signed_dollars(-1_200), "-$1,200");
-        assert_eq!(signed_dollars(1_200), "+$1,200");
-    }
-
-    #[test]
-    fn escapes_markdown_cells_and_builds_bar() {
-        assert_eq!(cell("A|B\nC"), "A\\|B C");
-        assert_eq!(bar(50, 100), "######......");
-        assert_eq!(bar(1, 0), "............");
+    fn portfolio_report_data_defaults_to_empty() {
+        let data = super::PortfolioReportData::default();
+        assert!(data.summary.is_none());
+        assert!(data.current_holdings.is_empty());
+        assert!(data.changes.is_empty());
     }
 }

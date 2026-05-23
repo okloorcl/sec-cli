@@ -77,7 +77,10 @@ impl SecClient {
         ))
     }
 
-    async fn thirteenf_filings(&self, query: &ThirteenFQuery) -> Result<Vec<FilingRecord>> {
+    pub(crate) async fn thirteenf_filings(
+        &self,
+        query: &ThirteenFQuery,
+    ) -> Result<Vec<FilingRecord>> {
         self.filings(FilingQuery {
             cik: query.cik,
             form: Some("13F-HR".to_string()),
