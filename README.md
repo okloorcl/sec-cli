@@ -3,6 +3,7 @@
 Agent-ready SEC EDGAR parser and query CLI, powered by Rust.
 
 [![Rust](https://img.shields.io/badge/Rust-2024-orange)](https://www.rust-lang.org/)
+[![CI](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml)
 [![SEC EDGAR](https://img.shields.io/badge/Data-SEC%20EDGAR-blue)](https://www.sec.gov/edgar)
 [![Output](https://img.shields.io/badge/Output-JSON%20%7C%20JSONL%20%7C%20Markdown-green)](#output-modes)
 [![Agent Ready](https://img.shields.io/badge/Agent-ready-111827)](#agent-workflows)
@@ -230,6 +231,23 @@ You can also pass it per command:
 ```bash
 sec --identity "Your Name your.email@example.com" filings --ticker AAPL
 ```
+
+## CI Targets
+
+GitHub Actions checks the project on every push and pull request:
+
+| Platform | Architecture | Rust target | CI behavior |
+| --- | --- | --- | --- |
+| Ubuntu Linux | amd64 / x86_64 | `x86_64-unknown-linux-gnu` | check, test, release build |
+| Ubuntu Linux | amd32 / i686 | `i686-unknown-linux-gnu` | cross check, cross release build |
+| Ubuntu Linux | arm64 / AArch64 | `aarch64-unknown-linux-gnu` | cross check, cross release build |
+| Ubuntu Linux | arm32 / ARMv7 hard-float | `armv7-unknown-linux-gnueabihf` | cross check, cross release build |
+| Windows | amd64 / x86_64 | `x86_64-pc-windows-msvc` | check, test, release build |
+| macOS | arm64 / Apple Silicon | `aarch64-apple-darwin` | check, test, release build |
+
+Native runners execute tests where GitHub provides the matching machine.
+Linux non-native targets use `cross`, so CI verifies compilation for 32-bit and
+ARM Linux without trying to run those binaries on the x86_64 runner.
 
 ## LLM Resolver
 

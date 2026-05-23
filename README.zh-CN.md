@@ -3,6 +3,7 @@
 面向 AI Agent 和金融分析自动化的 SEC EDGAR 高速解析 CLI，Rust 实现。
 
 [![Rust](https://img.shields.io/badge/Rust-2024-orange)](https://www.rust-lang.org/)
+[![CI](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/okloorcl/sec-cli/actions/workflows/ci.yml)
 [![SEC EDGAR](https://img.shields.io/badge/Data-SEC%20EDGAR-blue)](https://www.sec.gov/edgar)
 [![Output](https://img.shields.io/badge/Output-JSON%20%7C%20JSONL%20%7C%20Markdown-green)](#输出模式)
 [![Agent Ready](https://img.shields.io/badge/Agent-ready-111827)](#agent-工作流)
@@ -215,6 +216,23 @@ export SEC_IDENTITY="Your Name your.email@example.com"
 ```bash
 sec --identity "Your Name your.email@example.com" filings --ticker AAPL
 ```
+
+## CI 支持平台
+
+GitHub Actions 会在每次 push 和 pull request 时检查项目：
+
+| 平台 | 架构 | Rust target | CI 做什么 |
+| --- | --- | --- | --- |
+| Ubuntu Linux | amd64 / x86_64 | `x86_64-unknown-linux-gnu` | check、test、release build |
+| Ubuntu Linux | amd32 / i686 | `i686-unknown-linux-gnu` | cross check、cross release build |
+| Ubuntu Linux | arm64 / AArch64 | `aarch64-unknown-linux-gnu` | cross check、cross release build |
+| Ubuntu Linux | arm32 / ARMv7 hard-float | `armv7-unknown-linux-gnueabihf` | cross check、cross release build |
+| Windows | amd64 / x86_64 | `x86_64-pc-windows-msvc` | check、test、release build |
+| macOS | arm64 / Apple Silicon | `aarch64-apple-darwin` | check、test、release build |
+
+GitHub 有原生 runner 的平台会直接跑测试；Linux 32 位和 ARM 目标用
+`cross` 做交叉编译验证，所以会确认能编译出对应架构的 release binary，
+但不会在 x86_64 runner 上强行运行这些二进制。
 
 ## LLM Resolver
 
