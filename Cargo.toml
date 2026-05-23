@@ -1,0 +1,23 @@
+[package]
+name = "sec-cli"
+version = "0.1.0"
+edition = "2024"
+description = "Agent-ready SEC EDGAR parser and query CLI, powered by Rust."
+license = "MIT"
+
+[[bin]]
+name = "sec"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.98"
+chrono = { version = "0.4.41", features = ["serde"] }
+clap = { version = "4.5.38", features = ["derive"] }
+dirs = "6.0.0"
+regex = "1.11.1"
+quick-xml = "0.40.1"
+reqwest = { version = "0.12.15", default-features = false, features = ["gzip", "json", "rustls-tls"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+sha2 = "0.10.9"
+tokio = { version = "1.45.0", features = ["macros", "rt-multi-thread"] }
