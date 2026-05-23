@@ -180,14 +180,27 @@ Each transaction includes:
 
 - `accession`
 - `issuer`
+- `issuer_ticker`
 - `reporting_owner`
+- `officer_title`
 - `transaction_date`
+- `transaction_form_type`
 - `transaction_code`
+- `equity_swap_involved`
 - `transaction_type`
 - `security_title`
 - `shares`
 - `price`
+- `value`
 - `shares_owned_after`
+- `direct_or_indirect`
+- `nature_of_ownership`
+- `derivative`
+- `conversion_or_exercise_price`
+- `exercise_date`
+- `expiration_date`
+- `underlying_security_title`
+- `underlying_shares`
 - `source_url`
 
 ### 13f

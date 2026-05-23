@@ -58,6 +58,7 @@ fn parse_form4_xml(
 struct Issuer {
     name: Option<String>,
     cik: Option<String>,
+    ticker: Option<String>,
 }
 
 #[derive(Default, Clone)]
@@ -67,20 +68,30 @@ struct Owner {
     is_director: Option<bool>,
     is_officer: Option<bool>,
     is_ten_percent_owner: Option<bool>,
+    is_other: Option<bool>,
     officer_title: Option<String>,
 }
 
 #[derive(Default)]
 struct Transaction {
     date: Option<String>,
+    deemed_execution_date: Option<String>,
+    form_type: Option<String>,
     code: Option<String>,
+    equity_swap_involved: Option<bool>,
     acquired_disposed: Option<String>,
     security_title: Option<String>,
     shares: Option<f64>,
     price: Option<f64>,
     shares_owned_after: Option<f64>,
     direct_or_indirect: Option<String>,
+    nature_of_ownership: Option<String>,
     derivative: bool,
+    conversion_or_exercise_price: Option<f64>,
+    exercise_date: Option<String>,
+    expiration_date: Option<String>,
+    underlying_security_title: Option<String>,
+    underlying_shares: Option<f64>,
 }
 
 struct Form4Parser<'a> {
@@ -144,6 +155,8 @@ impl<'a> Form4Parser<'a> {
             self.issuer.name = Some(text.to_string());
         } else if path_ends_with(&self.path, &["issuer", "issuerCik"]) {
             self.issuer.cik = Some(text.to_string());
+        } else if path_ends_with(&self.path, &["issuer", "issuerTradingSymbol"]) {
+            self.issuer.ticker = Some(text.to_string());
         } else if let Some(owner) = self.current_owner.as_mut() {
             apply_owner_text(owner, &self.path, text);
         }
@@ -171,14 +184,19 @@ impl<'a> Form4Parser<'a> {
             filing_date: self.filing.filing_date.clone(),
             issuer: self.issuer.name.clone(),
             issuer_cik: self.issuer.cik.clone(),
+            issuer_ticker: self.issuer.ticker.clone(),
             reporting_owner: owner.name,
             owner_cik: owner.cik,
             is_director: owner.is_director,
             is_officer: owner.is_officer,
             is_ten_percent_owner: owner.is_ten_percent_owner,
+            is_other: owner.is_other,
             officer_title: owner.officer_title,
             transaction_date: tx.date,
+            deemed_execution_date: tx.deemed_execution_date,
+            transaction_form_type: tx.form_type,
             transaction_code: tx.code.clone(),
+            equity_swap_involved: tx.equity_swap_involved,
             acquired_disposed: tx.acquired_disposed.clone(),
             transaction_type: transaction_type(tx.code.as_deref(), tx.acquired_disposed.as_deref()),
             security_title: tx.security_title,
@@ -187,7 +205,13 @@ impl<'a> Form4Parser<'a> {
             value,
             shares_owned_after: tx.shares_owned_after,
             direct_or_indirect: tx.direct_or_indirect,
+            nature_of_ownership: tx.nature_of_ownership,
             derivative: tx.derivative,
+            conversion_or_exercise_price: tx.conversion_or_exercise_price,
+            exercise_date: tx.exercise_date,
+            expiration_date: tx.expiration_date,
+            underlying_security_title: tx.underlying_security_title,
+            underlying_shares: tx.underlying_shares,
             document: self.doc.filename.clone(),
             document_sequence: self.doc.sequence.clone(),
             document_description: self.doc.description.clone(),
@@ -207,6 +231,8 @@ fn apply_owner_text(owner: &mut Owner, path: &[String], text: &str) {
         owner.is_officer = parse_bool(text);
     } else if path_ends_with(path, &["reportingOwnerRelationship", "isTenPercentOwner"]) {
         owner.is_ten_percent_owner = parse_bool(text);
+    } else if path_ends_with(path, &["reportingOwnerRelationship", "isOther"]) {
+        owner.is_other = parse_bool(text);
     } else if path_ends_with(path, &["reportingOwnerRelationship", "officerTitle"]) {
         owner.officer_title = Some(text.to_string());
     }
@@ -217,18 +243,36 @@ fn apply_transaction_text(tx: &mut Transaction, path: &[String], text: &str) {
         tx.security_title = Some(text.to_string());
     } else if path_ends_with(path, &["transactionDate", "value"]) {
         tx.date = Some(text.to_string());
+    } else if path_ends_with(path, &["deemedExecutionDate", "value"]) {
+        tx.deemed_execution_date = Some(text.to_string());
+    } else if path_ends_with(path, &["transactionCoding", "transactionFormType"]) {
+        tx.form_type = Some(text.to_string());
     } else if path_ends_with(path, &["transactionCoding", "transactionCode"]) {
         tx.code = Some(text.to_string());
+    } else if path_ends_with(path, &["transactionCoding", "equitySwapInvolved"]) {
+        tx.equity_swap_involved = parse_bool(text);
     } else if path_ends_with(path, &["transactionShares", "value"]) {
         tx.shares = parse_f64(text);
     } else if path_ends_with(path, &["transactionPricePerShare", "value"]) {
         tx.price = parse_f64(text);
+    } else if path_ends_with(path, &["conversionOrExercisePrice", "value"]) {
+        tx.conversion_or_exercise_price = parse_f64(text);
     } else if path_ends_with(path, &["transactionAcquiredDisposedCode", "value"]) {
         tx.acquired_disposed = Some(text.to_string());
+    } else if path_ends_with(path, &["exerciseDate", "value"]) {
+        tx.exercise_date = Some(text.to_string());
+    } else if path_ends_with(path, &["expirationDate", "value"]) {
+        tx.expiration_date = Some(text.to_string());
+    } else if path_ends_with(path, &["underlyingSecurityTitle", "value"]) {
+        tx.underlying_security_title = Some(text.to_string());
+    } else if path_ends_with(path, &["underlyingSecurityShares", "value"]) {
+        tx.underlying_shares = parse_f64(text);
     } else if path_ends_with(path, &["sharesOwnedFollowingTransaction", "value"]) {
         tx.shares_owned_after = parse_f64(text);
     } else if path_ends_with(path, &["directOrIndirectOwnership", "value"]) {
         tx.direct_or_indirect = Some(text.to_string());
+    } else if path_ends_with(path, &["natureOfOwnership", "value"]) {
+        tx.nature_of_ownership = Some(text.to_string());
     }
 }
 
@@ -291,16 +335,20 @@ mod tests {
 
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].issuer.as_deref(), Some("ACME Inc."));
+        assert_eq!(records[0].issuer_ticker.as_deref(), Some("ACME"));
         assert_eq!(records[0].reporting_owner.as_deref(), Some("Jane Owner"));
         assert_eq!(records[0].transaction_type.as_deref(), Some("sale"));
+        assert_eq!(records[0].transaction_form_type.as_deref(), Some("4"));
+        assert_eq!(records[0].equity_swap_involved, Some(false));
         assert_eq!(records[0].shares, Some(10.0));
         assert_eq!(records[0].value, Some(125.0));
+        assert_eq!(records[0].nature_of_ownership.as_deref(), Some("By Trust"));
     }
 
     fn sample_form4_xml() -> &'static str {
         r#"
         <ownershipDocument>
-          <issuer><issuerCik>0000000001</issuerCik><issuerName>ACME Inc.</issuerName></issuer>
+          <issuer><issuerCik>0000000001</issuerCik><issuerName>ACME Inc.</issuerName><issuerTradingSymbol>ACME</issuerTradingSymbol></issuer>
           <reportingOwner>
             <reportingOwnerId><rptOwnerCik>0000000002</rptOwnerCik><rptOwnerName>Jane Owner</rptOwnerName></reportingOwnerId>
             <reportingOwnerRelationship><isOfficer>1</isOfficer><officerTitle>CFO</officerTitle></reportingOwnerRelationship>
@@ -309,14 +357,14 @@ mod tests {
             <nonDerivativeTransaction>
               <securityTitle><value>Common Stock</value></securityTitle>
               <transactionDate><value>2026-01-01</value></transactionDate>
-              <transactionCoding><transactionCode>S</transactionCode></transactionCoding>
+              <transactionCoding><transactionFormType>4</transactionFormType><transactionCode>S</transactionCode><equitySwapInvolved>0</equitySwapInvolved></transactionCoding>
               <transactionAmounts>
                 <transactionShares><value>10</value></transactionShares>
                 <transactionPricePerShare><value>12.5</value></transactionPricePerShare>
                 <transactionAcquiredDisposedCode><value>D</value></transactionAcquiredDisposedCode>
               </transactionAmounts>
               <postTransactionAmounts><sharesOwnedFollowingTransaction><value>90</value></sharesOwnedFollowingTransaction></postTransactionAmounts>
-              <ownershipNature><directOrIndirectOwnership><value>D</value></directOrIndirectOwnership></ownershipNature>
+              <ownershipNature><directOrIndirectOwnership><value>D</value></directOrIndirectOwnership><natureOfOwnership><value>By Trust</value></natureOfOwnership></ownershipNature>
             </nonDerivativeTransaction>
           </nonDerivativeTable>
         </ownershipDocument>
